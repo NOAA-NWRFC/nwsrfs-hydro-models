@@ -21,6 +21,7 @@ module def_namelists
   integer(I4B)		:: output_hrus 		! output HRU results? (1=yes; 0=no)
 
   integer(I4B)    :: dt    ! model timestep in seconds
+  integer(I4B)    :: calibration_mode    ! calibration mode turns off most output except routed flow or runoff
 
   integer(I4B)		:: start_month		! starting month 
   integer(I4B)    :: start_hour    ! starting hour
@@ -65,6 +66,6 @@ module def_namelists
                           init_lzfpc,init_adimc,sac_param_file,snow17_param_file,uh_param_file, &
                           uh_state_in_root, warm_start_run, write_states, &
 			  snow_state_out_root,sac_state_out_root,snow_state_in_root, &
-			  sac_state_in_root, uh_state_out_root
+			  sac_state_in_root, uh_state_out_root, calibration_mode
   save
 end module

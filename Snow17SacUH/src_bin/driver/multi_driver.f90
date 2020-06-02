@@ -366,7 +366,7 @@ program multi_driver
 
     ! ==== WRITE output for current area simulation ====
 
-    if (output_hrus == 1) then
+    if (output_hrus == 1 .and. calibration_mode == 0) then
 
       hru_output_filename = trim(output_root) // trim(hru_id(nh))
 
@@ -396,7 +396,7 @@ program multi_driver
     end if  ! IF case for writing HRU-specific output to file (not including states)
 
     ! === write out STATE FILES for snow17, sac and uh if needed ===
-    if(write_states > 0) then
+    if(write_states > 0 .and. calibration_mode == 0) then
       call write_snow17_state(year,month,day,hour,cs_states,tprev_states,sim_length,hru_id(nh))
       call write_sac_state(year, month, day, hour, uztwc_dp, uzfwc_dp, lztwc_dp, &
                            lzfsc_dp, lzfpc_dp, adimc_dp, sim_length, hru_id(nh))
@@ -514,24 +514,38 @@ program multi_driver
 
   if(routing_flag == 1) then
 
-    write(125,'(A)') 'year mo dy hr tair pcp pcp*scf swe raim pet psfall &
-    &eta uztwc uzfwc lztwc lzfsc lzfpc adimc sim_runoff sim_flow_mmd sim_flow_cfs'
-    do i = 1,sim_length
-      write(125,33) year(i),month(i),day(i),hour(i),tair_comb(i),precip_comb(i),precip_scf_comb(i),&
-                       sneqv_comb(i)*1000.,raim_comb(i),pet_comb(i),psfall_comb(i),eta_comb(i),uztwc_comb(i),uzfwc_comb(i),&
-                       lztwc_comb(i),lzfsc_comb(i),lzfpc_comb(i),adimc_comb(i),&
-                       tci_comb(i),route_tci_comb(i),route_tci_cfs(i)
-    end do
+    if(calibration_mode == 0)then
+      write(125,'(A)') 'year mo dy hr tair pcp pcp*scf swe raim pet psfall &
+      &eta uztwc uzfwc lztwc lzfsc lzfpc adimc sim_runoff sim_flow_mmd sim_flow_cfs'
+      do i = 1,sim_length
+        write(125,33) year(i),month(i),day(i),hour(i),tair_comb(i),precip_comb(i),precip_scf_comb(i),&
+                         sneqv_comb(i)*1000.,raim_comb(i),pet_comb(i),psfall_comb(i),eta_comb(i),uztwc_comb(i),uzfwc_comb(i),&
+                         lztwc_comb(i),lzfsc_comb(i),lzfpc_comb(i),adimc_comb(i),&
+                         tci_comb(i),route_tci_comb(i),route_tci_cfs(i)
+      end do
+    else
+      write(125,'(A)') 'year mo dy hr sim_flow_cfs'
+        do i = 1,sim_length
+          write(125,33) year(i),month(i),day(i),hour(i),route_tci_cfs(i)
+      end do
+    endif 
 
   else  
     ! doesn't have routing (header and data have fewer fields)
-    write(125,'(A)') 'year mo dy hr tair pcp pcp*scf swe raim pet psfall &
-    &eta uztwc uzfwc lztwc lzfsc lzfpc adimc sim_runoff'
-    do i = 1,sim_length
-      write(125,34) year(i),month(i),day(i),hour(i),tair_comb(i),precip_comb(i),precip_scf_comb(i),&
-                       sneqv_comb(i)*1000.,raim_comb(i),pet_comb(i),psfall_comb(i),eta_comb(i),uztwc_comb(i),uzfwc_comb(i),&
-                       lztwc_comb(i),lzfsc_comb(i),lzfpc_comb(i),adimc_comb(i),tci_comb(i)
-    end do
+    if(calibration_mode == 0)then
+      write(125,'(A)') 'year mo dy hr tair pcp pcp*scf swe raim pet psfall &
+      &eta uztwc uzfwc lztwc lzfsc lzfpc adimc sim_runoff'
+      do i = 1,sim_length
+        write(125,34) year(i),month(i),day(i),hour(i),tair_comb(i),precip_comb(i),precip_scf_comb(i),&
+                         sneqv_comb(i)*1000.,raim_comb(i),pet_comb(i),psfall_comb(i),eta_comb(i),uztwc_comb(i),uzfwc_comb(i),&
+                         lztwc_comb(i),lzfsc_comb(i),lzfpc_comb(i),adimc_comb(i),tci_comb(i)
+      end do
+    else 
+      write(125,'(A)') 'year mo dy hr sim_runoff'
+      do i = 1,sim_length
+        write(125,34) year(i),month(i),day(i),hour(i),tci_comb(i)
+      end do
+    end if 
   endif  
 
   close(unit=125)
