@@ -42,6 +42,7 @@ c
       M = 1
       GOTO 6
 
+      ! k turns on or off the use of the two parameter uh
     9 IF (K .EQ. 0) GOTO 6
       SP=0.
       TOC=GF(UN1)
