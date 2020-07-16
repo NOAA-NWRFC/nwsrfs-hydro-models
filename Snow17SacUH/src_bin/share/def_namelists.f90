@@ -60,6 +60,7 @@ module def_namelists
   real(sp), dimension(:), allocatable :: scf,mfmax,mfmin,uadj,si,pxtemp
   real(sp), dimension(:), allocatable :: nmf,tipm,mbase,plwhc,daygm
   real(sp), dimension(11)  :: adc  ! AW can we keep this the same for all HUCs, for now?
+  real(dp) :: adc_a, adc_b, adc_c ! areal depletion curve parameters ax^b+(1-a)x^c
 
   ! forcing adjustment parameters for map, mat, pet, ptps
   double precision, dimension(:), allocatable:: map_adj_jan, map_adj_feb, map_adj_mar, &
