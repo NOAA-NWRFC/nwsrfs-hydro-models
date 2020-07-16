@@ -128,6 +128,8 @@ program multi_driver
   real(dp), dimension(:),allocatable :: pet_comb, tair_comb  ! AWW combined vars
   real(dp), dimension(:),allocatable :: psfall_comb
 
+  double precision, dimension(11) :: adc_x
+
   ! =======  CODE starts below =====================================================================
 
   ! get control file filename as argument
@@ -157,6 +159,19 @@ program multi_driver
 
   ! determine length of unit hydrograph (check?)
   uh_length = size(unit_hydro,1)   
+
+  ! set the areal depletion curve based on parameters ax^b+(1-a)x^c
+  ! 0 < a < 1; b, c > 0 
+  ! if b < 1 & c < 1 curve is concave up
+  ! if b > 1 & c > 1 curve is concave up
+  ! if b < 1 & c > 1 OR b > 1 & c < 1 curve is s-shaped
+  adc_x = (/ 0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0 /)
+  adc = adc_a*adc_x**adc_b+(1-adc_a)*adc_x**adc_c
+  ! "A value of As = 0.05 is used for a W/Ai = 0.0 ratio so that small amounts of snow
+  ! don’t continue to exist well past the time when all the snow is gone in nature."
+  ! - snow 17 manual 
+  adc(1) = 0.05
+  write(*,*)'adc: ',adc
 
   ! ========================= HRU AREA LOOP ========================================================
   !   loop through the simulation areas, running the lump model code and averaging the output

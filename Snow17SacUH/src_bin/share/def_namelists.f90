@@ -58,6 +58,7 @@ module def_namelists
   real(sp), dimension(:), allocatable :: scf,mfmax,mfmin,uadj,si,pxtemp
   real(sp), dimension(:), allocatable :: nmf,tipm,mbase,plwhc,daygm
   real(sp), dimension(11)  :: adc  ! AW can we keep this the same for all HUCs, for now?
+  real(dp) :: adc_a, adc_b, adc_c ! areal depletion curve parameters ax^b+(1-a)x^c
 
   ! namelist elements to be shared
   namelist / INIT_CONTROL / forcing_root, output_root, main_id, n_hrus, output_hrus, &

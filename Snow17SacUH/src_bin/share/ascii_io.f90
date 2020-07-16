@@ -518,7 +518,8 @@ end subroutine read_sac_params
 subroutine read_snow17_params(param_file_name,n_hrus)
   use nrtype
   use def_namelists, only: scf,mfmax,mfmin,uadj,si,pxtemp,nmf,&
-                        tipm,mbase,plwhc,daygm,adc,latitude, elev
+                        tipm,mbase,plwhc,daygm,latitude, elev,&
+                        adc_a, adc_b, adc_c
   implicit none
  
   !input variables
@@ -610,38 +611,14 @@ subroutine read_snow17_params(param_file_name,n_hrus)
         case ('daygm')
           read(readline, *, iostat=ios) daygm
           n_params_read = n_params_read + 1
-        case ('adc1')
-          read(readline, *, iostat=ios) adc(1)
+        case ('adc_a')
+          read(readline, *, iostat=ios) adc_a
           n_params_read = n_params_read + 1
-        case ('adc2')
-          read(readline, *, iostat=ios) adc(2)
+        case ('adc_b')
+          read(readline, *, iostat=ios) adc_b
           n_params_read = n_params_read + 1
-        case ('adc3')
-          read(readline, *, iostat=ios) adc(3)
-          n_params_read = n_params_read + 1
-        case ('adc4')
-          read(readline, *, iostat=ios) adc(4)
-          n_params_read = n_params_read + 1
-        case ('adc5')
-          read(readline, *, iostat=ios) adc(5)
-          n_params_read = n_params_read + 1
-        case ('adc6')
-          read(readline, *, iostat=ios) adc(6)
-          n_params_read = n_params_read + 1
-        case ('adc7')
-          read(readline, *, iostat=ios) adc(7)
-          n_params_read = n_params_read + 1
-        case ('adc8')
-          read(readline, *, iostat=ios) adc(8)
-          n_params_read = n_params_read + 1
-        case ('adc9')
-          read(readline, *, iostat=ios) adc(9)
-          n_params_read = n_params_read + 1
-        case ('adc10')
-          read(readline, *, iostat=ios) adc(10)
-          n_params_read = n_params_read + 1
-        case ('adc11')
-          read(readline, *, iostat=ios) adc(11)
+        case ('adc_c')
+          read(readline, *, iostat=ios) adc_c
           n_params_read = n_params_read + 1
         case default
           print *, 'Parameter ',param,' not recognized in snow file'
@@ -653,8 +630,8 @@ subroutine read_snow17_params(param_file_name,n_hrus)
   close(unit=51)
 
   ! quick check on completeness
-  if(n_params_read /= 25) then
-    print *, 'Only ',n_params_read, ' SNOW17 params read, but need 25.  Quitting...'
+  if(n_params_read /= 17) then
+    print *, 'Only ',n_params_read, ' SNOW17 params read, but need 17.  Quitting...'
     stop
   end if
   !print*, '  -------------------'

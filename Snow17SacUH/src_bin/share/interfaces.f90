@@ -172,7 +172,7 @@ module interfaces
     subroutine read_snow17_params(param_name,n_hrus)
       use nrtype
       use def_namelists, only: scf,mfmax,mfmin,uadj,si,pxtemp,nmf,&
-                        tipm,mbase,plwhc,daygm,adc
+                        tipm,mbase,plwhc,daygm,adc_a,adc_b,adc_c
       !input variables
       character(len=1024),intent(in)	:: param_name
       integer(I4B),intent(in) :: n_hrus
