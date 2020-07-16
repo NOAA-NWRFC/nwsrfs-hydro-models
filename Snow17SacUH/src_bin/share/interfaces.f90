@@ -186,6 +186,25 @@ module interfaces
       integer(I4B),intent(in) :: n_hrus
     end subroutine read_uh_params
 
+    subroutine read_forcing_adjust(param_name,n_hrus)
+      use nrtype
+      use def_namelists, only: map_adj_jan, map_adj_feb, map_adj_mar, &
+        map_adj_apr, map_adj_may, map_adj_jun, map_adj_jul, map_adj_aug, &
+        map_adj_sep, map_adj_oct, map_adj_nov, map_adj_dec, &
+        mat_adj_jan, mat_adj_feb, mat_adj_mar, &
+        mat_adj_apr, mat_adj_may, mat_adj_jun, mat_adj_jul, mat_adj_aug, &
+        mat_adj_sep, mat_adj_oct, mat_adj_nov, mat_adj_dec, &
+        pet_adj_jan, pet_adj_feb, pet_adj_mar, &
+        pet_adj_apr, pet_adj_may, pet_adj_jun, pet_adj_jul, pet_adj_aug, &
+        pet_adj_sep, pet_adj_oct, pet_adj_nov, pet_adj_dec, &
+        ptps_adj_jan, ptps_adj_feb, ptps_adj_mar, &
+        ptps_adj_apr, ptps_adj_may, ptps_adj_jun, ptps_adj_jul, ptps_adj_aug, &
+        ptps_adj_sep, ptps_adj_oct, ptps_adj_nov, ptps_adj_dec
+      !input variables
+      character(len=1024),intent(in)  :: param_name
+      integer(I4B),intent(in) :: n_hrus
+    end subroutine read_forcing_adjust
+
   end interface
 end module interfaces
 

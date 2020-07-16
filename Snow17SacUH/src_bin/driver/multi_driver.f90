@@ -147,6 +147,10 @@ program multi_driver
   call read_snow17_params(snow17_param_file, n_hrus)
   call read_uh_params(uh_param_file, n_hrus)
 
+  if(use_forcing_adjust .eq. 1)then
+    call read_forcing_adjust(forcing_adjust_file, n_hrus)
+  end if
+
   ! determine whether to route (ie, if unit_shape is > 0 for any hru)
   routing_flag = 0 
   do nh=1,n_hrus
@@ -271,6 +275,74 @@ program multi_driver
   
     ! =============== START SIMULATION TIME LOOP =====================================
     do i = 1,sim_length,1
+
+      ! adjust forcings based on monthly adjustment from file 
+      if(use_forcing_adjust .eq. 1)then
+        select case (month(i))
+          case (1)
+            tair(i) = tair(i) * mat_adj_jan(nh)
+            precip(i) = precip(i) * map_adj_jan(nh)
+            pet(i) = pet(i) * pet_adj_jan(nh)
+            psfall(i) = psfall(i) * ptps_adj_jan(nh)
+          case (2)
+            tair(i) = tair(i) * mat_adj_feb(nh)
+            precip(i) = precip(i) * map_adj_feb(nh)
+            pet(i) = pet(i) * pet_adj_feb(nh)
+            psfall(i) = psfall(i) * ptps_adj_feb(nh)
+          case (3)
+            tair(i) = tair(i) * mat_adj_mar(nh)
+            precip(i) = precip(i) * map_adj_mar(nh)
+            pet(i) = pet(i) * pet_adj_mar(nh)
+            psfall(i) = psfall(i) * ptps_adj_mar(nh)
+          case (4)
+            tair(i) = tair(i) * mat_adj_apr(nh)
+            precip(i) = precip(i) * map_adj_apr(nh)
+            pet(i) = pet(i) * pet_adj_apr(nh)
+            psfall(i) = psfall(i) * ptps_adj_apr(nh)
+          case (5)
+            tair(i) = tair(i) * mat_adj_may(nh)
+            precip(i) = precip(i) * map_adj_may(nh)
+            pet(i) = pet(i) * pet_adj_may(nh)
+            psfall(i) = psfall(i) * ptps_adj_may(nh)
+          case (6)
+            tair(i) = tair(i) * mat_adj_jun(nh)
+            precip(i) = precip(i) * map_adj_jun(nh)
+            pet(i) = pet(i) * pet_adj_jun(nh)
+            psfall(i) = psfall(i) * ptps_adj_jun(nh)
+          case (7)
+            tair(i) = tair(i) * mat_adj_jul(nh)
+            precip(i) = precip(i) * map_adj_jul(nh)
+            pet(i) = pet(i) * pet_adj_jul(nh)
+            psfall(i) = psfall(i) * ptps_adj_jul(nh)
+          case (8)
+            tair(i) = tair(i) * mat_adj_aug(nh)
+            precip(i) = precip(i) * map_adj_aug(nh)
+            pet(i) = pet(i) * pet_adj_aug(nh)
+            psfall(i) = psfall(i) * ptps_adj_aug(nh)
+          case (9)
+            tair(i) = tair(i) * mat_adj_sep(nh)
+            precip(i) = precip(i) * map_adj_sep(nh)
+            pet(i) = pet(i) * pet_adj_sep(nh)
+            psfall(i) = psfall(i) * ptps_adj_sep(nh)
+          case (10)
+            tair(i) = tair(i) * mat_adj_oct(nh)
+            precip(i) = precip(i) * map_adj_oct(nh)
+            pet(i) = pet(i) * pet_adj_oct(nh)
+            psfall(i) = psfall(i) * ptps_adj_oct(nh)
+          case (11)
+            tair(i) = tair(i) * mat_adj_nov(nh)
+            precip(i) = precip(i) * map_adj_nov(nh)
+            pet(i) = pet(i) * pet_adj_nov(nh)
+            psfall(i) = psfall(i) * ptps_adj_nov(nh)
+          case (12)
+            tair(i) = tair(i) * mat_adj_dec(nh)
+            precip(i) = precip(i) * map_adj_dec(nh)
+            pet(i) = pet(i) * pet_adj_dec(nh)
+            psfall(i) = psfall(i) * ptps_adj_dec(nh)
+          case default
+            error stop "Urecognised month for forcing adjustment"
+        end select
+      end if
   
       !set single precision inputs
       tair_sp   = real(tair(i),kind(sp))

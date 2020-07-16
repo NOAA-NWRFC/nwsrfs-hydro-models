@@ -730,3 +730,271 @@ subroutine read_uh_params(param_file_name,n_hrus)
 
   return
 end subroutine read_uh_params
+
+subroutine read_forcing_adjust(param_file_name,n_hrus)
+  use nrtype
+  use def_namelists, only: map_adj_jan, map_adj_feb, map_adj_mar, &
+    map_adj_apr, map_adj_may, map_adj_jun, map_adj_jul, map_adj_aug, &
+    map_adj_sep, map_adj_oct, map_adj_nov, map_adj_dec, &
+    mat_adj_jan, mat_adj_feb, mat_adj_mar, &
+    mat_adj_apr, mat_adj_may, mat_adj_jun, mat_adj_jul, mat_adj_aug, &
+    mat_adj_sep, mat_adj_oct, mat_adj_nov, mat_adj_dec, &
+    pet_adj_jan, pet_adj_feb, pet_adj_mar, &
+    pet_adj_apr, pet_adj_may, pet_adj_jun, pet_adj_jul, pet_adj_aug, &
+    pet_adj_sep, pet_adj_oct, pet_adj_nov, pet_adj_dec, &
+    ptps_adj_jan, ptps_adj_feb, ptps_adj_mar, &
+    ptps_adj_apr, ptps_adj_may, ptps_adj_jun, ptps_adj_jul, ptps_adj_aug, &
+    ptps_adj_sep, ptps_adj_oct, ptps_adj_nov, ptps_adj_dec
+  implicit none
+ 
+  !input variables
+  integer(I4B),intent(in) :: n_hrus
+  character(len=1024),intent(in) :: param_file_name
+
+  !local variables
+  character(len=400) :: readline
+  character(len=50) :: param
+  integer(I4B) :: ios=0
+  integer :: pos
+  integer :: n_params_read  ! count number read
+
+  ! open parameter file
+  open(unit=53,file=trim(param_file_name),status='old')
+
+  ! allocate parameter variables
+  allocate(map_adj_jan(n_hrus))
+  allocate(map_adj_feb(n_hrus))
+  allocate(map_adj_mar(n_hrus))
+  allocate(map_adj_apr(n_hrus))
+  allocate(map_adj_may(n_hrus))
+  allocate(map_adj_jun(n_hrus))
+  allocate(map_adj_jul(n_hrus))
+  allocate(map_adj_aug(n_hrus))
+  allocate(map_adj_sep(n_hrus))
+  allocate(map_adj_oct(n_hrus))
+  allocate(map_adj_nov(n_hrus))
+  allocate(map_adj_dec(n_hrus))
+  allocate(mat_adj_jan(n_hrus))
+  allocate(mat_adj_feb(n_hrus))
+  allocate(mat_adj_mar(n_hrus))
+  allocate(mat_adj_apr(n_hrus))
+  allocate(mat_adj_may(n_hrus))
+  allocate(mat_adj_jun(n_hrus))
+  allocate(mat_adj_jul(n_hrus))
+  allocate(mat_adj_aug(n_hrus))
+  allocate(mat_adj_sep(n_hrus))
+  allocate(mat_adj_oct(n_hrus))
+  allocate(mat_adj_nov(n_hrus))
+  allocate(mat_adj_dec(n_hrus))
+  allocate(pet_adj_jan(n_hrus))
+  allocate(pet_adj_feb(n_hrus))
+  allocate(pet_adj_mar(n_hrus))
+  allocate(pet_adj_apr(n_hrus))
+  allocate(pet_adj_may(n_hrus))
+  allocate(pet_adj_jun(n_hrus))
+  allocate(pet_adj_jul(n_hrus))
+  allocate(pet_adj_aug(n_hrus))
+  allocate(pet_adj_sep(n_hrus))
+  allocate(pet_adj_oct(n_hrus))
+  allocate(pet_adj_nov(n_hrus))
+  allocate(pet_adj_dec(n_hrus))
+  allocate(ptps_adj_jan(n_hrus))
+  allocate(ptps_adj_feb(n_hrus))
+  allocate(ptps_adj_mar(n_hrus))
+  allocate(ptps_adj_apr(n_hrus))
+  allocate(ptps_adj_may(n_hrus))
+  allocate(ptps_adj_jun(n_hrus))
+  allocate(ptps_adj_jul(n_hrus))
+  allocate(ptps_adj_aug(n_hrus))
+  allocate(ptps_adj_sep(n_hrus))
+  allocate(ptps_adj_oct(n_hrus))
+  allocate(ptps_adj_nov(n_hrus))
+  allocate(ptps_adj_dec(n_hrus))
+
+  print*, 'Reading Forcing Adjust parameters'
+
+  ! --- now loop through parameter file and assign parameters 
+  n_params_read = 0
+  do while(ios .eq. 0)
+    read(unit=53,FMT='(A)',IOSTAT=ios) readline
+
+    if(ios == 0) then   ! means 'readline' was from the file
+      !print*, '  ',trim(readline)
+
+      ! Find the first instance of whitespace in line read. Split label vs data.
+      pos = scan(readline, '    ')
+      param = readline(1:pos)
+      readline = readline(pos+1:)  ! shorten readline to include only data
+
+      ! assign line to correct parameter array & type
+      ! (following http://jblevins.org/log/control-file)
+      select case (param)
+        case ('hru_id')
+          ! do nothing, already stored it
+          n_params_read = n_params_read + 1
+        case ('map_adj_jan')
+          read(readline, *, iostat=ios) map_adj_jan
+          n_params_read = n_params_read + 1
+        case ('map_adj_feb')
+          read(readline, *, iostat=ios) map_adj_feb
+          n_params_read = n_params_read + 1
+        case ('map_adj_mar')
+          read(readline, *, iostat=ios) map_adj_mar
+          n_params_read = n_params_read + 1
+        case ('map_adj_apr')
+          read(readline, *, iostat=ios) map_adj_apr
+          n_params_read = n_params_read + 1
+        case ('map_adj_may')
+          read(readline, *, iostat=ios) map_adj_may
+          n_params_read = n_params_read + 1
+        case ('map_adj_jun')
+          read(readline, *, iostat=ios) map_adj_jun
+          n_params_read = n_params_read + 1
+        case ('map_adj_jul')
+          read(readline, *, iostat=ios) map_adj_jul
+          n_params_read = n_params_read + 1
+        case ('map_adj_aug')
+          read(readline, *, iostat=ios) map_adj_aug
+          n_params_read = n_params_read + 1
+        case ('map_adj_sep')
+          read(readline, *, iostat=ios) map_adj_sep
+          n_params_read = n_params_read + 1
+        case ('map_adj_oct')
+          read(readline, *, iostat=ios) map_adj_oct
+          n_params_read = n_params_read + 1
+        case ('map_adj_nov')
+          read(readline, *, iostat=ios) map_adj_nov
+          n_params_read = n_params_read + 1
+        case ('map_adj_dec')
+          read(readline, *, iostat=ios) map_adj_dec
+          n_params_read = n_params_read + 1
+
+        case ('mat_adj_jan')
+          read(readline, *, iostat=ios) mat_adj_jan
+          n_params_read = n_params_read + 1
+        case ('mat_adj_feb')
+          read(readline, *, iostat=ios) mat_adj_feb
+          n_params_read = n_params_read + 1
+        case ('mat_adj_mar')
+          read(readline, *, iostat=ios) mat_adj_mar
+          n_params_read = n_params_read + 1
+        case ('mat_adj_apr')
+          read(readline, *, iostat=ios) mat_adj_apr
+          n_params_read = n_params_read + 1
+        case ('mat_adj_may')
+          read(readline, *, iostat=ios) mat_adj_may
+          n_params_read = n_params_read + 1
+        case ('mat_adj_jun')
+          read(readline, *, iostat=ios) mat_adj_jun
+          n_params_read = n_params_read + 1
+        case ('mat_adj_jul')
+          read(readline, *, iostat=ios) mat_adj_jul
+          n_params_read = n_params_read + 1
+        case ('mat_adj_aug')
+          read(readline, *, iostat=ios) mat_adj_aug
+          n_params_read = n_params_read + 1
+        case ('mat_adj_sep')
+          read(readline, *, iostat=ios) mat_adj_sep
+          n_params_read = n_params_read + 1
+        case ('mat_adj_oct')
+          read(readline, *, iostat=ios) mat_adj_oct
+          n_params_read = n_params_read + 1
+        case ('mat_adj_nov')
+          read(readline, *, iostat=ios) mat_adj_nov
+          n_params_read = n_params_read + 1
+        case ('mat_adj_dec')
+          read(readline, *, iostat=ios) mat_adj_dec
+          n_params_read = n_params_read + 1
+
+        case ('pet_adj_jan')
+          read(readline, *, iostat=ios) pet_adj_jan
+          n_params_read = n_params_read + 1
+        case ('pet_adj_feb')
+          read(readline, *, iostat=ios) pet_adj_feb
+          n_params_read = n_params_read + 1
+        case ('pet_adj_mar')
+          read(readline, *, iostat=ios) pet_adj_mar
+          n_params_read = n_params_read + 1
+        case ('pet_adj_apr')
+          read(readline, *, iostat=ios) pet_adj_apr
+          n_params_read = n_params_read + 1
+        case ('pet_adj_may')
+          read(readline, *, iostat=ios) pet_adj_may
+          n_params_read = n_params_read + 1
+        case ('pet_adj_jun')
+          read(readline, *, iostat=ios) pet_adj_jun
+          n_params_read = n_params_read + 1
+        case ('pet_adj_jul')
+          read(readline, *, iostat=ios) pet_adj_jul
+          n_params_read = n_params_read + 1
+        case ('pet_adj_aug')
+          read(readline, *, iostat=ios) pet_adj_aug
+          n_params_read = n_params_read + 1
+        case ('pet_adj_sep')
+          read(readline, *, iostat=ios) pet_adj_sep
+          n_params_read = n_params_read + 1
+        case ('pet_adj_oct')
+          read(readline, *, iostat=ios) pet_adj_oct
+          n_params_read = n_params_read + 1
+        case ('pet_adj_nov')
+          read(readline, *, iostat=ios) pet_adj_nov
+          n_params_read = n_params_read + 1
+        case ('pet_adj_dec')
+          read(readline, *, iostat=ios) pet_adj_dec
+          n_params_read = n_params_read + 1
+
+        case ('ptps_adj_jan')
+          read(readline, *, iostat=ios) ptps_adj_jan
+          n_params_read = n_params_read + 1
+        case ('ptps_adj_feb')
+          read(readline, *, iostat=ios) ptps_adj_feb
+          n_params_read = n_params_read + 1
+        case ('ptps_adj_mar')
+          read(readline, *, iostat=ios) ptps_adj_mar
+          n_params_read = n_params_read + 1
+        case ('ptps_adj_apr')
+          read(readline, *, iostat=ios) ptps_adj_apr
+          n_params_read = n_params_read + 1
+        case ('ptps_adj_may')
+          read(readline, *, iostat=ios) ptps_adj_may
+          n_params_read = n_params_read + 1
+        case ('ptps_adj_jun')
+          read(readline, *, iostat=ios) ptps_adj_jun
+          n_params_read = n_params_read + 1
+        case ('ptps_adj_jul')
+          read(readline, *, iostat=ios) ptps_adj_jul
+          n_params_read = n_params_read + 1
+        case ('ptps_adj_aug')
+          read(readline, *, iostat=ios) ptps_adj_aug
+          n_params_read = n_params_read + 1
+        case ('ptps_adj_sep')
+          read(readline, *, iostat=ios) ptps_adj_sep
+          n_params_read = n_params_read + 1
+        case ('ptps_adj_oct')
+          read(readline, *, iostat=ios) ptps_adj_oct
+          n_params_read = n_params_read + 1
+        case ('ptps_adj_nov')
+          read(readline, *, iostat=ios) ptps_adj_nov
+          n_params_read = n_params_read + 1
+        case ('ptps_adj_dec')
+          read(readline, *, iostat=ios) ptps_adj_dec
+          n_params_read = n_params_read + 1
+
+        case default
+          print *, 'Parameter ',param,' not recognized in forcing adjust file'
+      end select
+
+    end if
+
+  end do
+
+  close(unit=53)
+
+  ! quick check on completeness
+  if(n_params_read /= 49) then
+    print *, 'Only ',n_params_read, ' Forcing adjust params read, but need 49.  Quitting...'
+    stop
+  end if
+
+  return
+end subroutine read_forcing_adjust
