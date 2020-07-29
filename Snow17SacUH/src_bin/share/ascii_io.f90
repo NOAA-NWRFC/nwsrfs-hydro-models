@@ -550,6 +550,9 @@ subroutine read_snow17_params(param_file_name,n_hrus)
   allocate(daygm(n_hrus))
   allocate(latitude(n_hrus))
   allocate(elev(n_hrus))
+  allocate(adc_a(n_hrus))
+  allocate(adc_b(n_hrus))
+  allocate(adc_c(n_hrus))
 
   print*, 'Reading Snow17 parameters'
 

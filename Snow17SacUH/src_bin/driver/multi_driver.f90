@@ -164,18 +164,6 @@ program multi_driver
   ! determine length of unit hydrograph (check?)
   uh_length = size(unit_hydro,1)   
 
-  ! set the areal depletion curve based on parameters ax^b+(1-a)x^c
-  ! 0 < a < 1; b, c > 0 
-  ! if b < 1 & c < 1 curve is concave up
-  ! if b > 1 & c > 1 curve is concave up
-  ! if b < 1 & c > 1 OR b > 1 & c < 1 curve is s-shaped
-  adc_x = (/ 0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0 /)
-  adc = adc_a*adc_x**adc_b+(1-adc_a)*adc_x**adc_c
-  ! "A value of As = 0.05 is used for a W/Ai = 0.0 ratio so that small amounts of snow
-  ! don’t continue to exist well past the time when all the snow is gone in nature."
-  ! - snow 17 manual 
-  adc(1) = 0.05
-
   ! ========================= HRU AREA LOOP ========================================================
   !   loop through the simulation areas, running the lump model code and averaging the output
 
@@ -183,6 +171,18 @@ program multi_driver
 
   do nh=1,n_hrus
     print*, 'Running area',nh,'out of',n_hrus,'for watershed ', main_id
+
+    ! set the areal depletion curve based on parameters ax^b+(1-a)x^c
+    ! 0 < a < 1; b, c > 0 
+    ! if b < 1 & c < 1 curve is concave up
+    ! if b > 1 & c > 1 curve is concave up
+    ! if b < 1 & c > 1 OR b > 1 & c < 1 curve is s-shaped
+    adc_x = (/ 0.0d0, 0.1d0, 0.2d0, 0.3d0, 0.4d0, 0.5d0, 0.6d0, 0.7d0, 0.8d0, 0.9d0, 1.0d0 /)
+    adc = adc_a(nh)*adc_x**adc_b(nh)+(1d0-adc_a(nh))*adc_x**adc_c(nh)
+    ! "A value of As = 0.05 is used for a W/Ai = 0.0 ratio so that small amounts of snow
+    ! don’t continue to exist well past the time when all the snow is gone in nature."
+    ! - snow 17 manual 
+    adc(1) = 0.05d0
 
     ! --- allocate variables (before simulating first area) ---
     if(nh .eq. 1) then
@@ -192,7 +192,7 @@ program multi_driver
       ! for non-daily timestep
       ! for simplicity don't consider partial days
       ! dt is defined in the namelist
-      sim_length = sim_length * (86400/dt)
+      sim_length = sim_length * (86400d0/dt)
 
       !forcing variables
       allocate(year(sim_length))
@@ -297,62 +297,62 @@ program multi_driver
             tair(i) = tair(i) * mat_adj_jan(nh)
             precip(i) = precip(i) * map_adj_jan(nh)
             pet(i) = pet(i) * pet_adj_jan(nh)
-            psfall(i) = max(psfall(i) * ptps_adj_jan(nh),1d0)
+            psfall(i) = min(psfall(i) * ptps_adj_jan(nh),1d0)
           case (2)
             tair(i) = tair(i) * mat_adj_feb(nh)
             precip(i) = precip(i) * map_adj_feb(nh)
             pet(i) = pet(i) * pet_adj_feb(nh)
-            psfall(i) = max(psfall(i) * ptps_adj_feb(nh),1d0)
+            psfall(i) = min(psfall(i) * ptps_adj_feb(nh),1d0)
           case (3)
             tair(i) = tair(i) * mat_adj_mar(nh)
             precip(i) = precip(i) * map_adj_mar(nh)
             pet(i) = pet(i) * pet_adj_mar(nh)
-            psfall(i) = max(psfall(i) * ptps_adj_mar(nh),1d0)
+            psfall(i) = min(psfall(i) * ptps_adj_mar(nh),1d0)
           case (4)
             tair(i) = tair(i) * mat_adj_apr(nh)
             precip(i) = precip(i) * map_adj_apr(nh)
             pet(i) = pet(i) * pet_adj_apr(nh)
-            psfall(i) = max(psfall(i) * ptps_adj_apr(nh),1d0)
+            psfall(i) = min(psfall(i) * ptps_adj_apr(nh),1d0)
           case (5)
             tair(i) = tair(i) * mat_adj_may(nh)
             precip(i) = precip(i) * map_adj_may(nh)
             pet(i) = pet(i) * pet_adj_may(nh)
-            psfall(i) = max(psfall(i) * ptps_adj_may(nh),1d0)
+            psfall(i) = min(psfall(i) * ptps_adj_may(nh),1d0)
           case (6)
             tair(i) = tair(i) * mat_adj_jun(nh)
             precip(i) = precip(i) * map_adj_jun(nh)
             pet(i) = pet(i) * pet_adj_jun(nh)
-            psfall(i) = max(psfall(i) * ptps_adj_jun(nh),1d0)
+            psfall(i) = min(psfall(i) * ptps_adj_jun(nh),1d0)
           case (7)
             tair(i) = tair(i) * mat_adj_jul(nh)
             precip(i) = precip(i) * map_adj_jul(nh)
             pet(i) = pet(i) * pet_adj_jul(nh)
-            psfall(i) = max(psfall(i) * ptps_adj_jul(nh),1d0)
+            psfall(i) = min(psfall(i) * ptps_adj_jul(nh),1d0)
           case (8)
             tair(i) = tair(i) * mat_adj_aug(nh)
             precip(i) = precip(i) * map_adj_aug(nh)
             pet(i) = pet(i) * pet_adj_aug(nh)
-            psfall(i) = max(psfall(i) * ptps_adj_aug(nh),1d0)
+            psfall(i) = min(psfall(i) * ptps_adj_aug(nh),1d0)
           case (9)
             tair(i) = tair(i) * mat_adj_sep(nh)
             precip(i) = precip(i) * map_adj_sep(nh)
             pet(i) = pet(i) * pet_adj_sep(nh)
-            psfall(i) = max(psfall(i) * ptps_adj_sep(nh),1d0)
+            psfall(i) = min(psfall(i) * ptps_adj_sep(nh),1d0)
           case (10)
             tair(i) = tair(i) * mat_adj_oct(nh)
             precip(i) = precip(i) * map_adj_oct(nh)
             pet(i) = pet(i) * pet_adj_oct(nh)
-            psfall(i) = max(psfall(i) * ptps_adj_oct(nh),1d0)
+            psfall(i) = min(psfall(i) * ptps_adj_oct(nh),1d0)
           case (11)
             tair(i) = tair(i) * mat_adj_nov(nh)
             precip(i) = precip(i) * map_adj_nov(nh)
             pet(i) = pet(i) * pet_adj_nov(nh)
-            psfall(i) = max(psfall(i) * ptps_adj_nov(nh),1d0)
+            psfall(i) = min(psfall(i) * ptps_adj_nov(nh),1d0)
           case (12)
             tair(i) = tair(i) * mat_adj_dec(nh)
             precip(i) = precip(i) * map_adj_dec(nh)
             pet(i) = pet(i) * pet_adj_dec(nh)
-            psfall(i) = max(psfall(i) * ptps_adj_dec(nh),1d0)
+            psfall(i) = min(psfall(i) * ptps_adj_dec(nh),1d0)
           case default
             error stop "Urecognised month for forcing adjustment"
         end select
@@ -597,6 +597,7 @@ program multi_driver
   ! print header & data (diffence if there's routing or not)
   33 FORMAT(I4.4, 3(1x,I2.2),3(F12.2),F12.2,F12.2,3(F12.2),6(F12.2),2(F12.3),F12.2) ! AWW: 1 more field (cfs) than orig
   34 FORMAT(I4.4, 3(1x,I2.2),3(F12.2),F12.2,F12.2,3(F12.2),4(F12.2),2(F12.3),F12.1)  ! AWW: two fewer fields (not routed)
+  35 FORMAT(I4.4, 3(1x,I2.2), F20.2)
 
   if(routing_flag == 1) then
 
@@ -612,7 +613,7 @@ program multi_driver
     else
       write(125,'(A)') 'year mo dy hr sim_flow_cfs'
         do i = 1,sim_length
-          write(125,33) year(i),month(i),day(i),hour(i),route_tci_cfs(i)
+          write(125,35) year(i),month(i),day(i),hour(i),route_tci_cfs(i)
       end do
     endif 
 
@@ -629,7 +630,7 @@ program multi_driver
     else 
       write(125,'(A)') 'year mo dy hr sim_runoff'
       do i = 1,sim_length
-        write(125,34) year(i),month(i),day(i),hour(i),tci_comb(i)
+        write(125,35) year(i),month(i),day(i),hour(i),tci_comb(i)
       end do
     end if 
   endif  
