@@ -129,6 +129,18 @@ program multi_driver
   real(dp), dimension(:),allocatable :: psfall_comb
 
   double precision, dimension(11) :: adc_x
+  integer, dimension(12) :: mdays, mdays_prev
+  double precision :: dayn, dayi
+  integer :: mo
+  double precision, dimension(12) :: mat_adj, mat_adj_prev, mat_adj_next
+  double precision, dimension(12) :: map_adj, map_adj_prev, map_adj_next
+  double precision, dimension(12) :: pet_adj, pet_adj_prev, pet_adj_next
+  double precision, dimension(12) :: ptps_adj, ptps_adj_prev, ptps_adj_next
+
+  double precision:: mat_adj_step, map_adj_step, pet_adj_step, ptps_adj_step
+
+  mdays =      (/ 31., 28., 31., 30., 31., 30., 31., 31., 30., 31., 30., 31. /) 
+  mdays_prev = (/ 31., 31., 28., 31., 30., 31., 30., 31., 31., 30., 31., 30. /) 
 
   ! =======  CODE starts below =====================================================================
 
@@ -247,6 +259,43 @@ program multi_driver
     print*, '  start:',year(1),month(1),day(1),hour(1)
     print*, '    end:',year(sim_length),month(sim_length),day(sim_length), hour(sim_length)
 
+    ! put the forcing adjustments in easy to use vectors
+    map_adj = (/ map_adj_jan(nh), map_adj_feb(nh), map_adj_mar(nh), &
+                 map_adj_apr(nh), map_adj_may(nh), map_adj_jun(nh), &
+                 map_adj_jul(nh), map_adj_aug(nh), map_adj_sep(nh), &
+                 map_adj_oct(nh), map_adj_nov(nh), map_adj_dec(nh) /)
+    map_adj_prev(1) = map_adj(12)
+    map_adj_prev(2:12) = map_adj(1:11)
+    map_adj_next(12) = map_adj(1)
+    map_adj_next(1:11) = map_adj(2:12)
+
+    mat_adj = (/ mat_adj_jan(nh), mat_adj_feb(nh), mat_adj_mar(nh), &
+                 mat_adj_apr(nh), mat_adj_may(nh), mat_adj_jun(nh), &
+                 mat_adj_jul(nh), mat_adj_aug(nh), mat_adj_sep(nh), &
+                 mat_adj_oct(nh), mat_adj_nov(nh), mat_adj_dec(nh) /)
+    mat_adj_prev(1) = mat_adj(12)
+    mat_adj_prev(2:12) = mat_adj(1:11)
+    mat_adj_next(12) = mat_adj(1)
+    mat_adj_next(1:11) = mat_adj(2:12)
+
+    pet_adj = (/ pet_adj_jan(nh), pet_adj_feb(nh), pet_adj_mar(nh), &
+                 pet_adj_apr(nh), pet_adj_may(nh), pet_adj_jun(nh), &
+                 pet_adj_jul(nh), pet_adj_aug(nh), pet_adj_sep(nh), &
+                 pet_adj_oct(nh), pet_adj_nov(nh), pet_adj_dec(nh) /)
+    pet_adj_prev(1) = pet_adj(12)
+    pet_adj_prev(2:12) = pet_adj(1:11)
+    pet_adj_next(12) = pet_adj(1)
+    pet_adj_next(1:11) = pet_adj(2:12)
+
+    ptps_adj = (/ ptps_adj_jan(nh), ptps_adj_feb(nh), ptps_adj_mar(nh), &
+                  ptps_adj_apr(nh), ptps_adj_may(nh), ptps_adj_jun(nh), &
+                  ptps_adj_jul(nh), ptps_adj_aug(nh), ptps_adj_sep(nh), &
+                  ptps_adj_oct(nh), ptps_adj_nov(nh), ptps_adj_dec(nh) /)
+    ptps_adj_prev(1) = ptps_adj(12)
+    ptps_adj_prev(2:12) = ptps_adj(1:11)
+    ptps_adj_next(12) = ptps_adj(1)
+    ptps_adj_next(1:11) = ptps_adj(2:12)
+
     ! ================== RUN models for huc_area! ==========================================
   
     ! get sfc_pressure (pa is estimate by subroutine, needed by snow17 call)
@@ -290,73 +339,42 @@ program multi_driver
     ! =============== START SIMULATION TIME LOOP =====================================
     do i = 1,sim_length,1
 
-      ! adjust forcings based on monthly adjustment from file 
-      if(use_forcing_adjust .eq. 1)then
-        select case (month(i))
-          case (1)
-            tair(i) = tair(i) + mat_adj_jan(nh)
-            precip(i) = precip(i) * map_adj_jan(nh)
-            pet(i) = pet(i) * pet_adj_jan(nh)
-            psfall(i) = min(psfall(i) * ptps_adj_jan(nh),1d0)
-          case (2)
-            tair(i) = tair(i) + mat_adj_feb(nh)
-            precip(i) = precip(i) * map_adj_feb(nh)
-            pet(i) = pet(i) * pet_adj_feb(nh)
-            psfall(i) = min(psfall(i) * ptps_adj_feb(nh),1d0)
-          case (3)
-            tair(i) = tair(i) + mat_adj_mar(nh)
-            precip(i) = precip(i) * map_adj_mar(nh)
-            pet(i) = pet(i) * pet_adj_mar(nh)
-            psfall(i) = min(psfall(i) * ptps_adj_mar(nh),1d0)
-          case (4)
-            tair(i) = tair(i) + mat_adj_apr(nh)
-            precip(i) = precip(i) * map_adj_apr(nh)
-            pet(i) = pet(i) * pet_adj_apr(nh)
-            psfall(i) = min(psfall(i) * ptps_adj_apr(nh),1d0)
-          case (5)
-            tair(i) = tair(i) + mat_adj_may(nh)
-            precip(i) = precip(i) * map_adj_may(nh)
-            pet(i) = pet(i) * pet_adj_may(nh)
-            psfall(i) = min(psfall(i) * ptps_adj_may(nh),1d0)
-          case (6)
-            tair(i) = tair(i) + mat_adj_jun(nh)
-            precip(i) = precip(i) * map_adj_jun(nh)
-            pet(i) = pet(i) * pet_adj_jun(nh)
-            psfall(i) = min(psfall(i) * ptps_adj_jun(nh),1d0)
-          case (7)
-            tair(i) = tair(i) + mat_adj_jul(nh)
-            precip(i) = precip(i) * map_adj_jul(nh)
-            pet(i) = pet(i) * pet_adj_jul(nh)
-            psfall(i) = min(psfall(i) * ptps_adj_jul(nh),1d0)
-          case (8)
-            tair(i) = tair(i) + mat_adj_aug(nh)
-            precip(i) = precip(i) * map_adj_aug(nh)
-            pet(i) = pet(i) * pet_adj_aug(nh)
-            psfall(i) = min(psfall(i) * ptps_adj_aug(nh),1d0)
-          case (9)
-            tair(i) = tair(i) + mat_adj_sep(nh)
-            precip(i) = precip(i) * map_adj_sep(nh)
-            pet(i) = pet(i) * pet_adj_sep(nh)
-            psfall(i) = min(psfall(i) * ptps_adj_sep(nh),1d0)
-          case (10)
-            tair(i) = tair(i) + mat_adj_oct(nh)
-            precip(i) = precip(i) * map_adj_oct(nh)
-            pet(i) = pet(i) * pet_adj_oct(nh)
-            psfall(i) = min(psfall(i) * ptps_adj_oct(nh),1d0)
-          case (11)
-            tair(i) = tair(i) + mat_adj_nov(nh)
-            precip(i) = precip(i) * map_adj_nov(nh)
-            pet(i) = pet(i) * pet_adj_nov(nh)
-            psfall(i) = min(psfall(i) * ptps_adj_nov(nh),1d0)
-          case (12)
-            tair(i) = tair(i) + mat_adj_dec(nh)
-            precip(i) = precip(i) * map_adj_dec(nh)
-            pet(i) = pet(i) * pet_adj_dec(nh)
-            psfall(i) = min(psfall(i) * ptps_adj_dec(nh),1d0)
-          case default
-            error stop "Urecognised month for forcing adjustment"
-        end select
-      end if
+      ! adjust days in february if the year is a leap year
+      if(mod(year(i),100) .ne. 0 .and. mod(year(i),4) .eq. 0) then
+        mdays(2) = 29 ! leap year
+      else if(mod(year(i),400).eq.0) then
+        mdays(2) = 29 ! leap year
+      else
+        mdays(2) = 28 ! not leap year
+      endif
+
+
+      ! interpolate between (x0,y0) and (x1,y1)
+      ! y = y0 + (x-x0)*(y1-y0)/(x1-x0)
+      ! interpolate between (day0,limit0)=(0,limit0) and (day1,limit1)=(dayn,limit1)
+      ! y = limit0 + dayi/dayn*(limit1-limit0)
+      mo = month(i)
+      !write(*,*)mdays, mdays(mo), day(i), hour(i)
+      if(day(i) >= 15)then
+        dayn = dble(mdays(mo))
+        dayi = dble(day(i)) - 15d0 + dble(hour(i))/24d0
+        mat_adj_step = mat_adj(mo) + dayi/dayn*(mat_adj_next(mo)-mat_adj(mo))
+        map_adj_step = map_adj(mo) + dayi/dayn*(map_adj_next(mo)-map_adj(mo))
+        pet_adj_step = pet_adj(mo) + dayi/dayn*(pet_adj_next(mo)-pet_adj(mo))
+        ptps_adj_step = ptps_adj(mo) + dayi/dayn*(ptps_adj_next(mo)-ptps_adj(mo))
+      else if(day(i) < 15)then
+        dayn = dble(mdays_prev(mo))
+        dayi = dble(day(i)) + mdays_prev(mo) - 15d0 + dble(hour(i))/24d0
+        mat_adj_step = mat_adj_prev(mo) + dayi/dayn*(mat_adj(mo)-mat_adj_prev(mo))
+        map_adj_step = map_adj_prev(mo) + dayi/dayn*(map_adj(mo)-map_adj_prev(mo))
+        pet_adj_step = pet_adj_prev(mo) + dayi/dayn*(pet_adj(mo)-pet_adj_prev(mo))
+        ptps_adj_step = ptps_adj_prev(mo) + dayi/dayn*(ptps_adj(mo)-ptps_adj_prev(mo))
+      end if 
+
+      tair(i) = tair(i) + mat_adj_step
+      precip(i) = precip(i) * map_adj_step
+      pet(i) = pet(i) * pet_adj_step
+      psfall(i) = min(psfall(i) * ptps_adj_step,1d0)
   
       !set single precision inputs
       tair_sp   = real(tair(i),kind(sp))
