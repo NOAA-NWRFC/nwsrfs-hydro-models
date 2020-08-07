@@ -143,7 +143,7 @@ module interfaces
 
     ! subroutine read_areal_forcing(year,month,day,hour,tair,vpd,dayl,swdown,precip)
     ! AWW mod to just read PET
-    subroutine read_areal_forcing(year,month,day,hour,tair,precip,pet,psfall,curr_hru_id)
+    subroutine read_areal_forcing(year,month,day,hour,tair,precip,psfall,curr_hru_id)
       use nrtype
       use def_namelists, only: forcing_root, start_year,start_day,start_month, &
                         end_year,end_month,end_day
@@ -154,7 +154,6 @@ module interfaces
       integer(I4B),dimension(:),intent(out)	:: day
       integer(I4B),dimension(:),intent(out)	:: hour
       real(dp),dimension(:),intent(out)	:: tair
-      real(dp),dimension(:),intent(out)	:: pet
       real(dp),dimension(:),intent(out)	:: precip  
       real(dp),dimension(:),intent(out) :: psfall    
     end subroutine read_areal_forcing

@@ -54,7 +54,7 @@ program multi_driver
 
   integer      :: nh           ! AWW index for looping through areas
   real(dp)     :: total_area   ! (sqkm) AWW needed for combining outputs
-  integer(I4B) :: i, ntau, k, m
+  integer(I4B) :: i, j, ntau, k, m
   integer(I4B) :: sim_length   ! length of simulation (days)
   real(sp)     :: dtuh	       ! for unit hydrograph
 
@@ -139,8 +139,14 @@ program multi_driver
 
   double precision:: mat_adj_step, map_adj_step, pet_adj_step, ptps_adj_step
 
+  double precision:: dr, rho, omega_s, Ra
+  integer, dimension(:), allocatable:: jday
+  double precision:: pet_ts, tmax_daily, tmin_daily, tave_daily
+  integer:: ts_per_day
+
   mdays =      (/ 31., 28., 31., 30., 31., 30., 31., 31., 30., 31., 30., 31. /) 
   mdays_prev = (/ 31., 31., 28., 31., 30., 31., 30., 31., 31., 30., 31., 30. /) 
+  !pi=4.d0*datan(1.d0)
 
   ! =======  CODE starts below =====================================================================
 
@@ -175,6 +181,9 @@ program multi_driver
 
   ! determine length of unit hydrograph (check?)
   uh_length = size(unit_hydro,1)   
+
+  ts_per_day = 86400/dt
+  write(*,*)'Timesteps per day:',ts_per_day
 
   ! ========================= HRU AREA LOOP ========================================================
   !   loop through the simulation areas, running the lump model code and averaging the output
@@ -211,6 +220,7 @@ program multi_driver
       allocate(month(sim_length))
       allocate(day(sim_length))
       allocate(hour(sim_length))
+      allocate(jday(sim_length))
 
       allocate(raw_precip(sim_length))  ! input values
       allocate(precip(sim_length))      ! values after applying pxadj
@@ -249,10 +259,9 @@ program multi_driver
     end if  ! end of IF case for allocating only when running the first simulation area
 
     ! read forcing data
-    call read_areal_forcing(year,month,day,hour,tair,raw_precip,raw_pet,psfall,hru_id(nh)) 
+    call read_areal_forcing(year,month,day,hour,tair,raw_precip,psfall,hru_id(nh)) 
 
-    ! apply PEADJ and PXADJ (scaling the input values)
-    pet    = raw_pet * peadj(nh)
+    ! apply PXADJ (scaling the input values)
     precip = raw_precip * pxadj(nh)
 
     ! print run dates
@@ -295,6 +304,9 @@ program multi_driver
     ptps_adj_prev(2:12) = ptps_adj(1:11)
     ptps_adj_next(12) = ptps_adj(1)
     ptps_adj_next(1:11) = ptps_adj(2:12)
+
+    ! julian day 
+    call julian_day(year,month,day,jday)
 
     ! ================== RUN models for huc_area! ==========================================
   
@@ -348,6 +360,40 @@ program multi_driver
         mdays(2) = 28 ! not leap year
       endif
 
+      ! on the first timestep of the day (or for the whole day if the ts is daily), 
+      ! compute the pet for the whole day, then divide it by the number of timesteps
+      if((hour(i) .eq. 0) .or. (ts_per_day .eq. 1))then
+
+        !write(*,*)'tair',tair(i:(i+ts_per_day-1))
+        !write(*,*) 'timestep', i, 'of', sim_length, year(i), month(i), day(i), hour(i), jday(i)
+        tmax_daily = maxval(tair(i:(i+ts_per_day-1)))
+        tmin_daily = minval(tair(i:(i+ts_per_day-1)))
+        tave_daily = sum(tair(i:(i+ts_per_day-1)))/dble(ts_per_day)
+
+        !Calculate extraterrestrial radiation
+        !Inverse Relative Distance Earth to Sun
+        dr = 1d0 + 0.033d0 * dcos((2d0 * pi) / 365d0 * dble(jday(i)))
+        !Solar Declination
+        rho = 0.409d0 * dsin((2d0*pi) / 365d0 * dble(jday(i)) - 1.39d0)
+        !Sunset Hour
+        omega_s = dacos(-dtan(latitude(nh)*pi/180d0)*dtan(rho))
+        !Extraterrestrial Radiation (MJm^-2*day^-1)
+        Ra = (24d0 * 60d0) / pi * 0.0820d0 * dr * (omega_s * dsin(latitude(nh) * pi / 180d0) * dsin(rho) + &
+                         dcos(latitude(nh) * pi / 180d0) * dcos(rho) * dsin(omega_s))
+
+        ! daily pet from Hargreaves-Semani equation, units are mm/day, so divide 
+        ! by number of timesteps in a day   
+        pet_ts = 0.0023d0 * (tave_daily + 17.8d0) * (tmax_daily - tmin_daily)**0.5d0 * Ra / 2.45d0
+        !write(*,*)tmax_daily, tmin_daily, tave_daily, pet_ts
+
+        ! ignore negative values
+        if(pet_ts < 0) pet_ts = 0
+
+        ! apply global scaling peadj and distibute across timesteps 
+        pet_ts = pet_ts * peadj(nh) / dble(ts_per_day)
+        !write(*,*)pet_ts
+      end if 
+
 
       ! interpolate between (x0,y0) and (x1,y1)
       ! y = y0 + (x-x0)*(y1-y0)/(x1-x0)
@@ -373,8 +419,10 @@ program multi_driver
 
       tair(i) = tair(i) + mat_adj_step
       precip(i) = precip(i) * map_adj_step
-      pet(i) = pet(i) * pet_adj_step
+      pet(i) = pet_ts * pet_adj_step
       psfall(i) = min(psfall(i) * ptps_adj_step,1d0)
+
+      !write(*,*)i,year(i),month(i),day(i),hour(i),tair(i),precip(i),pet(i),psfall(i)
   
       !set single precision inputs
       tair_sp   = real(tair(i),kind(sp))
@@ -422,6 +470,7 @@ program multi_driver
       end if  
 
     end do  
+    !write(*,*)'After sim'
     ! ============ end simulation time loop ====================
   
     ! ============ now route full runoff timeseries using UH =========================
@@ -467,6 +516,7 @@ program multi_driver
       end if 
 
     end if  ! end if BLOCK for whether to route at all
+    !write(*,*)'After models'
 
     ! ==== WRITE output for current area simulation ====
 

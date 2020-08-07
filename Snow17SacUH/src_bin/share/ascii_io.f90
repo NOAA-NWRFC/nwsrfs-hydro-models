@@ -291,7 +291,7 @@ end subroutine read_sac_state
 !subroutine read_areal_forcing(year,month,day,hour,tmin,tmax,vpd,dayl,swdown,precip)
 ! AWW modified to read PET instead of dayl, vpd and swdown
 ! AWW modified to return basin area in sq km
-subroutine read_areal_forcing(year,month,day,hour,tair,precip,pet,psfall,curr_hru_id)
+subroutine read_areal_forcing(year,month,day,hour,tair,precip,psfall,curr_hru_id)
   use nrtype
   use def_namelists, only: forcing_root, start_year,start_day,start_month, &
                         end_year,end_month,end_day,start_hour,end_hour
@@ -308,7 +308,6 @@ subroutine read_areal_forcing(year,month,day,hour,tair,precip,pet,psfall,curr_hr
   integer(I4B),dimension(:),intent(out)	:: hour
   real(dp),dimension(:),intent(out)	:: tair   ! deg C
   real(dp),dimension(:),intent(out)	:: precip  ! mm/day
-  real(dp),dimension(:),intent(out)	:: pet   ! mm/day
   real(dp),dimension(:),intent(out) :: psfall   ! decimal percent
 
 
@@ -317,7 +316,7 @@ subroutine read_areal_forcing(year,month,day,hour,tair,precip,pet,psfall,curr_hr
   integer(I4B)				:: yr,mnth,dy,hr
   integer(I4B)				:: read_flag
   character(len = 1024)			:: dum_str
-  real(DP)				:: pcp,tav,pm_pet,pcts
+  real(DP)				:: pcp,tav,ptps
 
   character(len = 420) :: filename
 
@@ -337,7 +336,7 @@ subroutine read_areal_forcing(year,month,day,hour,tair,precip,pet,psfall,curr_hr
   ! read the data, keeping only forcings in simulation period
   do while(ios .ge. 0 .and. read_flag < 2)
     ! forcing could have any format, nice!
-    read (UNIT=50,FMT=*,IOSTAT=ios) yr,mnth,dy,hr,pcp,tav,pm_pet,pcts
+    read (UNIT=50,FMT=*,IOSTAT=ios) yr,mnth,dy,hr,pcp,tav,ptps
 
     if(yr .eq. start_year .and. mnth .eq. start_month .and. dy .eq. start_day &
        .and. hr .eq. start_hour) then
@@ -352,8 +351,7 @@ subroutine read_areal_forcing(year,month,day,hour,tair,precip,pet,psfall,curr_hr
       hour(i)	= hr
       precip(i)	= pcp
       tair(i)	= tav
-      pet(i)	= pm_pet
-      psfall(i) = pcts
+      psfall(i) = ptps
       i = i + 1
     end if
 
