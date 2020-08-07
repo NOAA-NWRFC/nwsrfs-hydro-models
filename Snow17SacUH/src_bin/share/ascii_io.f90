@@ -375,7 +375,10 @@ subroutine read_sac_params(param_file_name,n_hrus)
   use nrtype
   use def_namelists, only: uztwm,uzfwm,uzk,pctim,adimp,zperc,rexp, &
 			lztwm,lzfsm,lzfpm,lzsk,lzpk,pfree,riva,side,rserv, &
-                        hru_area, hru_id, peadj, pxadj
+      hru_area, hru_id, peadj, pxadj, &
+      peadj_jan, peadj_feb, peadj_mar, &
+      peadj_apr, peadj_may, peadj_jun, peadj_jul, peadj_aug, &
+      peadj_sep, peadj_oct, peadj_nov, peadj_dec
   implicit none
  
   !input variables
@@ -413,6 +416,19 @@ subroutine read_sac_params(param_file_name,n_hrus)
   allocate(rserv(n_hrus))
   allocate(peadj(n_hrus))
   allocate(pxadj(n_hrus))
+  allocate(peadj_jan(n_hrus))
+  allocate(peadj_feb(n_hrus))
+  allocate(peadj_mar(n_hrus))
+  allocate(peadj_apr(n_hrus))
+  allocate(peadj_may(n_hrus))
+  allocate(peadj_jun(n_hrus))
+  allocate(peadj_jul(n_hrus))
+  allocate(peadj_aug(n_hrus))
+  allocate(peadj_sep(n_hrus))
+  allocate(peadj_oct(n_hrus))
+  allocate(peadj_nov(n_hrus))
+  allocate(peadj_dec(n_hrus))
+
 
   print*, 'Reading Sac parameters'
 
@@ -492,6 +508,42 @@ subroutine read_sac_params(param_file_name,n_hrus)
         case('pxadj')                          ! included here as sac params
           read(readline, *, iostat=ios) pxadj  ! often used as calibration parameters in nwsrfs
           n_params_read = n_params_read + 1
+        case('peadj_jan')
+          read(readline, *, iostat=ios) peadj_jan
+          n_params_read = n_params_read + 1
+        case('peadj_feb')
+          read(readline, *, iostat=ios) peadj_feb
+          n_params_read = n_params_read + 1
+        case('peadj_mar')
+          read(readline, *, iostat=ios) peadj_mar
+          n_params_read = n_params_read + 1
+        case('peadj_apr')
+          read(readline, *, iostat=ios) peadj_apr
+          n_params_read = n_params_read + 1
+        case('peadj_may')
+          read(readline, *, iostat=ios) peadj_may
+          n_params_read = n_params_read + 1
+        case('peadj_jun')
+          read(readline, *, iostat=ios) peadj_jun
+          n_params_read = n_params_read + 1
+        case('peadj_jul')
+          read(readline, *, iostat=ios) peadj_jul
+          n_params_read = n_params_read + 1
+        case('peadj_aug')
+          read(readline, *, iostat=ios) peadj_aug
+          n_params_read = n_params_read + 1
+        case('peadj_sep')
+          read(readline, *, iostat=ios) peadj_sep
+          n_params_read = n_params_read + 1
+        case('peadj_oct')
+          read(readline, *, iostat=ios) peadj_oct
+          n_params_read = n_params_read + 1
+        case('peadj_nov')
+          read(readline, *, iostat=ios) peadj_nov
+          n_params_read = n_params_read + 1
+        case('peadj_dec')
+          read(readline, *, iostat=ios) peadj_dec
+          n_params_read = n_params_read + 1
         case default
           print *, 'Parameter ',param,' not recognized in soil file'
           ! something weird here...doesn't break it but somehow enters here after last real read
@@ -503,8 +555,8 @@ subroutine read_sac_params(param_file_name,n_hrus)
   close(unit=50)
 
   ! quick check on completeness
-  if(n_params_read /= 20) then
-    print *, 'Only ',n_params_read, ' SAC params read, but need 20.  Quitting...'
+  if(n_params_read /= 32) then
+    print *, 'Only ',n_params_read, ' SAC params read, but need 32.  Quitting...'
     stop
   end if
   !print*, '  -------------------'

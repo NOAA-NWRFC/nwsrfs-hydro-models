@@ -76,6 +76,12 @@ module def_namelists
     ptps_adj_apr, ptps_adj_may, ptps_adj_jun, ptps_adj_jul, ptps_adj_aug, &
     ptps_adj_sep, ptps_adj_oct, ptps_adj_nov, ptps_adj_dec
 
+  ! monthly peadj converts "tall grass" pet from the HS equation, to basin specefic pet,
+  ! not to be confused with the pet_adj above which is a calibration parameter
+  double precision, dimension(:), allocatable:: peadj_jan, peadj_feb, peadj_mar, &
+    peadj_apr, peadj_may, peadj_jun, peadj_jul, peadj_aug, &
+    peadj_sep, peadj_oct, peadj_nov, peadj_dec
+
   ! namelist elements to be shared
   namelist / INIT_CONTROL / forcing_root, output_root, main_id, n_hrus, output_hrus, &
                           start_hour,start_day,start_month,start_year,end_year,end_month, &

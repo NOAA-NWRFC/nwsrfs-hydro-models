@@ -136,8 +136,9 @@ program multi_driver
   double precision, dimension(12) :: map_adj, map_adj_prev, map_adj_next
   double precision, dimension(12) :: pet_adj, pet_adj_prev, pet_adj_next
   double precision, dimension(12) :: ptps_adj, ptps_adj_prev, ptps_adj_next
+  double precision, dimension(12) :: peadj_m, peadj_m_prev, peadj_m_next
 
-  double precision:: mat_adj_step, map_adj_step, pet_adj_step, ptps_adj_step
+  double precision:: mat_adj_step, map_adj_step, pet_adj_step, ptps_adj_step, peadj_step
 
   double precision:: dr, rho, omega_s, Ra
   integer, dimension(:), allocatable:: jday
@@ -305,6 +306,15 @@ program multi_driver
     ptps_adj_next(12) = ptps_adj(1)
     ptps_adj_next(1:11) = ptps_adj(2:12)
 
+    peadj_m = (/ peadj_jan(nh), peadj_feb(nh), peadj_mar(nh), &
+                 peadj_apr(nh), peadj_may(nh), peadj_jun(nh), &
+                 peadj_jul(nh), peadj_aug(nh), peadj_sep(nh), &
+                 peadj_oct(nh), peadj_nov(nh), peadj_dec(nh) /)
+    peadj_m_prev(1) = peadj_m(12)
+    peadj_m_prev(2:12) = peadj_m(1:11)
+    peadj_m_next(12) = peadj_m(1)
+    peadj_m_next(1:11) = peadj_m(2:12)
+
     ! julian day 
     call julian_day(year,month,day,jday)
 
@@ -408,6 +418,7 @@ program multi_driver
         map_adj_step = map_adj(mo) + dayi/dayn*(map_adj_next(mo)-map_adj(mo))
         pet_adj_step = pet_adj(mo) + dayi/dayn*(pet_adj_next(mo)-pet_adj(mo))
         ptps_adj_step = ptps_adj(mo) + dayi/dayn*(ptps_adj_next(mo)-ptps_adj(mo))
+        peadj_step = peadj_m(mo) + dayi/dayn*(peadj_m_next(mo)-peadj_m(mo))
       else if(day(i) < 15)then
         dayn = dble(mdays_prev(mo))
         dayi = dble(day(i)) + mdays_prev(mo) - 15d0 + dble(hour(i))/24d0
@@ -415,11 +426,14 @@ program multi_driver
         map_adj_step = map_adj_prev(mo) + dayi/dayn*(map_adj(mo)-map_adj_prev(mo))
         pet_adj_step = pet_adj_prev(mo) + dayi/dayn*(pet_adj(mo)-pet_adj_prev(mo))
         ptps_adj_step = ptps_adj_prev(mo) + dayi/dayn*(ptps_adj(mo)-ptps_adj_prev(mo))
+        peadj_step = peadj_m_prev(mo) + dayi/dayn*(peadj_m(mo)-peadj_m_prev(mo))
       end if 
 
       tair(i) = tair(i) + mat_adj_step
       precip(i) = precip(i) * map_adj_step
-      pet(i) = pet_ts * pet_adj_step
+      ! pet_ts is the pet from HS, peadj_step is the conversion to etdemand,
+      ! pet_adj_step is the forcing adjustment
+      pet(i) = pet_ts * peadj_step * pet_adj_step
       psfall(i) = min(psfall(i) * ptps_adj_step,1d0)
 
       !write(*,*)i,year(i),month(i),day(i),hour(i),tair(i),precip(i),pet(i),psfall(i)
