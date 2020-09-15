@@ -378,7 +378,9 @@ subroutine read_sac_params(param_file_name,n_hrus)
       hru_area, hru_id, peadj, pxadj, &
       peadj_jan, peadj_feb, peadj_mar, &
       peadj_apr, peadj_may, peadj_jun, peadj_jul, peadj_aug, &
-      peadj_sep, peadj_oct, peadj_nov, peadj_dec
+      peadj_sep, peadj_oct, peadj_nov, peadj_dec, &
+      ! cold states
+      init_uztwc, init_uzfwc, init_lztwc, init_lzfsc, init_lzfpc, init_adimc
   implicit none
  
   !input variables
@@ -386,10 +388,10 @@ subroutine read_sac_params(param_file_name,n_hrus)
   integer(I4B),intent(in) :: n_hrus
  
   !local variables
-  character(len=400)             :: readline
-  character(len=50)	         :: param
-  integer(I4B)		         :: ios=0
-  integer                        :: n_params_read  ! count number read
+  character(len=400) :: readline
+  character(len=50)	:: param
+  integer(I4B) :: ios=0
+  integer :: n_params_read  ! count number read
   integer :: pos
  
   ! open parameter file
@@ -428,6 +430,12 @@ subroutine read_sac_params(param_file_name,n_hrus)
   allocate(peadj_oct(n_hrus))
   allocate(peadj_nov(n_hrus))
   allocate(peadj_dec(n_hrus))
+  allocate(init_uztwc(n_hrus))
+  allocate(init_uzfwc(n_hrus))
+  allocate(init_lztwc(n_hrus))
+  allocate(init_lzfsc(n_hrus))
+  allocate(init_lzfpc(n_hrus))
+  allocate(init_adimc(n_hrus))
 
 
   print*, 'Reading Sac parameters'
@@ -544,6 +552,24 @@ subroutine read_sac_params(param_file_name,n_hrus)
         case('peadj_dec')
           read(readline, *, iostat=ios) peadj_dec
           n_params_read = n_params_read + 1
+        case('init_uztwc')
+          read(readline, *, iostat=ios) init_uztwc
+          n_params_read = n_params_read + 1
+        case('init_uzfwc')
+          read(readline, *, iostat=ios) init_uzfwc
+          n_params_read = n_params_read + 1
+        case('init_lztwc')
+          read(readline, *, iostat=ios) init_lztwc
+          n_params_read = n_params_read + 1
+        case('init_lzfsc')
+          read(readline, *, iostat=ios) init_lzfsc
+          n_params_read = n_params_read + 1
+        case('init_lzfpc')
+          read(readline, *, iostat=ios) init_lzfpc
+          n_params_read = n_params_read + 1
+        case('init_adimc')
+          read(readline, *, iostat=ios) init_adimc
+          n_params_read = n_params_read + 1
         case default
           print *, 'Parameter ',param,' not recognized in soil file'
           ! something weird here...doesn't break it but somehow enters here after last real read
@@ -555,8 +581,8 @@ subroutine read_sac_params(param_file_name,n_hrus)
   close(unit=50)
 
   ! quick check on completeness
-  if(n_params_read /= 32) then
-    print *, 'Only ',n_params_read, ' SAC params read, but need 32.  Quitting...'
+  if(n_params_read /= 38) then
+    print *, 'Only ',n_params_read, ' SAC params read, but need 38.  Quitting...'
     stop
   end if
   !print*, '  -------------------'
@@ -569,7 +595,7 @@ subroutine read_snow17_params(param_file_name,n_hrus)
   use nrtype
   use def_namelists, only: scf,mfmax,mfmin,uadj,si,pxtemp,nmf,&
                         tipm,mbase,plwhc,daygm,latitude, elev,&
-                        adc_a, adc_b, adc_c
+                        adc_a, adc_b, adc_c, init_swe
   implicit none
  
   !input variables
@@ -577,11 +603,11 @@ subroutine read_snow17_params(param_file_name,n_hrus)
   integer(I4B),intent(in) :: n_hrus
 
   !local variables
-  character(len=400)            :: readline
-  character(len=50)		:: param
-  integer(I4B)			:: ios=0
+  character(len=400)  :: readline
+  character(len=50)	:: param
+  integer(I4B) :: ios=0
   integer :: pos
-  integer                        :: n_params_read  ! count number read
+  integer :: n_params_read  ! count number read
 
   ! open parameter file
   open(unit=51,file=trim(param_file_name),status='old')
@@ -603,6 +629,7 @@ subroutine read_snow17_params(param_file_name,n_hrus)
   allocate(adc_a(n_hrus))
   allocate(adc_b(n_hrus))
   allocate(adc_c(n_hrus))
+  allocate(init_swe(n_hrus))
 
   print*, 'Reading Snow17 parameters'
 
@@ -673,6 +700,9 @@ subroutine read_snow17_params(param_file_name,n_hrus)
         case ('adc_c')
           read(readline, *, iostat=ios) adc_c
           n_params_read = n_params_read + 1
+        case ('init_swe')
+          read(readline, *, iostat=ios) init_swe
+          n_params_read = n_params_read + 1
         case default
           print *, 'Parameter ',param,' not recognized in snow file'
       end select
@@ -683,8 +713,8 @@ subroutine read_snow17_params(param_file_name,n_hrus)
   close(unit=51)
 
   ! quick check on completeness
-  if(n_params_read /= 17) then
-    print *, 'Only ',n_params_read, ' SNOW17 params read, but need 17.  Quitting...'
+  if(n_params_read /= 18) then
+    print *, 'Only ',n_params_read, ' SNOW17 params read, but need 18.  Quitting...'
     stop
   end if
   !print*, '  -------------------'

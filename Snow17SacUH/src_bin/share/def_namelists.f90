@@ -21,28 +21,28 @@ module def_namelists
   character(len = 1024)	:: sac_state_in_root	! name for sac state input root
   integer(I4B)		:: output_hrus 		! output HRU results? (1=yes; 0=no)
 
-  integer(I4B)    :: dt    ! model timestep in seconds
+  integer(I4B)    :: dt                  ! model timestep in seconds
   integer(I4B)    :: calibration_mode    ! calibration mode turns off most output except routed flow or runoff
   integer(I4B)    :: use_forcing_adjust  ! turn on or off input of a file "forcing_adjust_file"
 
   integer(I4B)		:: start_month		! starting month 
-  integer(I4B)    :: start_hour    ! starting hour
-  integer(I4B)		:: start_day		! starting day
-  integer(I4B)		:: start_year		! starting year
-  integer(I4B)		:: end_month		! ending month 
-  integer(I4B)		:: end_day		! ending day
-  integer(I4B)    :: end_hour    ! ending day
-  integer(I4B)		:: end_year		! ending year
+  integer(I4B)    :: start_hour     ! starting hour
+  integer(I4B)		:: start_day		  ! starting day
+  integer(I4B)		:: start_year		  ! starting year
+  integer(I4B)		:: end_month		  ! ending month 
+  integer(I4B)		:: end_day		    ! ending day
+  integer(I4B)    :: end_hour       ! ending day
+  integer(I4B)		:: end_year		    ! ending year
   integer(I4B)		:: warm_start_run	! warm restart run flag
-  integer(I4B)		:: write_states	        ! flag to write states for a warm start run
+  integer(I4B)		:: write_states	  ! flag to write states for a warm start run
 
-  real(sp)		:: init_swe             ! initial states if for a cold start run
-  real(sp)		:: init_uztwc           ! used in all model HRUs
-  real(sp)		:: init_uzfwc           ! model state variables not listed start at 0
-  real(sp)		:: init_lztwc
-  real(sp)		:: init_lzfsc
-  real(sp)		:: init_lzfpc
-  real(sp)		:: init_adimc
+  real(sp), dimension(:), allocatable :: init_swe      ! initial states for a cold start run
+  real(sp), dimension(:), allocatable :: init_uztwc    ! values in mm
+  real(sp), dimension(:), allocatable :: init_uzfwc    ! one state per zone
+  real(sp), dimension(:), allocatable :: init_lztwc    ! model state variables not listed start at 0
+  real(sp), dimension(:), allocatable :: init_lzfsc
+  real(sp), dimension(:), allocatable :: init_lzfpc
+  real(sp), dimension(:), allocatable :: init_adimc
 
   ! SAC_model params & other key inputs in the sace param file
   character(len = 20), dimension(:), allocatable :: hru_id   ! local hru id
@@ -85,8 +85,7 @@ module def_namelists
   ! namelist elements to be shared
   namelist / INIT_CONTROL / forcing_root, output_root, main_id, n_hrus, output_hrus, &
                           start_hour,start_day,start_month,start_year,end_year,end_month, &
-                          end_hour,end_day,dt,init_swe,init_uztwc,init_uzfwc,init_lztwc,init_lzfsc, &
-                          init_lzfpc,init_adimc,sac_param_file,snow17_param_file,uh_param_file, &
+                          end_hour,end_day,dt,sac_param_file,snow17_param_file,uh_param_file, &
                           forcing_adjust_file, &
                           uh_state_in_root, warm_start_run, write_states, &
 			  snow_state_out_root,sac_state_out_root,snow_state_in_root, &

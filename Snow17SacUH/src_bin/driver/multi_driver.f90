@@ -59,50 +59,50 @@ program multi_driver
   real(sp)     :: dtuh	       ! for unit hydrograph
 
   ! single precision sac-sma state variables
-  real(sp)	:: uztwc_sp   ! these are single precision so as to be supplied to 
-  real(sp)	:: uzfwc_sp   !   old NWS code models
-  real(sp)	:: lztwc_sp
-  real(sp)	:: lzfsc_sp
-  real(sp)	:: lzfpc_sp
-  real(sp)	:: adimc_sp
-  real(sp)	:: pet_sp
-  real(sp)	:: tair_sp
-  real(sp)	:: precip_sp
-  real(sp)  :: psfall_sp
+  real(sp) :: uztwc_sp   ! these are single precision so as to be supplied to 
+  real(sp) :: uzfwc_sp   !   old NWS code models
+  real(sp) :: lztwc_sp
+  real(sp) :: lzfsc_sp
+  real(sp) :: lzfpc_sp
+  real(sp) :: adimc_sp
+  real(sp) :: pet_sp
+  real(sp) :: tair_sp
+  real(sp) :: precip_sp
+  real(sp) :: psfall_sp
 
   ! snow-17 carry over variables
   real(dp)                :: pa       ! snow-17 surface pressure
   real(sp)                :: tprev    ! carry over variable
-  real(sp),dimension(19)  :: cs       ! carry over variable array
-  real(sp),dimension(:),allocatable    :: tprev_states    ! for state file write
-  real(sp),dimension(:,:),allocatable  :: cs_states       ! for state file write
+  real(sp), dimension(19)  :: cs       ! carry over variable array
+  real(sp), dimension(:), allocatable    :: tprev_states    ! for state file write
+  real(sp), dimension(:,:), allocatable  :: cs_states       ! for state file write
 
   ! unit hydrograph
   real(sp),dimension(200)  :: unit_hydro ! in time steps ... this dim sets UH_LENGTH: 
                                         ! could cause truncation if UH is very long
                                         ! needs to match setting in duamel
 
-  integer(I4B)	:: uh_length, routing_flag
-  integer(I4B)  :: TOC_length ! DUAMEL.f new return variable -- A.Wood Feb 2016
+  integer(I4B) :: uh_length, routing_flag
+  integer(I4B) :: TOC_length ! DUAMEL.f new return variable -- A.Wood Feb 2016
 
   ! arrays for using state warm start with unit hydrograph
-  real(sp),dimension(:),allocatable	:: prior_tci, expanded_tci ! AWW added
+  real(sp), dimension(:), allocatable	:: prior_tci, expanded_tci ! AWW added
 
   ! ==== ALLOCATABLE VARIABLES ====
 
   ! sac-sma state variables
-  real(dp),dimension(:),allocatable     :: uztwc_dp, uztwc_comb  ! AWW added combined vars
-  real(dp),dimension(:),allocatable     :: uzfwc_dp, uzfwc_comb
-  real(dp),dimension(:),allocatable     :: lztwc_dp, lztwc_comb
-  real(dp),dimension(:),allocatable     :: lzfsc_dp, lzfsc_comb
-  real(dp),dimension(:),allocatable     :: lzfpc_dp, lzfpc_comb
-  real(dp),dimension(:),allocatable     :: adimc_dp, adimc_comb
+  real(dp), dimension(:), allocatable :: uztwc_dp, uztwc_comb  ! AWW added combined vars
+  real(dp), dimension(:), allocatable :: uzfwc_dp, uzfwc_comb
+  real(dp), dimension(:), allocatable :: lztwc_dp, lztwc_comb
+  real(dp), dimension(:), allocatable :: lzfsc_dp, lzfsc_comb
+  real(dp), dimension(:), allocatable :: lzfpc_dp, lzfpc_comb
+  real(dp), dimension(:), allocatable :: adimc_dp, adimc_comb
 
   ! sac-sma output variables and routed flow
-  real(sp), dimension(:),allocatable	:: qs, qg, eta, tci, route_tci
+  real(sp), dimension(:),allocatable :: qs, qg, eta, tci, route_tci
 
   ! snow-17 output variables  single precision
-  real(sp), dimension(:),allocatable    :: snowh, sneqv, snow !output variables for snow-17
+  real(sp), dimension(:),allocatable :: snowh, sneqv, snow !output variables for snow-17
 
   ! date variables
   integer, dimension(:),allocatable :: year, month, day, hour
@@ -120,13 +120,13 @@ program multi_driver
   real(dp), dimension(:),allocatable :: tair
 
   ! various other combined variables (aggregating multiple basins zones)
-  real(sp), dimension(:),allocatable	:: eta_comb, tci_comb, route_tci_comb ! AWW combined vars
-  real(sp), dimension(:),allocatable	:: route_tci_cfs ! AWW convert mm/d to cfs given basin areas
-  real(sp), dimension(:),allocatable    :: sneqv_comb ! AWW ditto, combined vars
-  real(sp), dimension(:),allocatable :: raim_comb  ! AWW combined vars
-  real(dp), dimension(:),allocatable :: precip_comb, precip_scf_comb ! AWW combined vars
-  real(dp), dimension(:),allocatable :: pet_comb, tair_comb  ! AWW combined vars
-  real(dp), dimension(:),allocatable :: psfall_comb
+  real(sp), dimension(:), allocatable :: eta_comb, tci_comb, route_tci_comb ! AWW combined vars
+  real(sp), dimension(:), allocatable :: route_tci_cfs ! AWW convert mm/d to cfs given basin areas
+  real(sp), dimension(:), allocatable :: sneqv_comb ! AWW ditto, combined vars
+  real(sp), dimension(:), allocatable :: raim_comb  ! AWW combined vars
+  real(dp), dimension(:), allocatable :: precip_comb, precip_scf_comb ! AWW combined vars
+  real(dp), dimension(:), allocatable :: pet_comb, tair_comb  ! AWW combined vars
+  real(dp), dimension(:), allocatable :: psfall_comb
 
   double precision, dimension(11) :: adc_x
   integer, dimension(12) :: mdays, mdays_prev
@@ -204,7 +204,6 @@ program multi_driver
     ! "A value of As = 0.05 is used for a W/Ai = 0.0 ratio so that small amounts of snow
     ! don’t continue to exist well past the time when all the snow is gone in nature."
     ! - snow 17 manual 
-    adc(1) = 0.05d0
 
     ! --- allocate variables (before simulating first area) ---
     if(nh .eq. 1) then
@@ -326,13 +325,13 @@ program multi_driver
     ! set single precision sac state variables to initial values
     if(warm_start_run .eq. 0) then
       ! we are not warm starting from a state file
-      uztwc_sp = init_uztwc
-      uzfwc_sp = init_uzfwc
-      lztwc_sp = init_lztwc
-      lzfsc_sp = init_lzfsc
-      lzfpc_sp = init_lzfpc
-      adimc_sp = init_adimc
-      cs(1)    = init_swe   ! AWW: just initialize first/main component of SWE (model 'WE')
+      uztwc_sp = init_uztwc(nh)
+      uzfwc_sp = init_uzfwc(nh)
+      lztwc_sp = init_lztwc(nh)
+      lzfsc_sp = init_lzfsc(nh)
+      lzfpc_sp = init_lzfpc(nh)
+      adimc_sp = init_adimc(nh)
+      cs(1)    = init_swe(nh)   ! AWW: just initialize first/main component of SWE (model 'WE')
       cs(2:19) = 0          !      set the rest to zero
       tprev    = 0          ! AWW ADDED
       ! AWW: initialize prior part of routing tci state (a uh_length-1 long period) with zeros
