@@ -1,0 +1,2 @@
+PKG_FFLAGS = #-O3 -fno-align-commons -ffixed-line-length-none -std=f95 -Wall -pedantic
+PKG_FCFLAGS = #-O3 -fno-align-commons -ffixed-line-length-none -std=f95 -Wall -pedantic
