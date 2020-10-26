@@ -37,3 +37,6 @@ LASTNEXT
 # R junk
 .Rproj.user
 .Rhistory
+
+# Mac junk
+.DS_Store
