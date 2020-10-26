@@ -23,3 +23,6 @@ Daily PET (vectorized over all inputs)
 \description{
 Daily Potential Evapotranspiration using Hargreaves-Semani equations
 }
+\examples{
+pet = pet_hs(42,200,20,25,15)
+}

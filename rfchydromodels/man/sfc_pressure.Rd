@@ -15,3 +15,6 @@ Surface pressure in hPa
 \description{
 Title
 }
+\examples{
+sp = sfc_pressure(0)
+}

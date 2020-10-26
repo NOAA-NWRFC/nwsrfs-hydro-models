@@ -2,8 +2,7 @@
 % Please edit documentation in R/sac-snow-uh.R
 \name{adc3}
 \alias{adc3}
-\title{Areal depeletion curve using a 3 parameter model
-\code{a*x^b+(1.0-a)*x^c}}
+\title{Areal depeletion curve using a 3 parameter model}
 \usage{
 adc3(a, b, c)
 }
@@ -18,6 +17,8 @@ adc3(a, b, c)
 11 element vector representing the ADC
 }
 \description{
-Areal depeletion curve using a 3 parameter model
-\code{a*x^b+(1.0-a)*x^c}
+\code{adc=a*x^b+(1.0-a)*x^c}
+}
+\examples{
+adc = adc3(.5,0.1,2)
 }
