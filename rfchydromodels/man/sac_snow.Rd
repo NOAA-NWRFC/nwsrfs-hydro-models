@@ -22,5 +22,8 @@ Matrix (1 column per zone) of unrouted channel inflow
 Execute SAC-SMA, SNOW17, return total channel inflow per zone
 }
 \examples{
-# tci = sac_snow(dt_hours,forcing, pars)
+data(forcing)
+data(pars)
+dt_hours = 6
+tci = sac_snow(dt_hours, forcing, pars)
 }

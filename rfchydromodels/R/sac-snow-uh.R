@@ -29,7 +29,10 @@ sac_snow_uh <- function(dt_hours, forcing, pars, forcing_adjust=FALSE){
 #' @export
 #'
 #' @examples
-#' # tci = sac_snow(dt_hours,forcing, pars)
+#' data(forcing)
+#' data(pars)
+#' dt_hours = 6
+#' tci = sac_snow(dt_hours, forcing, pars)
 #' @useDynLib rfchydromodels sacsnow_
 sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=FALSE){
 
@@ -117,7 +120,11 @@ sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=FALSE){
 #' @export
 #'
 #' @examples
-#' # flow_cfs = uh(dt_hours, tci, pars)
+#' data(forcing)
+#' data(pars)
+#' dt_hours = 6
+#' tci = sac_snow(dt_hours,forcing, pars)
+#' flow_cfs = uh(dt_hours, tci, pars)
 #' @useDynLib rfchydromodels sacsnow_
 uh <- function(dt_hours, tci, pars){
 

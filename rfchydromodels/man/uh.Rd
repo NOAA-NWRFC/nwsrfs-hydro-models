@@ -20,5 +20,9 @@ Vector of routed flow in cfs
 Two parameter unit hydrograph routing for one or more basin zones
 }
 \examples{
-# flow_cfs = uh(dt_hours, tci, pars)
+data(forcing)
+data(pars)
+dt_hours = 6
+tci = sac_snow(dt_hours,forcing, pars)
+flow_cfs = uh(dt_hours, tci, pars)
 }
