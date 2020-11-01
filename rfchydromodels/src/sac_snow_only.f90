@@ -178,6 +178,12 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
     peadj_m_next(12) = peadj_m(1,nh)
     peadj_m_next(1:11) = peadj_m(2:12,nh)
 
+    !write(*,"(12f8.2)")map_adj(:,1)
+    !write(*,"(12f8.2)")mat_adj(:,1)
+    !write(*,"(12f8.2)")ptps_adj(:,1)
+    !write(*,"(12f8.2)")pet_adj(:,1)
+    !write(*,"(12f8.2)")peadj_m(:,1)
+
     ! julian day 
     call julian_day(year,month,day,jday,sim_length)
 
@@ -283,12 +289,17 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
         peadj_step = peadj_m_prev(mo) + dayi/dayn*(peadj_m(mo,nh)-peadj_m_prev(mo))
       end if 
 
+      !write(*,'(a,5i5,8f8.2)')'before adj',nh, year(i), month(i), day(i), hour(i), map(i,nh), mat(i,nh), psfall(i,nh), pet(i,nh), &
+      !                                    mat_adj_step, map_adj_step, pet_adj_step, ptps_adj_step
+
       mat(i,nh) = mat(i,nh) + mat_adj_step
       map(i,nh) = map(i,nh) * map_adj_step
       ! pet_ts is the pet from HS, peadj_step is the conversion to etdemand,
       ! pet_adj_step is the forcing adjustment
       pet(i,nh) = pet_ts * peadj_step * pet_adj_step
       psfall(i,nh) = min(psfall(i,nh) * ptps_adj_step,1d0)
+      !write(*,'(a,5i5,8f8.2)')' after adj',nh, year(i), month(i), day(i), hour(i), map(i,nh), mat(i,nh), psfall(i,nh), pet(i,nh), &
+      !                                    mat_adj_step, map_adj_step, pet_adj_step, ptps_adj_step
 
       ! if(i .eq. 1)then
       !   write(*,*)
@@ -469,7 +480,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
       adimc(i,nh) = dble(adimc_sp)
       tci(i,nh) = dble(tci_sp(i,nh))
 
-      ! write(*,'(4i5,4f8.2)')year(i), month(i), day(i), hour(i), map(i,nh), mat(i,nh), psfall(i,nh), pet(i,nh)
+      !write(*,'(5i5,4f8.2)')nh, year(i), month(i), day(i), hour(i), map(i,nh), mat(i,nh), psfall(i,nh), pet(i,nh), 
       !write(*,'(4i5,7f8.3)')year(i), month(i), day(i), hour(i), uztwc_sp, uzfwc_sp, lztwc_sp, &
       !                       lzfsc_sp, lzfpc_sp, adimc_sp, tci_sp(i,nh)
       

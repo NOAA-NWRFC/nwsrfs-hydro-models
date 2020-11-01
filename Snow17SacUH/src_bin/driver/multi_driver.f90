@@ -314,6 +314,12 @@ program multi_driver
     peadj_m_next(12) = peadj_m(1)
     peadj_m_next(1:11) = peadj_m(2:12)
 
+    !write(*,"(12f8.2)")map_adj(:)
+    !write(*,"(12f8.2)")mat_adj(:)
+    !write(*,"(12f8.2)")ptps_adj(:)
+    !write(*,"(12f8.2)")pet_adj(:)
+    !write(*,"(12f8.2)")peadj_m(:)
+
     ! julian day 
     call julian_day(year,month,day,jday)
 
@@ -332,8 +338,8 @@ program multi_driver
       lzfpc_sp = init_lzfpc(nh)
       adimc_sp = init_adimc(nh)
       cs(1)    = init_swe(nh)   ! AWW: just initialize first/main component of SWE (model 'WE')
-      cs(2:19) = 0          !      set the rest to zero
-      tprev    = 0          ! AWW ADDED
+      cs(2:19) = 0              !      set the rest to zero
+      tprev    = real(tair(1))  ! AWW ADDED
       ! AWW: initialize prior part of routing tci state (a uh_length-1 long period) with zeros
       ! this gets used in writing states for runs shorter than uh_length
       expanded_tci(1:uh_length-1) = 0.0
@@ -428,12 +434,21 @@ program multi_driver
         peadj_step = peadj_m_prev(mo) + dayi/dayn*(peadj_m(mo)-peadj_m_prev(mo))
       end if 
 
+      !write(*,'(a,5i5,8f8.2)')'before adj',nh, year(i), month(i), day(i), hour(i), tair(i), precip(i), psfall(i), pet(i), &
+      !                                    mat_adj_step, map_adj_step, pet_adj_step, ptps_adj_step
+
       tair(i) = tair(i) + mat_adj_step
       precip(i) = precip(i) * map_adj_step
       ! pet_ts is the pet from HS, peadj_step is the conversion to etdemand,
       ! pet_adj_step is the forcing adjustment
       pet(i) = pet_ts * peadj_step * pet_adj_step
       psfall(i) = min(psfall(i) * ptps_adj_step,1d0)
+
+      
+      !write(*,'(a,5i5,8f8.2)')' after adj',nh, year(i), month(i), day(i), hour(i), tair(i), precip(i), psfall(i), pet(i), &
+      !                                    mat_adj_step, map_adj_step, pet_adj_step, ptps_adj_step
+
+
 
       !write(*,*)i,year(i),month(i),day(i),hour(i),tair(i),precip(i),pet(i),psfall(i)
   
@@ -442,6 +457,7 @@ program multi_driver
       precip_sp = real(precip(i),kind(sp))
       pet_sp    = real(pet(i),kind(sp))
       psfall_sp = real(psfall(i),kind(sp))
+
    
       call exsnow19(int(dt),int(dt/sec_hour),day(i),month(i),year(i),&
   	!SNOW17 INPUT AND OUTPUT VARIABLES
@@ -453,6 +469,9 @@ program multi_driver
                real(elev(nh),kind(sp)),real(pa,kind(sp)),adc,&
   	!SNOW17 CARRYOVER VARIABLES
   			  cs,tprev) 
+
+      ! tprev does not get updated in place like cs does
+      tprev = tair_sp
   
       call exsac(1,real(dt),raim(i),tair_sp,pet_sp,&
   	!SAC PARAMETERS
@@ -482,6 +501,7 @@ program multi_driver
         ! print*,'tprev: ',i,day(i),month(i),year(i),tprev,cs(1)  AWW debugging
       end if  
 
+      !write(*,'(5i5,4f8.2)')nh, year(i), month(i), day(i), hour(i), map(i,nh), mat(i,nh), psfall(i,nh), pet(i,nh)
     end do  
     !write(*,*)'After sim'
     ! ============ end simulation time loop ====================

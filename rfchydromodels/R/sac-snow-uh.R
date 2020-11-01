@@ -37,6 +37,8 @@ sac_snow_uh <- function(dt_hours, forcing, pars, forcing_adjust=FALSE){
 #' @importFrom stats reshape
 sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=FALSE){
 
+  pars = as.data.frame(pars)
+
   sec_per_day = 86400
   dt_seconds = sec_per_day/(24/dt_hours)
 
@@ -135,10 +137,12 @@ sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=FALSE){
 #' data(forcing)
 #' data(pars)
 #' dt_hours = 6
-#' tci = sac_snow_states(dt_hours, forcing, pars)
+#' states = sac_snow_states(dt_hours, forcing, pars)
 #' @useDynLib rfchydromodels sacsnowstates_
 #' @importFrom stats reshape
 sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=FALSE){
+
+  pars = as.data.frame(pars)
 
   sec_per_day = 86400
   dt_seconds = sec_per_day/(24/dt_hours)
@@ -219,6 +223,7 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=FALSE){
                psfall = do.call('cbind',lapply(forcing,'[[','ptps')),
                mat = do.call('cbind',lapply(forcing,'[[','mat_degc')),
                # output
+               pet = matrix(0,nrow=sim_length,ncol=n_zones),
                tci = matrix(0,nrow=sim_length,ncol=n_zones),
                uztwc = matrix(0,nrow=sim_length,ncol=n_zones),
                uzfwc = matrix(0,nrow=sim_length,ncol=n_zones),
@@ -228,7 +233,27 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=FALSE){
                adimc = matrix(0,nrow=sim_length,ncol=n_zones),
                swe = matrix(0,nrow=sim_length,ncol=n_zones))
 
-  x[c('tci','uztwc','uzfwc','lztwc','lzfsc','lzfpc','adimc','swe')]
+  format_states(x[c('year','month','day','hour','tci','uztwc',
+                    'uzfwc','lztwc','lzfsc','lzfpc','adimc','swe',
+                    'map','mat','psfall','pet')])
+}
+
+
+#' Format state output from sac_snow_states
+#'
+#' @param x output list from sac_snow_states
+#'
+#' @return a data.frame with formatted output
+#'
+format_states <- function(x) {
+  df = data.frame(year=x$year,month=x$month,day=x$day,hour=x$hour)
+  n_zones = ncol(x$tci)
+  for(i in 1:n_zones){
+    for(name in names(x)[-(1:4)]){
+      df[[paste0(name,'_',i)]] = x[[name]][,i]
+    }
+  }
+  df
 }
 
 #' Two parameter unit hydrograph routing for one or more basin zones
