@@ -8,14 +8,14 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
     ! pet and precp adjustments
     peadj, pxadj, peadj_m, &
     ! snow parameters 
-    scf, mfmax, mfmin, uadj, si, pxtemp, nmf, tipm, mbase, plwhc, daygm, &
+    scf, mfmax, mfmin, uadj, si, nmf, tipm, mbase, plwhc, daygm, &
     adc_a, adc_b, adc_c, & 
     ! forcing adjust parameters 
     map_adj, mat_adj, pet_adj, ptps_adj, & 
     ! initial conditions 
     init_swe, init_uztwc, init_uzfwc, init_lztwc, init_lzfsc, init_lzfpc, init_adimc, & 
     ! forcings 
-    map, psfall, mat, &
+    map, ptps, mat, &
     ! output
     tci)
 
@@ -90,7 +90,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   integer, dimension(sim_length):: year, month, day, hour
 
   ! atmospheric forcing variables
-  double precision, dimension(sim_length, n_hrus):: pet, map, psfall, mat
+  double precision, dimension(sim_length, n_hrus):: pet, map, ptps, mat
 
   ! various other combined variables (aggregating multiple basins zones)
   !real(sp), dimension(sim_length):: eta_comb_sp, tci_comb_sp, route_tci_comb_sp ! AWW combined vars
@@ -122,6 +122,9 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
 
   ts_per_day = 86400/dt
   ! write(*,*)'Timesteps per day:',ts_per_day
+
+  ! this is not used, since ptps is input, but set it just so its not empty
+  pxtemp = 0 
 
   ! ========================= HRU AREA LOOP ========================================================
   !   loop through the simulation areas, running the lump model code and averaging the output
@@ -289,7 +292,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
         peadj_step = peadj_m_prev(mo) + dayi/dayn*(peadj_m(mo,nh)-peadj_m_prev(mo))
       end if 
 
-      !write(*,'(a,5i5,8f8.2)')'before adj',nh, year(i), month(i), day(i), hour(i), map(i,nh), mat(i,nh), psfall(i,nh), pet(i,nh), &
+      !write(*,'(a,5i5,8f8.2)')'before adj',nh, year(i), month(i), day(i), hour(i), map(i,nh), mat(i,nh), ptps(i,nh), pet(i,nh), &
       !                                    mat_adj_step, map_adj_step, pet_adj_step, ptps_adj_step
 
       mat(i,nh) = mat(i,nh) + mat_adj_step
@@ -297,8 +300,8 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
       ! pet_ts is the pet from HS, peadj_step is the conversion to etdemand,
       ! pet_adj_step is the forcing adjustment
       pet(i,nh) = pet_ts * peadj_step * pet_adj_step
-      psfall(i,nh) = min(psfall(i,nh) * ptps_adj_step,1d0)
-      !write(*,'(a,5i5,8f8.2)')' after adj',nh, year(i), month(i), day(i), hour(i), map(i,nh), mat(i,nh), psfall(i,nh), pet(i,nh), &
+      ptps(i,nh) = min(ptps(i,nh) * ptps_adj_step,1d0)
+      !write(*,'(a,5i5,8f8.2)')' after adj',nh, year(i), month(i), day(i), hour(i), map(i,nh), mat(i,nh), ptps(i,nh), pet(i,nh), &
       !                                    mat_adj_step, map_adj_step, pet_adj_step, ptps_adj_step
 
       ! if(i .eq. 1)then
@@ -311,7 +314,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
       !   write(*,'(a10,i12)')'year',int(year(i),4)
       !   write(*,'(a10,f30.17)')'map',real(map(i,nh))
       !   write(*,'(a10,f30.17)')'mat',real(mat(i,nh))
-      !   write(*,'(a10,f30.17)')'ptps',real(psfall(i,nh))
+      !   write(*,'(a10,f30.17)')'ptps',real(ptps(i,nh))
       !   write(*,'(a10,f30.17)')'raim',raim(i,nh)
       !   write(*,'(a10,f30.17)')'alat',real(latitude(nh))
       !   write(*,'(a10,f30.17)')'scf',real(scf(nh))
@@ -354,7 +357,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
 
       call exsnow19(int(dt,4),int(dt/sec_hour,4),int(day(i),4),int(month(i),4),int(year(i),4),&
           !SNOW17 INPUT AND OUTPUT VARIABLES
-          real(map(i,nh)), real(psfall(i,nh)), real(mat(i,nh)), &
+          real(map(i,nh)), real(ptps(i,nh)), real(mat(i,nh)), &
           raim(i,nh), sneqv(i,nh), snow(i,nh), snowh(i,nh),&
           !SNOW17 PARAMETERS
           !ALAT,SCF,MFMAX,MFMIN,UADJ,SI,NMF,TIPM,MBASE,PXTEMP,PLWHC,DAYGM,ELEV,PA,ADC
@@ -480,7 +483,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
       adimc(i,nh) = dble(adimc_sp)
       tci(i,nh) = dble(tci_sp(i,nh))
 
-      !write(*,'(5i5,4f8.2)')nh, year(i), month(i), day(i), hour(i), map(i,nh), mat(i,nh), psfall(i,nh), pet(i,nh), 
+      !write(*,'(5i5,4f8.2)')nh, year(i), month(i), day(i), hour(i), map(i,nh), mat(i,nh), ptps(i,nh), pet(i,nh), 
       !write(*,'(4i5,7f8.3)')year(i), month(i), day(i), hour(i), uztwc_sp, uzfwc_sp, lztwc_sp, &
       !                       lzfsc_sp, lzfpc_sp, adimc_sp, tci_sp(i,nh)
       

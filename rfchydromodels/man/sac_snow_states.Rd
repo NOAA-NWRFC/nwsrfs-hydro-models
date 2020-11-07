@@ -16,8 +16,9 @@ sac_snow_states(dt_hours, forcing, pars, forcing_adjust = FALSE)
 \item{forcing_adjust}{does the parameter set include forcing adjustments}
 }
 \value{
-List of matricies (1 column per zone) of unrouted channel inflow (tci), sac states
-uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, and snow water equivalent (swe)
+data.frame (1 column per zone) of unrouted channel inflow (tci), sac states
+uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, and snow water equivalent (swe),
+and adjusted forcing data.
 }
 \description{
 Execute SAC-SMA, SNOW17, return total channel inflow per zone, and model states

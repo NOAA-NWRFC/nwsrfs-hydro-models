@@ -8,16 +8,16 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
     ! pet and precp adjustments
     peadj, pxadj, peadj_m, &
     ! snow parameters 
-    scf, mfmax, mfmin, uadj, si, pxtemp, nmf, tipm, mbase, plwhc, daygm, &
+    scf, mfmax, mfmin, uadj, si, nmf, tipm, mbase, plwhc, daygm, &
     adc_a, adc_b, adc_c, & 
     ! forcing adjust parameters 
     map_adj, mat_adj, pet_adj, ptps_adj, & 
     ! initial conditions 
     init_swe, init_uztwc, init_uzfwc, init_lztwc, init_lzfsc, init_lzfpc, init_adimc, & 
-    ! forcings 
-    map, psfall, mat, pet, &
+    ! forcings input and output
+    map, ptps, mat, & 
     ! output
-    tci, uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, swe)
+    pet, tci, aet, uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, swe)
 
   implicit none
 
@@ -80,8 +80,8 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
 
   ! sac-sma output variables and routed flow
   !real(sp), dimension(sim_length):: qs_sp, qg_sp, eta_sp, tci_sp
-  real(sp), dimension(sim_length, n_hrus):: qs, qg, eta, tci_sp
-  double precision, dimension(sim_length ,n_hrus):: tci
+  real(sp), dimension(sim_length, n_hrus):: qs, qg, aet_sp, tci_sp
+  double precision, dimension(sim_length ,n_hrus):: tci, aet
 
   ! snow-17 output variables  
   real(sp), dimension(sim_length, n_hrus):: raim, snowh, sneqv, snow 
@@ -90,14 +90,8 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   integer, dimension(sim_length):: year, month, day, hour
 
   ! atmospheric forcing variables
-  double precision, dimension(sim_length, n_hrus), intent(inout):: map, psfall, mat
+  double precision, dimension(sim_length, n_hrus), intent(inout):: map, ptps, mat
   double precision, dimension(sim_length, n_hrus), intent(out):: pet
-
-  ! various other combined variables (aggregating multiple basins zones)
-  !real(sp), dimension(sim_length):: eta_comb_sp, tci_comb_sp, route_tci_comb_sp ! AWW combined vars
-  !real(sp), dimension(sim_length):: route_tci_cfs_sp ! AWW convert mm/d to cfs given basin areas
-  !real(sp), dimension(sim_length):: sneqv_comb_sp ! AWW ditto, combined vars
-  !real(sp), dimension(sim_length):: raim_comb_sp  ! AWW combined vars
 
 
   integer, dimension(12) :: mdays, mdays_prev
@@ -123,6 +117,9 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
 
   ts_per_day = 86400/dt
   ! write(*,*)'Timesteps per day:',ts_per_day
+
+  ! this is not used, since ptps is input, but set it just so its not empty
+  pxtemp = 0 
 
   ! ========================= HRU AREA LOOP ========================================================
   !   loop through the simulation areas, running the lump model code and averaging the output
@@ -289,12 +286,12 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       ! pet_ts is the pet from HS, peadj_step is the conversion to etdemand,
       ! pet_adj_step is the forcing adjustment
       pet(i,nh) = pet_ts * peadj_step * pet_adj_step
-      psfall(i,nh) = min(psfall(i,nh) * ptps_adj_step,1d0)
+      ptps(i,nh) = min(ptps(i,nh) * ptps_adj_step,1d0)
 
 
       call exsnow19(int(dt,4),int(dt/sec_hour,4),int(day(i),4),int(month(i),4),int(year(i),4),&
           !SNOW17 INPUT AND OUTPUT VARIABLES
-          real(map(i,nh)), real(psfall(i,nh)), real(mat(i,nh)), &
+          real(map(i,nh)), real(ptps(i,nh)), real(mat(i,nh)), &
           raim(i,nh), sneqv(i,nh), snow(i,nh), snowh(i,nh),&
           !SNOW17 PARAMETERS
           !ALAT,SCF,MFMAX,MFMIN,UADJ,SI,NMF,TIPM,MBASE,PXTEMP,PLWHC,DAYGM,ELEV,PA,ADC
@@ -328,7 +325,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
           !SAC State variables
           uztwc_sp, uzfwc_sp, lztwc_sp, lzfsc_sp, lzfpc_sp, adimc_sp, &
           !SAC OUTPUTS
-          qs(i,nh), qg(i,nh), tci_sp(i,nh), eta(i,nh))
+          qs(i,nh), qg(i,nh), tci_sp(i,nh), aet_sp(i,nh))
     
       ! place state variables in output arrays
       uztwc(i,nh) = dble(uztwc_sp)
@@ -338,6 +335,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       lzfpc(i,nh) = dble(lzfpc_sp)
       adimc(i,nh) = dble(adimc_sp)
       tci(i,nh) = dble(tci_sp(i,nh))
+      aet(i,nh) = dble(aet_sp(i,nh))
       
 
     end do  

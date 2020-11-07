@@ -45,80 +45,82 @@ sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=FALSE){
   n_zones = length(forcing)
   sim_length = nrow(forcing[[1]])
 
-  type_col = which(names(pars)=='type')
-  map_adj = reshape(pars[grepl('map_adj',pars$name),-type_col],
+  map_adj = reshape(pars[grepl('map_adj',pars$name),c('name','zone','value')],
                     timevar='zone',idvar='name',direction='wide')[,-1]
-  mat_adj = reshape(pars[grepl('mat_adj',pars$name),-type_col],
+  mat_adj = reshape(pars[grepl('mat_adj',pars$name),c('name','zone','value')],
                     timevar='zone',idvar='name',direction='wide')[,-1]
-  ptps_adj = reshape(pars[grepl('ptps_adj',pars$name),-type_col],
+  ptps_adj = reshape(pars[grepl('ptps_adj',pars$name),c('name','zone','value')],
                     timevar='zone',idvar='name',direction='wide')[,-1]
-  pet_adj = reshape(pars[grepl('pet_adj',pars$name),-type_col],
+  pet_adj = reshape(pars[grepl('pet_adj',pars$name),c('name','zone','value')],
+                    timevar='zone',idvar='name',direction='wide')[,-1]
+  peadj_m = reshape(pars[grepl('peadj_',pars$name),c('name','zone','value')],
                     timevar='zone',idvar='name',direction='wide')[,-1]
 
-  x = .Fortran('sacsnow',n_hrus=as.integer(n_zones),
-                dt=as.integer(dt_seconds), sim_length=sim_length,
-                year=as.integer(forcing[[1]]$year)[1:sim_length],
-                month=as.integer(forcing[[1]]$month)[1:sim_length],
-                day=as.integer(forcing[[1]]$day)[1:sim_length],
-                hour=as.integer(forcing[[1]]$hour)[1:sim_length],
-                # zone info
-                latitude = pars[pars$name == 'alat',]$value,
-                elev = pars[pars$name == 'elev',]$value,
-                # sac parameters
-                uztwm = pars[pars$name == 'uztwm',]$value,
-                uzfwm = pars[pars$name == 'uzfwm',]$value,
-                lztwm = pars[pars$name == 'lztwm',]$value,
-                lzfpm = pars[pars$name == 'lzfpm',]$value,
-                lzfsm = pars[pars$name == 'lzfsm',]$value,
-                adimp = pars[pars$name == 'adimp',]$value,
-                  uzk = pars[pars$name ==   'uzk',]$value,
-                 lzpk = pars[pars$name ==  'lzpk',]$value,
-                 lzsk = pars[pars$name ==  'lzsk',]$value,
-                zperc = pars[pars$name == 'zperc',]$value,
-                 rexp = pars[pars$name ==  'rexp',]$value,
-                pctim = pars[pars$name == 'pctim',]$value,
-                pfree = pars[pars$name == 'pfree',]$value,
-                 riva = pars[pars$name ==  'riva',]$value,
-                 side = pars[pars$name ==  'side',]$value,
-                rserv = pars[pars$name == 'rserv',]$value,
-                # pet and precp adjustments
-                  peadj = rep(1,n_zones),
-                  pxadj = rep(1,n_zones),
-                peadj_m = matrix(1.0,nrow=12,ncol=n_zones),
-                # snow parameters
-                   scf = pars[pars$name ==    'scf',]$value,
-                 mfmax = pars[pars$name ==  'mfmax',]$value,
-                 mfmin = pars[pars$name ==  'mfmin',]$value,
-                  uadj = pars[pars$name ==   'uadj',]$value,
-                    si = pars[pars$name ==     'si',]$value,
-                pxtemp = rep(0,n_zones),
-                   nmf = pars[pars$name ==    'nmf',]$value,
-                  tipm = pars[pars$name ==   'tipm',]$value,
-                 mbase = pars[pars$name ==  'mbase',]$value,
-                 plwhc = pars[pars$name ==  'plwhc',]$value,
-                 daygm = pars[pars$name ==  'daygm',]$value,
-                 adc_a = pars[pars$name ==  'adc_a',]$value,
-                 adc_b = pars[pars$name ==  'adc_b',]$value,
-                 adc_c = pars[pars$name ==  'adc_c',]$value,
-                # forcing adjust parameters
-                 map_adj = as.matrix(map_adj),
-                 mat_adj = as.matrix(mat_adj),
-                 pet_adj = as.matrix(pet_adj),
-                ptps_adj = as.matrix(ptps_adj),
-                # initial conditions
-                  init_swe = pars[pars$name == 'init_swe',]$value  ,
-                init_uztwc = pars[pars$name == 'init_uztwc',]$value,
-                init_uzfwc = pars[pars$name == 'init_uzfwc',]$value,
-                init_lztwc = pars[pars$name == 'init_lztwc',]$value,
-                init_lzfsc = pars[pars$name == 'init_lzfsc',]$value,
-                init_lzfpc = pars[pars$name == 'init_lzfpc',]$value,
-                init_adimc = pars[pars$name == 'init_adimc',]$value,
-                # forcings
-                map = do.call('cbind',lapply(forcing,'[[','map_mm')),
-                psfall = do.call('cbind',lapply(forcing,'[[','ptps')),
-                mat = do.call('cbind',lapply(forcing,'[[','mat_degc')),
-                # output
-                tci = matrix(0,nrow=sim_length,ncol=n_zones))
+  x = .Fortran('sacsnow',
+               n_hrus=as.integer(n_zones),
+               dt=as.integer(dt_seconds),
+               sim_length=sim_length,
+               year=as.integer(forcing[[1]]$year)[1:sim_length],
+               month=as.integer(forcing[[1]]$month)[1:sim_length],
+               day=as.integer(forcing[[1]]$day)[1:sim_length],
+               hour=as.integer(forcing[[1]]$hour)[1:sim_length],
+               # zone info
+               latitude = pars[pars$name == 'alat',]$value,
+               elev = pars[pars$name == 'elev',]$value,
+               # sac parameters
+               uztwm = pars[pars$name == 'uztwm',]$value,
+               uzfwm = pars[pars$name == 'uzfwm',]$value,
+               lztwm = pars[pars$name == 'lztwm',]$value,
+               lzfpm = pars[pars$name == 'lzfpm',]$value,
+               lzfsm = pars[pars$name == 'lzfsm',]$value,
+               adimp = pars[pars$name == 'adimp',]$value,
+                 uzk = pars[pars$name ==   'uzk',]$value,
+                lzpk = pars[pars$name ==  'lzpk',]$value,
+                lzsk = pars[pars$name ==  'lzsk',]$value,
+               zperc = pars[pars$name == 'zperc',]$value,
+                rexp = pars[pars$name ==  'rexp',]$value,
+               pctim = pars[pars$name == 'pctim',]$value,
+               pfree = pars[pars$name == 'pfree',]$value,
+                riva = pars[pars$name ==  'riva',]$value,
+                side = pars[pars$name ==  'side',]$value,
+               rserv = pars[pars$name == 'rserv',]$value,
+               # pet and precp adjustments
+                 peadj = rep(1,n_zones),
+                 pxadj = rep(1,n_zones),
+               peadj_m = as.matrix(peadj_m),
+               # snow parameters
+                  scf = pars[pars$name ==    'scf',]$value,
+                mfmax = pars[pars$name ==  'mfmax',]$value,
+                mfmin = pars[pars$name ==  'mfmin',]$value,
+                 uadj = pars[pars$name ==   'uadj',]$value,
+                   si = pars[pars$name ==     'si',]$value,
+                  nmf = pars[pars$name ==    'nmf',]$value,
+                 tipm = pars[pars$name ==   'tipm',]$value,
+                mbase = pars[pars$name ==  'mbase',]$value,
+                plwhc = pars[pars$name ==  'plwhc',]$value,
+                daygm = pars[pars$name ==  'daygm',]$value,
+                adc_a = pars[pars$name ==  'adc_a',]$value,
+                adc_b = pars[pars$name ==  'adc_b',]$value,
+                adc_c = pars[pars$name ==  'adc_c',]$value,
+               # forcing adjust parameters
+                map_adj = as.matrix(map_adj),
+                mat_adj = as.matrix(mat_adj),
+                pet_adj = as.matrix(pet_adj),
+               ptps_adj = as.matrix(ptps_adj),
+               # initial conditions
+                 init_swe = pars[pars$name == 'init_swe',]$value  ,
+               init_uztwc = pars[pars$name == 'init_uztwc',]$value,
+               init_uzfwc = pars[pars$name == 'init_uzfwc',]$value,
+               init_lztwc = pars[pars$name == 'init_lztwc',]$value,
+               init_lzfsc = pars[pars$name == 'init_lzfsc',]$value,
+               init_lzfpc = pars[pars$name == 'init_lzfpc',]$value,
+               init_adimc = pars[pars$name == 'init_adimc',]$value,
+               # forcings
+               map = do.call('cbind',lapply(forcing,'[[','map_mm')),
+               ptps = do.call('cbind',lapply(forcing,'[[','ptps')),
+               mat = do.call('cbind',lapply(forcing,'[[','mat_degc')),
+               # output
+               tci = matrix(0,nrow=sim_length,ncol=n_zones))
 
   x$tci
 }
@@ -129,8 +131,9 @@ sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=FALSE){
 #' @param forcing data frame with with columns for forcing inputs
 #' @param pars sac parameters
 #' @param forcing_adjust does the parameter set include forcing adjustments
-#' @return List of matricies (1 column per zone) of unrouted channel inflow (tci), sac states
-#' uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, and snow water equivalent (swe)
+#' @return data.frame (1 column per zone) of unrouted channel inflow (tci), sac states
+#' uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, and snow water equivalent (swe),
+#' and adjusted forcing data.
 #' @export
 #'
 #' @examples
@@ -150,18 +153,22 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=FALSE){
   n_zones = length(forcing)
   sim_length = nrow(forcing[[1]])
 
-  type_col = which(names(pars)=='type')
-  map_adj = reshape(pars[grepl('map_adj',pars$name),-type_col],
+  map_adj = reshape(pars[grepl('map_adj',pars$name),c('name','zone','value')],
                     timevar='zone',idvar='name',direction='wide')[,-1]
-  mat_adj = reshape(pars[grepl('mat_adj',pars$name),-type_col],
+  mat_adj = reshape(pars[grepl('mat_adj',pars$name),c('name','zone','value')],
                     timevar='zone',idvar='name',direction='wide')[,-1]
-  ptps_adj = reshape(pars[grepl('ptps_adj',pars$name),-type_col],
+  ptps_adj = reshape(pars[grepl('ptps_adj',pars$name),c('name','zone','value')],
                      timevar='zone',idvar='name',direction='wide')[,-1]
-  pet_adj = reshape(pars[grepl('pet_adj',pars$name),-type_col],
+  pet_adj = reshape(pars[grepl('pet_adj',pars$name),c('name','zone','value')],
+                    timevar='zone',idvar='name',direction='wide')[,-1]
+  peadj_m = reshape(pars[grepl('peadj_',pars$name),c('name','zone','value')],
                     timevar='zone',idvar='name',direction='wide')[,-1]
 
-  x = .Fortran('sacsnowstates',n_hrus=as.integer(n_zones),
-               dt=as.integer(dt_seconds), sim_length=sim_length,
+  output_matrix = matrix(0,nrow=sim_length,ncol=n_zones)
+  x = .Fortran('sacsnowstates',
+               n_hrus=as.integer(n_zones),
+               dt=as.integer(dt_seconds),
+               sim_length=sim_length,
                year=as.integer(forcing[[1]]$year)[1:sim_length],
                month=as.integer(forcing[[1]]$month)[1:sim_length],
                day=as.integer(forcing[[1]]$day)[1:sim_length],
@@ -189,14 +196,13 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=FALSE){
                # pet and precp adjustments
                peadj = rep(1,n_zones),
                pxadj = rep(1,n_zones),
-               peadj_m = matrix(1.0,nrow=12,ncol=n_zones),
+               peadj_m = as.matrix(peadj_m),
                # snow parameters
                scf = pars[pars$name ==    'scf',]$value,
                mfmax = pars[pars$name ==  'mfmax',]$value,
                mfmin = pars[pars$name ==  'mfmin',]$value,
                uadj = pars[pars$name ==   'uadj',]$value,
                si = pars[pars$name ==     'si',]$value,
-               pxtemp = rep(0,n_zones),
                nmf = pars[pars$name ==    'nmf',]$value,
                tipm = pars[pars$name ==   'tipm',]$value,
                mbase = pars[pars$name ==  'mbase',]$value,
@@ -220,22 +226,23 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=FALSE){
                init_adimc = pars[pars$name == 'init_adimc',]$value,
                # forcings
                map = do.call('cbind',lapply(forcing,'[[','map_mm')),
-               psfall = do.call('cbind',lapply(forcing,'[[','ptps')),
+               ptps = do.call('cbind',lapply(forcing,'[[','ptps')),
                mat = do.call('cbind',lapply(forcing,'[[','mat_degc')),
                # output
-               pet = matrix(0,nrow=sim_length,ncol=n_zones),
-               tci = matrix(0,nrow=sim_length,ncol=n_zones),
-               uztwc = matrix(0,nrow=sim_length,ncol=n_zones),
-               uzfwc = matrix(0,nrow=sim_length,ncol=n_zones),
-               lztwc = matrix(0,nrow=sim_length,ncol=n_zones),
-               lzfsc = matrix(0,nrow=sim_length,ncol=n_zones),
-               lzfpc = matrix(0,nrow=sim_length,ncol=n_zones),
-               adimc = matrix(0,nrow=sim_length,ncol=n_zones),
-               swe = matrix(0,nrow=sim_length,ncol=n_zones))
+               pet = output_matrix,
+               tci = output_matrix,
+               aet = output_matrix,
+               uztwc = output_matrix,
+               uzfwc = output_matrix,
+               lztwc = output_matrix,
+               lzfsc = output_matrix,
+               lzfpc = output_matrix,
+               adimc = output_matrix,
+               swe = output_matrix)
 
-  format_states(x[c('year','month','day','hour','tci','uztwc',
-                    'uzfwc','lztwc','lzfsc','lzfpc','adimc','swe',
-                    'map','mat','psfall','pet')])
+  format_states(x[c('year','month','day','hour','tci','aet',
+                    'uztwc','uzfwc','lztwc','lzfsc','lzfpc','adimc','swe',
+                    'map','mat','ptps','pet')])
 }
 
 
@@ -300,7 +307,7 @@ uh <- function(dt_hours, tci, pars){
     # convert to cfs
     flow_cfs = flow_cfs +
       routed$qr[1:sim_length] * 1000 * 3.28084**3 / dt_seconds *
-      pars[pars$name == 'hru_area',]$value[i]
+      pars[pars$name == 'zone_area',]$value[i]
   }
 
   flow_cfs
