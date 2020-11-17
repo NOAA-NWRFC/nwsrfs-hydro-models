@@ -12,7 +12,7 @@
 #' data(pars)
 #' dt_hours = 6
 #' flow_cfs = sac_snow_uh(dt_hours,forcing, pars)
-sac_snow_uh <- function(dt_hours, forcing, pars, forcing_adjust=FALSE){
+sac_snow_uh <- function(dt_hours, forcing, pars, forcing_adjust=TRUE){
 
   tci = sac_snow(dt_hours, forcing, pars, forcing_adjust = forcing_adjust)
   flow_cfs = uh(dt_hours, tci, pars)
@@ -35,7 +35,7 @@ sac_snow_uh <- function(dt_hours, forcing, pars, forcing_adjust=FALSE){
 #' tci = sac_snow(dt_hours, forcing, pars)
 #' @useDynLib rfchydromodels sacsnow_
 #' @importFrom stats reshape
-sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=FALSE){
+sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=TRUE){
 
   pars = as.data.frame(pars)
 
@@ -45,14 +45,23 @@ sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=FALSE){
   n_zones = length(forcing)
   sim_length = nrow(forcing[[1]])
 
-  map_adj = reshape(pars[grepl('map_adj',pars$name),c('name','zone','value')],
-                    timevar='zone',idvar='name',direction='wide')[,-1]
-  mat_adj = reshape(pars[grepl('mat_adj',pars$name),c('name','zone','value')],
-                    timevar='zone',idvar='name',direction='wide')[,-1]
-  ptps_adj = reshape(pars[grepl('ptps_adj',pars$name),c('name','zone','value')],
-                    timevar='zone',idvar='name',direction='wide')[,-1]
-  pet_adj = reshape(pars[grepl('pet_adj',pars$name),c('name','zone','value')],
-                    timevar='zone',idvar='name',direction='wide')[,-1]
+  if(forcing_adjust){
+    # using base R here to avoid package dependency
+    map_adj = reshape(pars[grepl('map_adj',pars$name),c('name','zone','value')],
+                      timevar='zone',idvar='name',direction='wide')[,-1]
+    mat_adj = reshape(pars[grepl('mat_adj',pars$name),c('name','zone','value')],
+                      timevar='zone',idvar='name',direction='wide')[,-1]
+    ptps_adj = reshape(pars[grepl('ptps_adj',pars$name),c('name','zone','value')],
+                      timevar='zone',idvar='name',direction='wide')[,-1]
+    pet_adj = reshape(pars[grepl('pet_adj',pars$name),c('name','zone','value')],
+                      timevar='zone',idvar='name',direction='wide')[,-1]
+  }else{
+    map_adj = matrix(1,nrow=12,ncol=n_zones)
+    mat_adj = matrix(0,nrow=12,ncol=n_zones)
+    ptps_adj = matrix(1,nrow=12,ncol=n_zones)
+    pet_adj = matrix(1,nrow=12,ncol=n_zones)
+  }
+
   peadj_m = reshape(pars[grepl('peadj_',pars$name),c('name','zone','value')],
                     timevar='zone',idvar='name',direction='wide')[,-1]
 
@@ -143,7 +152,7 @@ sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=FALSE){
 #' states = sac_snow_states(dt_hours, forcing, pars)
 #' @useDynLib rfchydromodels sacsnowstates_
 #' @importFrom stats reshape
-sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=FALSE){
+sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE){
 
   pars = as.data.frame(pars)
 
@@ -153,14 +162,24 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=FALSE){
   n_zones = length(forcing)
   sim_length = nrow(forcing[[1]])
 
-  map_adj = reshape(pars[grepl('map_adj',pars$name),c('name','zone','value')],
-                    timevar='zone',idvar='name',direction='wide')[,-1]
-  mat_adj = reshape(pars[grepl('mat_adj',pars$name),c('name','zone','value')],
-                    timevar='zone',idvar='name',direction='wide')[,-1]
-  ptps_adj = reshape(pars[grepl('ptps_adj',pars$name),c('name','zone','value')],
-                     timevar='zone',idvar='name',direction='wide')[,-1]
-  pet_adj = reshape(pars[grepl('pet_adj',pars$name),c('name','zone','value')],
-                    timevar='zone',idvar='name',direction='wide')[,-1]
+
+  if(forcing_adjust){
+    # using base R here to avoid package dependency
+    map_adj = reshape(pars[grepl('map_adj',pars$name),c('name','zone','value')],
+                      timevar='zone',idvar='name',direction='wide')[,-1]
+    mat_adj = reshape(pars[grepl('mat_adj',pars$name),c('name','zone','value')],
+                      timevar='zone',idvar='name',direction='wide')[,-1]
+    ptps_adj = reshape(pars[grepl('ptps_adj',pars$name),c('name','zone','value')],
+                       timevar='zone',idvar='name',direction='wide')[,-1]
+    pet_adj = reshape(pars[grepl('pet_adj',pars$name),c('name','zone','value')],
+                      timevar='zone',idvar='name',direction='wide')[,-1]
+  }else{
+    map_adj = matrix(1,nrow=12,ncol=n_zones)
+    mat_adj = matrix(0,nrow=12,ncol=n_zones)
+    ptps_adj = matrix(1,nrow=12,ncol=n_zones)
+    pet_adj = matrix(1,nrow=12,ncol=n_zones)
+  }
+
   peadj_m = reshape(pars[grepl('peadj_',pars$name),c('name','zone','value')],
                     timevar='zone',idvar='name',direction='wide')[,-1]
 
