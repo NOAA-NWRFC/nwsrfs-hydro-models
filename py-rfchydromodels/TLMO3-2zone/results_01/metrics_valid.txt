@@ -1,0 +1,183 @@
+             [,1]
+ME        -141.67
+MAE        300.27
+MSE     359962.38
+RMSE       599.97
+NRMSE %     32.10
+PBIAS %    -10.70
+RSR          0.32
+rSD          0.90
+NSE          0.90
+mNSE         0.74
+rNSE         0.94
+d            0.97
+md           0.87
+rd           0.98
+cp           0.72
+r            0.95
+R2           0.91
+bR2          0.78
+KGE          0.84
+VE           0.77
+
+# A tibble: 158 x 2
+    `limits$name`        p_optimal
+    <chr>                    <dbl>
+  1 uztwm_TLMO3-1        374.     
+  2 uzfwm_TLMO3-1        227.     
+  3 lztwm_TLMO3-1        152.     
+  4 lzfpm_TLMO3-1        508.     
+  5 lzfsm_TLMO3-1        574.     
+  6 adimp_TLMO3-1          0.247  
+  7 uzk_TLMO3-1            0.700  
+  8 lzpk_TLMO3-1           0.00484
+  9 lzsk_TLMO3-1           0.183  
+ 10 zperc_TLMO3-1        135.     
+ 11 rexp_TLMO3-1           4.71   
+ 12 pctim_TLMO3-1          0.0441 
+ 13 pfree_TLMO3-1          0.496  
+ 14 riva_TLMO3-1           0.487  
+ 15 rserv_TLMO3-1          0.989  
+ 16 init_uztwc_TLMO3-1   170.     
+ 17 init_uzfwc_TLMO3-1     0.00144
+ 18 init_lztwc_TLMO3-1   284.     
+ 19 init_lzfsc_TLMO3-1    11.4    
+ 20 init_lzfpc_TLMO3-1   362.     
+ 21 init_adimc_TLMO3-1   173.     
+ 22 scf_TLMO3-1            1.02   
+ 23 mfmax_TLMO3-1          1.34   
+ 24 mfmin_TLMO3-1          0.253  
+ 25 uadj_TLMO3-1           0.219  
+ 26 si_TLMO3-1          2962.     
+ 27 adc_a_TLMO3-1          0.926  
+ 28 adc_b_TLMO3-1          1.61   
+ 29 adc_c_TLMO3-1          2.79   
+ 30 unit_shape_TLMO3-1     2.02   
+ 31 unit_scale_TLMO3-1     0.696  
+ 32 map_adj_01_TLMO3-1     1.30   
+ 33 map_adj_02_TLMO3-1     0.843  
+ 34 map_adj_03_TLMO3-1     0.889  
+ 35 map_adj_04_TLMO3-1     1.08   
+ 36 map_adj_05_TLMO3-1     0.957  
+ 37 map_adj_06_TLMO3-1     1.13   
+ 38 map_adj_07_TLMO3-1     1.37   
+ 39 map_adj_08_TLMO3-1     0.0795 
+ 40 map_adj_09_TLMO3-1     0.844  
+ 41 map_adj_10_TLMO3-1     1.24   
+ 42 map_adj_11_TLMO3-1     1.05   
+ 43 map_adj_12_TLMO3-1     1.02   
+ 44 mat_adj_01_TLMO3-1     0.368  
+ 45 mat_adj_02_TLMO3-1    -1.03   
+ 46 mat_adj_03_TLMO3-1    -0.256  
+ 47 mat_adj_04_TLMO3-1    -0.139  
+ 48 mat_adj_05_TLMO3-1     0.175  
+ 49 mat_adj_06_TLMO3-1    -0.447  
+ 50 mat_adj_07_TLMO3-1    -0.426  
+ 51 mat_adj_08_TLMO3-1    -0.937  
+ 52 mat_adj_09_TLMO3-1    -0.720  
+ 53 mat_adj_10_TLMO3-1     1.46   
+ 54 mat_adj_11_TLMO3-1     1.93   
+ 55 mat_adj_12_TLMO3-1     0.835  
+ 56 pet_adj_01_TLMO3-1     1.24   
+ 57 pet_adj_02_TLMO3-1     1.44   
+ 58 pet_adj_03_TLMO3-1     1.33   
+ 59 pet_adj_04_TLMO3-1     1.15   
+ 60 pet_adj_05_TLMO3-1     0.887  
+ 61 pet_adj_06_TLMO3-1     1.04   
+ 62 pet_adj_07_TLMO3-1     1.10   
+ 63 pet_adj_08_TLMO3-1     0.886  
+ 64 pet_adj_09_TLMO3-1     0.789  
+ 65 pet_adj_10_TLMO3-1     1.12   
+ 66 pet_adj_11_TLMO3-1     2.03   
+ 67 pet_adj_12_TLMO3-1     1.35   
+ 68 ptps_adj_01_TLMO3-1    4.06   
+ 69 ptps_adj_02_TLMO3-1    4.09   
+ 70 ptps_adj_03_TLMO3-1   10.4    
+ 71 ptps_adj_04_TLMO3-1    3.62   
+ 72 ptps_adj_05_TLMO3-1    3.02   
+ 73 ptps_adj_06_TLMO3-1    0.611  
+ 74 ptps_adj_07_TLMO3-1    1.08   
+ 75 ptps_adj_08_TLMO3-1    1.02   
+ 76 ptps_adj_09_TLMO3-1    0.982  
+ 77 ptps_adj_10_TLMO3-1    0.0610 
+ 78 ptps_adj_11_TLMO3-1   11.9    
+ 79 ptps_adj_12_TLMO3-1    3.38   
+ 80 uztwm_TLMO3-2        379.     
+ 81 uzfwm_TLMO3-2          9.39   
+ 82 lztwm_TLMO3-2        128.     
+ 83 lzfpm_TLMO3-2        980.     
+ 84 lzfsm_TLMO3-2        951.     
+ 85 adimp_TLMO3-2          0.378  
+ 86 uzk_TLMO3-2            0.589  
+ 87 lzpk_TLMO3-2           0.0182 
+ 88 lzsk_TLMO3-2           0.001  
+ 89 zperc_TLMO3-2         87.6    
+ 90 rexp_TLMO3-2           5.27   
+ 91 pctim_TLMO3-2          0.151  
+ 92 pfree_TLMO3-2          0.466  
+ 93 riva_TLMO3-2           0.223  
+ 94 rserv_TLMO3-2          0.282  
+ 95 init_uztwc_TLMO3-2    48.7    
+ 96 init_uzfwc_TLMO3-2    58.6    
+ 97 init_lztwc_TLMO3-2   391.     
+ 98 init_lzfsc_TLMO3-2   829.     
+ 99 init_lzfpc_TLMO3-2   866.     
+100 init_adimc_TLMO3-2   333.     
+101 scf_TLMO3-2            1.02   
+102 mfmax_TLMO3-2          1.61   
+103 mfmin_TLMO3-2          0.228  
+104 uadj_TLMO3-2           0.134  
+105 si_TLMO3-2           771.     
+106 adc_a_TLMO3-2          0.437  
+107 adc_b_TLMO3-2          9.23   
+108 adc_c_TLMO3-2          0.325  
+109 unit_shape_TLMO3-2     1.68   
+110 unit_scale_TLMO3-2     0.839  
+111 map_adj_01_TLMO3-2     1.05   
+112 map_adj_02_TLMO3-2     0.728  
+113 map_adj_03_TLMO3-2     0.879  
+114 map_adj_04_TLMO3-2     0.979  
+115 map_adj_05_TLMO3-2     0.509  
+116 map_adj_06_TLMO3-2     0.271  
+117 map_adj_07_TLMO3-2     0.977  
+118 map_adj_08_TLMO3-2     0.109  
+119 map_adj_09_TLMO3-2     1.54   
+120 map_adj_10_TLMO3-2     0.575  
+121 map_adj_11_TLMO3-2     1.03   
+122 map_adj_12_TLMO3-2     1.12   
+123 mat_adj_01_TLMO3-2     0.164  
+124 mat_adj_02_TLMO3-2    -0.320  
+125 mat_adj_03_TLMO3-2    -1.58   
+126 mat_adj_04_TLMO3-2     0.591  
+127 mat_adj_05_TLMO3-2     0.220  
+128 mat_adj_06_TLMO3-2    -1.09   
+129 mat_adj_07_TLMO3-2     0.326  
+130 mat_adj_08_TLMO3-2    -0.835  
+131 mat_adj_09_TLMO3-2    -0.386  
+132 mat_adj_10_TLMO3-2     0.887  
+133 mat_adj_11_TLMO3-2    -1.05   
+134 mat_adj_12_TLMO3-2     1.61   
+135 pet_adj_01_TLMO3-2     0.533  
+136 pet_adj_02_TLMO3-2     1.34   
+137 pet_adj_03_TLMO3-2     1.31   
+138 pet_adj_04_TLMO3-2     1.21   
+139 pet_adj_05_TLMO3-2     0.898  
+140 pet_adj_06_TLMO3-2     0.952  
+141 pet_adj_07_TLMO3-2     1.02   
+142 pet_adj_08_TLMO3-2     1.18   
+143 pet_adj_09_TLMO3-2     0.977  
+144 pet_adj_10_TLMO3-2     0.926  
+145 pet_adj_11_TLMO3-2     1.50   
+146 pet_adj_12_TLMO3-2     0.637  
+147 ptps_adj_01_TLMO3-2    2.34   
+148 ptps_adj_02_TLMO3-2    2.19   
+149 ptps_adj_03_TLMO3-2   13.1    
+150 ptps_adj_04_TLMO3-2    3.71   
+151 ptps_adj_05_TLMO3-2   19.3    
+152 ptps_adj_06_TLMO3-2    0.404  
+153 ptps_adj_07_TLMO3-2    0.914  
+154 ptps_adj_08_TLMO3-2    1.09   
+155 ptps_adj_09_TLMO3-2    1.01   
+156 ptps_adj_10_TLMO3-2    0.184  
+157 ptps_adj_11_TLMO3-2   10.4    
+158 ptps_adj_12_TLMO3-2    7.75   

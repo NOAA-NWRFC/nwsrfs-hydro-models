@@ -1,0 +1,34 @@
+# A tibble: 31 x 4
+   name                 lower     optimal    upper
+   <chr>                <dbl>       <dbl>    <dbl>
+ 1 uztwm_TLMO3-1      1        345.        400    
+ 2 uzfwm_TLMO3-1      1         77.4       400    
+ 3 lztwm_TLMO3-1      1        401.        500    
+ 4 lzfpm_TLMO3-1      1       1095.       1200    
+ 5 lzfsm_TLMO3-1      1        130.       1000    
+ 6 adimp_TLMO3-1      0          0.0589      0.4  
+ 7 uzk_TLMO3-1        0.1        0.143       0.7  
+ 8 lzpk_TLMO3-1       0.00001    0.000483    0.025
+ 9 lzsk_TLMO3-1       0.001      0.0930      0.3  
+10 zperc_TLMO3-1      1         26.8       250    
+11 rexp_TLMO3-1       0          4.76        6    
+12 pctim_TLMO3-1      0          0.0601      0.2  
+13 pfree_TLMO3-1      0          0.000844    1    
+14 riva_TLMO3-1       0          0.606       1    
+15 rserv_TLMO3-1      0          0.595       1    
+16 init_uztwc_TLMO3-1 0         26.9      1000    
+17 init_uzfwc_TLMO3-1 0        156.       1000    
+18 init_lztwc_TLMO3-1 0        836.       1000    
+19 init_lzfsc_TLMO3-1 0         84.7      1000    
+20 init_lzfpc_TLMO3-1 0        605.       1000    
+21 init_adimc_TLMO3-1 0        830.       1000    
+22 scf_TLMO3-1        0.7        0.831       2    
+23 mfmax_TLMO3-1      0.5        0.903       3    
+24 mfmin_TLMO3-1      0.01       0.166       0.49 
+25 uadj_TLMO3-1       0.01       0.109       0.4  
+26 si_TLMO3-1         1       3021.       3500    
+27 adc_a_TLMO3-1      0          0.480       1    
+28 adc_b_TLMO3-1      0.05       3.85       10    
+29 adc_c_TLMO3-1      0.05       0.0501     10    
+30 unit_shape_TLMO3-1 1          2.42        3    
+31 unit_scale_TLMO3-1 0.1        0.510       4    

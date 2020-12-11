@@ -1,0 +1,58 @@
+             [,1]
+ME         -29.96
+MAE        300.20
+MSE     440989.21
+RMSE       664.07
+NRMSE %     37.10
+PBIAS %     -2.70
+RSR          0.37
+rSD          0.94
+NSE          0.86
+mNSE         0.72
+rNSE         0.87
+d            0.96
+md           0.86
+rd           0.96
+cp           0.60
+r            0.93
+R2           0.86
+bR2          0.78
+KGE          0.90
+VE           0.73
+
+# A tibble: 31 x 2
+   `names(p_optimal)`   p_optimal
+   <chr>                    <dbl>
+ 1 uztwm_TLMO3-1       345.      
+ 2 uzfwm_TLMO3-1        77.4     
+ 3 lztwm_TLMO3-1       401.      
+ 4 lzfpm_TLMO3-1      1095.      
+ 5 lzfsm_TLMO3-1       130.      
+ 6 adimp_TLMO3-1         0.0589  
+ 7 uzk_TLMO3-1           0.143   
+ 8 lzpk_TLMO3-1          0.000483
+ 9 lzsk_TLMO3-1          0.0930  
+10 zperc_TLMO3-1        26.8     
+11 rexp_TLMO3-1          4.76    
+12 pctim_TLMO3-1         0.0601  
+13 pfree_TLMO3-1         0.000844
+14 riva_TLMO3-1          0.606   
+15 rserv_TLMO3-1         0.595   
+16 init_uztwc_TLMO3-1   26.9     
+17 init_uzfwc_TLMO3-1  156.      
+18 init_lztwc_TLMO3-1  836.      
+19 init_lzfsc_TLMO3-1   84.7     
+20 init_lzfpc_TLMO3-1  605.      
+21 init_adimc_TLMO3-1  830.      
+22 scf_TLMO3-1           0.831   
+23 mfmax_TLMO3-1         0.903   
+24 mfmin_TLMO3-1         0.166   
+25 uadj_TLMO3-1          0.109   
+26 si_TLMO3-1         3021.      
+27 adc_a_TLMO3-1         0.480   
+28 adc_b_TLMO3-1         3.85    
+29 adc_c_TLMO3-1         0.0501  
+30 unit_shape_TLMO3-1    2.42    
+31 unit_scale_TLMO3-1    0.510   
+
+[1] "Converged ('reltol' criterion)"
