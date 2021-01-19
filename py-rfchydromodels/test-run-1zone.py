@@ -8,8 +8,7 @@ forcings = pd.read_csv('TLMO3-1zone/forcing_TLMO3-1.csv')
 flow = pd.read_csv('TLMO3-1zone/results_01/optimal_6h.csv')
 states = pd.read_csv('TLMO3-1zone/results_01/optimal_states_6h.csv')
 
-flow['datetime'] = pd.to_datetime(flow[['year', 'month', 'day', 'hour']])
-flow['datetime'] = pd.to_datetime(flow[['year', 'month', 'day', 'hour']])
+flow.index = pd.to_datetime(flow[['year', 'month', 'day', 'hour']])
 
 zones = pars['zone'].unique()
 n_zones = len(zones)
@@ -61,37 +60,41 @@ tci = s.sacsnow(dt_seconds, forcings['year'], forcings['month'], forcings['day']
                 forcings['map_mm'], forcings['ptps'], forcings['mat_degc'])
 
 # channel routing
-m_uh = 1000
+m_uh = 1000 # max UH length
 n_uh = sim_length + m_uh
 flow_routed = s.duamel(tci, p['unit_shape'], p['unit_scale'], dt_days, n_uh, m_uh, 1, 0)
 
-# flow_cfs = flow_cfs +
-sim_flow_cfs = flow_routed[:-m_uh] * 1000 * 3.28084 ** 3 / dt_seconds * p['zone_area'].to_numpy()[0]
-x = pd.DataFrame({'flow_cfs': flow['flow_cfs'],
-                  'datetime': flow['datetime'],
-                  'sim_flow_cfs_p': sim_flow_cfs,
-                  'sim_flow_cfs_r': flow['sim_flow_cfs']})
-# x.plot('datetime',['sim_flow_cfs_r','sim_flow_cfs_p'])
-# x.plot('sim_flow_cfs_p','sim_flow_cfs_r',kind='scatter')
-(ggplot(x) +
- geom_line(aes(x='datetime', y='sim_flow_cfs_r'), color='darkgreen') +
- geom_line(aes(x='datetime', y='sim_flow_cfs_p'), color='steelblue') +
- theme_bw())
+# instantaneous routed flow
+sim_flow_cfs = flow_routed[0:sim_length] * 1000 * 3.28084 ** 3 / dt_seconds * p['zone_area'].to_numpy()[0]
 
-(ggplot(x) +
- geom_point(aes(x='sim_flow_cfs_p', y='sim_flow_cfs_r'), color='green') +
- geom_abline(aes(slope=1, intercept=0)) +
- theme_bw())
+flow.rename(columns={'sim_flow_cfs':'sim_flow_cfs_r'},inplace=True)
+flow['sim_flow_cfs_inst'] = sim_flow_cfs
+# convert to ave flow
+flow['next_sim'] = flow['sim_flow_cfs_inst'].shift(periods=-1)
+flow['sim_flow_cfs_p'] = (flow['sim_flow_cfs_inst']+flow['next_sim'])/2
 
-tci_df = pd.DataFrame({'datetime': flow['datetime'],
+tci_df = pd.DataFrame({'datetime': flow.index,
                        'tci_p': tci.flatten(),
                        'tci_r': states['tci_1']})
 # fig = tci2.plot('tci_p','tci_r',kind='scatter')
 (ggplot(tci_df) +
- geom_line(aes(x='datetime', y='tci_r'), color='darkgreen') +
- geom_line(aes(x='datetime', y='tci_p'), color='steelblue') +
- theme_bw())
+    geom_line(aes(x='datetime', y='tci_r'), color='darkgreen') +
+    geom_line(aes(x='datetime', y='tci_p'), color='steelblue') +
+    theme_bw())
 
 (ggplot(tci_df) +
- geom_point(aes(x='tci_p', y='tci_r'), color='green') +
- theme_bw())
+    geom_point(aes(x='tci_p', y='tci_r'), color='green') +
+    geom_abline(aes(slope=1, intercept=0)) +
+    theme_bw())
+
+# x.plot('datetime',['sim_flow_cfs_r','sim_flow_cfs_p'])
+# x.plot('sim_flow_cfs_p','sim_flow_cfs_r',kind='scatter')
+(ggplot(flow) +
+    geom_line(aes(x='datetime', y='sim_flow_cfs_r'), color='darkgreen') +
+    geom_line(aes(x='datetime', y='sim_flow_cfs_p'), color='steelblue') +
+    theme_bw())
+
+p = (ggplot(flow) +
+    geom_point(aes(x='sim_flow_cfs_p', y='sim_flow_cfs_r'), color='green') +
+    geom_abline(aes(slope=1, intercept=0)) +
+    theme_bw())

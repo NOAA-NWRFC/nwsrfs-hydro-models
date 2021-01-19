@@ -451,7 +451,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
       !   write(*,'(a10,f30.17)')'adimc',adimc_sp
       ! end if 
   
-      call exsac(real(dt), raim(i,nh), real(mat(i,nh)), real(pet(i,nh)), &
+      call exsac(1, real(dt), raim(i,nh), real(mat(i,nh)), real(pet(i,nh)), &
           !SAC PARAMETERS
           !UZTWM,UZFWM,UZK,PCTIM,ADIMP,RIVA,ZPERC, &
           !REXP,LZTWM,LZFSM,LZFPM,LZSK,LZPK,PFREE, &

@@ -1,3 +1,23 @@
+      !      PRINT *,'DUAMEL'
+      !      PRINT *, UN1,UT,DT,Q(1),NU1,N,M,K,NTAU
+      !      PRINT *,'DUAMEL?'
+ 
+      ! SUBROUTINE DUAMEL(Q,UN1,UT,DT,N,MM,K,NTAU,QB)
+      ! AWW adding documentation for input variables
+      ! Q      : TCI (total channel inflow) vector ... .ie unrouted
+      ! U1     : unit hydrograph vector
+      ! UN1    : unit hydrograph shape parameter (for gamma dist)
+      ! UT     : unit hydrograph scale parameter (for gamma dist)
+      ! DT     : timestep of the UH function (in days or fractions thereof)
+      ! N      : sim_length + uh_length ...ie length of U1
+      ! M      : max UH length?
+      ! QB     : routed flow vector
+      ! K      : 
+      ! NTAU   : 
+
+      ! AWW adding documentation for local variables
+      ! SP     : 
+
 C
 C===========================================================
 C
@@ -14,7 +34,8 @@ C
 
       REAL U1(MM)
 
-!      write(*,*) UN1,UT,DT,N,MM,K,NTAU
+      !write(*,*) UN1,UT,DT,N,MM,K,NTAU
+      !U1 = 0
 
       M = MM
       IF(UN1) 8,9,9
@@ -25,6 +46,7 @@ C
       SP=0.
       TOC=GF(UN1)
       TOC=LOG(TOC*UT)
+      !write(*,*)'TOC: ',TOC
       DO 1 I=1,M
       TOP=I*DT/UT
       TOR=(UN1-1)*LOG(TOP)-TOP-TOC
@@ -44,6 +66,9 @@ C
       SP=1./SP
       DO 7 I=1,M
     7 U1(I)=U1(I)*SP
+      !do L=1,M
+      !  if (U1(L)>0)write(*,*)'U1',L,U1(L)
+      !end do 
     6 CONTINUE
       IOC=N+NTAU
       IF(N.GT.M)GO TO 10
@@ -55,6 +80,7 @@ C
       IF(I.GT.N)B=N
       DO 3 J=A,B
       IOR=I-J+1
+      !if(I.lt.10)write(*,*)QB(I)+U1(J)*Q(IOR)
     3 QB(I)=QB(I)+Q(J)*U1(IOR)
     2 CONTINUE
       GO TO 11
@@ -66,6 +92,7 @@ C
       IF(I.GT.M)B=M
       DO 5 J=A,B
       IOR=I-J+1
+      !if(I.lt.10)write(*,*)QB(I)+U1(J)*Q(IOR)
  5    QB(I)=QB(I)+U1(J)*Q(IOR)
  4    CONTINUE
  11   RETURN
@@ -76,6 +103,8 @@ C
 C=================================================================
 C
       FUNCTION GF(Y)
+      REAL, INTENT(IN)::Y
+      REAL::X,H,GF
       H=1
       X=Y
  38   IF(X.LE.0.)GO TO 39
