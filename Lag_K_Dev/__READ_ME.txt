@@ -105,21 +105,21 @@ ts_in=6
 ts_out=6
 #pin7:  meteng
 units='ENGL'#'METR'
-#pin7:  lagtbl (pulled from wb: 'SAKW1R_Lagk_Check.xlsx', ws: 'Parameters'
+#pin7:  lagtbl (pulled from wb: 'SAKW1R_Lagk_Check.xlsx', ws: 'Parameters')
 lagq=np.array([6, 0, 4, 10000, 3.5, 20000, 3, 40000, 3, 100000],dtype='f4')
 #pin7:  jlag
 len_lagq=len(lagq)/2
-#pin7:  ktbl (pulled from wb: 'SAKW1R_Lagk_Check.xlsx', ws: 'Parameters'
+#pin7:  ktbl (pulled from wb: 'SAKW1R_Lagk_Check.xlsx', ws: 'Parameters')
 kq=np.array([1, 100, 1, 40000, 3, 100000],dtype='f4')
 #pin7:  jk
 len_kq=len(kq)/2
-#pin7:  ico
+#pin7:  ico (pulled from wb: 'SAKW1R_Lagk_Check.xlsx', ws: 'Initial Conditions')
 init_co=float(6025)
-#pin7:  iinfl
+#pin7:  iinfl (pulled from wb: 'SAKW1R_Lagk_Check.xlsx', ws:'Initial Conditions')
 init_if=float(6018)
-#pin7:  ioutfl
+#pin7:  ioutfl (pulled from wb: 'SAKW1R_Lagk_Check.xlsx', ws: 'Initial Conditions')
 init_of=float(6018)
-#pin7:  istor
+#pin7:  istor (pulled from wb: 'SAKW1R_Lagk_Check.xlsx', ws: 'Initial Condition')
 init_stor=float(6307)
 #
 #Run the pin7 subroutine
