@@ -45,25 +45,70 @@ sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=TRUE){
   n_zones = length(forcing)
   sim_length = nrow(forcing[[1]])
 
+  # limits are applied basin wide
   if(forcing_adjust){
     # using base R here to avoid package dependency
-    map_adj = reshape(pars[grepl('map_adj',pars$name),c('name','zone','value')],
+    map_lower = reshape(pars[grepl('map_lower',pars$name),c('name','zone','value')],
                       timevar='zone',idvar='name',direction='wide')[,-1]
-    mat_adj = reshape(pars[grepl('mat_adj',pars$name),c('name','zone','value')],
-                      timevar='zone',idvar='name',direction='wide')[,-1]
-    ptps_adj = reshape(pars[grepl('ptps_adj',pars$name),c('name','zone','value')],
-                      timevar='zone',idvar='name',direction='wide')[,-1]
-    pet_adj = reshape(pars[grepl('pet_adj',pars$name),c('name','zone','value')],
-                      timevar='zone',idvar='name',direction='wide')[,-1]
-  }else{
-    map_adj = matrix(1,nrow=12,ncol=n_zones)
-    mat_adj = matrix(0,nrow=12,ncol=n_zones)
-    ptps_adj = matrix(1,nrow=12,ncol=n_zones)
-    pet_adj = matrix(1,nrow=12,ncol=n_zones)
+    map_upper = reshape(pars[grepl('map_upper',pars$name),c('name','zone','value')],
+                        timevar='zone',idvar='name',direction='wide')[,-1]
+    mat_lower = reshape(pars[grepl('mat_lower',pars$name),c('name','zone','value')],
+                        timevar='zone',idvar='name',direction='wide')[,-1]
+    mat_upper = reshape(pars[grepl('mat_upper',pars$name),c('name','zone','value')],
+                        timevar='zone',idvar='name',direction='wide')[,-1]
+    pet_lower = reshape(pars[grepl('pet_lower',pars$name),c('name','zone','value')],
+                        timevar='zone',idvar='name',direction='wide')[,-1]
+    pet_upper = reshape(pars[grepl('pet_upper',pars$name),c('name','zone','value')],
+                        timevar='zone',idvar='name',direction='wide')[,-1]
+    ptps_lower = reshape(pars[grepl('ptps_lower',pars$name),c('name','zone','value')],
+                        timevar='zone',idvar='name',direction='wide')[,-1]
+    ptps_upper = reshape(pars[grepl('ptps_upper',pars$name),c('name','zone','value')],
+                        timevar='zone',idvar='name',direction='wide')[,-1]
+
+    # limits are applied basin wide
+    if(n_zones == 1){
+      map_limits = cbind(map_lower,map_upper)
+      mat_limits = cbind(mat_lower,mat_upper)
+      pet_limits = cbind(pet_lower,pet_upper)
+      ptps_limits = cbind(ptps_lower,ptps_upper)
+    }else{
+      map_limits = cbind(map_lower[,1],map_upper[,1])
+      mat_limits = cbind(mat_lower[,1],mat_upper[,1])
+      pet_limits = cbind(pet_lower[,1],pet_upper[,1])
+      ptps_limits = cbind(ptps_lower[,1],ptps_upper[,1])
+    }
+
+    # limits are applied basin wide
+    map_fa_pars = c(pars[pars$name == 'map_scale',]$value[1],
+                    pars[pars$name == 'map_p_redist',]$value[1],
+                    pars[pars$name == 'map_std',]$value[1],
+                    pars[pars$name == 'map_shift',]$value[1])
+    mat_fa_pars = c(pars[pars$name == 'mat_scale',]$value[1],
+                    pars[pars$name == 'mat_p_redist',]$value[1],
+                    pars[pars$name == 'mat_std',]$value[1],
+                    pars[pars$name == 'mat_shift',]$value[1])
+    pet_fa_pars = c(pars[pars$name == 'pet_scale',]$value[1],
+                    pars[pars$name == 'pet_p_redist',]$value[1],
+                    pars[pars$name == 'pet_std',]$value[1],
+                    pars[pars$name == 'pet_shift',]$value[1])
+    ptps_fa_pars = c(pars[pars$name == 'ptps_scale',]$value[1],
+                     pars[pars$name == 'ptps_p_redist',]$value[1],
+                     pars[pars$name == 'ptps_std',]$value[1],
+                     pars[pars$name == 'ptps_shift',]$value[1])
+
   }
 
   peadj_m = reshape(pars[grepl('peadj_',pars$name),c('name','zone','value')],
                     timevar='zone',idvar='name',direction='wide')[,-1]
+
+  init = rbind(pars[pars$name == 'init_swe',]$value,
+               pars[pars$name == 'init_uztwc',]$value,
+               pars[pars$name == 'init_uzfwc',]$value,
+               pars[pars$name == 'init_lztwc',]$value,
+               pars[pars$name == 'init_lzfsc',]$value,
+               pars[pars$name == 'init_lzfpc',]$value,
+               pars[pars$name == 'init_adimc',]$value)
+
 
   x = .Fortran('sacsnow',
                n_hrus=as.integer(n_zones),
@@ -112,18 +157,17 @@ sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=TRUE){
                 adc_b = pars[pars$name ==  'adc_b',]$value,
                 adc_c = pars[pars$name ==  'adc_c',]$value,
                # forcing adjust parameters
-                map_adj = as.matrix(map_adj),
-                mat_adj = as.matrix(mat_adj),
-                pet_adj = as.matrix(pet_adj),
-               ptps_adj = as.matrix(ptps_adj),
+               map_fa_pars = map_fa_pars,
+               mat_fa_pars = mat_fa_pars,
+               pet_fa_pars = pet_fa_pars,
+               ptps_fa_pars = map_fa_pars,
+               # forcing adjust limits
+               map_fa_limits = map_limits,
+               mat_fa_limits = mat_limits,
+               pet_fa_limits = pet_limits,
+               ptps_fa_limits = ptps_limits,
                # initial conditions
-                 init_swe = pars[pars$name == 'init_swe',]$value  ,
-               init_uztwc = pars[pars$name == 'init_uztwc',]$value,
-               init_uzfwc = pars[pars$name == 'init_uzfwc',]$value,
-               init_lztwc = pars[pars$name == 'init_lztwc',]$value,
-               init_lzfsc = pars[pars$name == 'init_lzfsc',]$value,
-               init_lzfpc = pars[pars$name == 'init_lzfpc',]$value,
-               init_adimc = pars[pars$name == 'init_adimc',]$value,
+               init = init,
                # forcings
                map = do.call('cbind',lapply(forcing,'[[','map_mm')),
                ptps = do.call('cbind',lapply(forcing,'[[','ptps')),
@@ -163,27 +207,72 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE){
   sim_length = nrow(forcing[[1]])
 
 
+  # limits are applied basin wide
   if(forcing_adjust){
     # using base R here to avoid package dependency
-    map_adj = reshape(pars[grepl('map_adj',pars$name),c('name','zone','value')],
-                      timevar='zone',idvar='name',direction='wide')[,-1]
-    mat_adj = reshape(pars[grepl('mat_adj',pars$name),c('name','zone','value')],
-                      timevar='zone',idvar='name',direction='wide')[,-1]
-    ptps_adj = reshape(pars[grepl('ptps_adj',pars$name),c('name','zone','value')],
-                       timevar='zone',idvar='name',direction='wide')[,-1]
-    pet_adj = reshape(pars[grepl('pet_adj',pars$name),c('name','zone','value')],
-                      timevar='zone',idvar='name',direction='wide')[,-1]
-  }else{
-    map_adj = matrix(1,nrow=12,ncol=n_zones)
-    mat_adj = matrix(0,nrow=12,ncol=n_zones)
-    ptps_adj = matrix(1,nrow=12,ncol=n_zones)
-    pet_adj = matrix(1,nrow=12,ncol=n_zones)
+    map_lower = reshape(pars[grepl('map_lower',pars$name),c('name','zone','value')],
+                        timevar='zone',idvar='name',direction='wide')[,-1]
+    map_upper = reshape(pars[grepl('map_upper',pars$name),c('name','zone','value')],
+                        timevar='zone',idvar='name',direction='wide')[,-1]
+    mat_lower = reshape(pars[grepl('mat_lower',pars$name),c('name','zone','value')],
+                        timevar='zone',idvar='name',direction='wide')[,-1]
+    mat_upper = reshape(pars[grepl('mat_upper',pars$name),c('name','zone','value')],
+                        timevar='zone',idvar='name',direction='wide')[,-1]
+    pet_lower = reshape(pars[grepl('pet_lower',pars$name),c('name','zone','value')],
+                        timevar='zone',idvar='name',direction='wide')[,-1]
+    pet_upper = reshape(pars[grepl('pet_upper',pars$name),c('name','zone','value')],
+                        timevar='zone',idvar='name',direction='wide')[,-1]
+    ptps_lower = reshape(pars[grepl('ptps_lower',pars$name),c('name','zone','value')],
+                         timevar='zone',idvar='name',direction='wide')[,-1]
+    ptps_upper = reshape(pars[grepl('ptps_upper',pars$name),c('name','zone','value')],
+                         timevar='zone',idvar='name',direction='wide')[,-1]
+
+    # limits are applied basin wide
+    if(n_zones == 1){
+      map_limits = cbind(map_lower,map_upper)
+      mat_limits = cbind(mat_lower,mat_upper)
+      pet_limits = cbind(pet_lower,pet_upper)
+      ptps_limits = cbind(ptps_lower,ptps_upper)
+    }else{
+      map_limits = cbind(map_lower[,1],map_upper[,1])
+      mat_limits = cbind(mat_lower[,1],mat_upper[,1])
+      pet_limits = cbind(pet_lower[,1],pet_upper[,1])
+      ptps_limits = cbind(ptps_lower[,1],ptps_upper[,1])
+    }
+
+    # limits are applied basin wide
+    map_fa_pars = c(pars[pars$name == 'map_scale',]$value[1],
+                    pars[pars$name == 'map_p_redist',]$value[1],
+                    pars[pars$name == 'map_std',]$value[1],
+                    pars[pars$name == 'map_shift',]$value[1])
+    mat_fa_pars = c(pars[pars$name == 'mat_scale',]$value[1],
+                    pars[pars$name == 'mat_p_redist',]$value[1],
+                    pars[pars$name == 'mat_std',]$value[1],
+                    pars[pars$name == 'mat_shift',]$value[1])
+    pet_fa_pars = c(pars[pars$name == 'pet_scale',]$value[1],
+                    pars[pars$name == 'pet_p_redist',]$value[1],
+                    pars[pars$name == 'pet_std',]$value[1],
+                    pars[pars$name == 'pet_shift',]$value[1])
+    ptps_fa_pars = c(pars[pars$name == 'ptps_scale',]$value[1],
+                     pars[pars$name == 'ptps_p_redist',]$value[1],
+                     pars[pars$name == 'ptps_std',]$value[1],
+                     pars[pars$name == 'ptps_shift',]$value[1])
+
   }
 
   peadj_m = reshape(pars[grepl('peadj_',pars$name),c('name','zone','value')],
                     timevar='zone',idvar='name',direction='wide')[,-1]
 
   output_matrix = matrix(0,nrow=sim_length,ncol=n_zones)
+
+  init = rbind(pars[pars$name == 'init_swe',]$value,
+               pars[pars$name == 'init_uztwc',]$value,
+               pars[pars$name == 'init_uzfwc',]$value,
+               pars[pars$name == 'init_lztwc',]$value,
+               pars[pars$name == 'init_lzfsc',]$value,
+               pars[pars$name == 'init_lzfpc',]$value,
+               pars[pars$name == 'init_adimc',]$value)
+
   x = .Fortran('sacsnowstates',
                n_hrus=as.integer(n_zones),
                dt=as.integer(dt_seconds),
@@ -231,18 +320,17 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE){
                adc_b = pars[pars$name ==  'adc_b',]$value,
                adc_c = pars[pars$name ==  'adc_c',]$value,
                # forcing adjust parameters
-               map_adj = as.matrix(map_adj),
-               mat_adj = as.matrix(mat_adj),
-               pet_adj = as.matrix(pet_adj),
-               ptps_adj = as.matrix(ptps_adj),
+               map_fa_pars = map_fa_pars,
+               mat_fa_pars = mat_fa_pars,
+               pet_fa_pars = pet_fa_pars,
+               ptps_fa_pars = map_fa_pars,
+               # forcing adjust limits
+               map_fa_limits = map_limits,
+               mat_fa_limits = map_limits,
+               pet_fa_limits = map_limits,
+               ptps_fa_limits = map_limits,
                # initial conditions
-               init_swe = pars[pars$name == 'init_swe',]$value  ,
-               init_uztwc = pars[pars$name == 'init_uztwc',]$value,
-               init_uzfwc = pars[pars$name == 'init_uzfwc',]$value,
-               init_lztwc = pars[pars$name == 'init_lztwc',]$value,
-               init_lzfsc = pars[pars$name == 'init_lzfsc',]$value,
-               init_lzfpc = pars[pars$name == 'init_lzfpc',]$value,
-               init_adimc = pars[pars$name == 'init_adimc',]$value,
+               init = init,
                # forcings
                map = do.call('cbind',lapply(forcing,'[[','map_mm')),
                ptps = do.call('cbind',lapply(forcing,'[[','ptps')),
@@ -258,6 +346,7 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE){
                lzfpc = output_matrix,
                adimc = output_matrix,
                swe = output_matrix)
+  #print(head(x))
 
   format_states(x[c('year','month','day','hour','tci','aet',
                     'uztwc','uzfwc','lztwc','lzfsc','lzfpc','adimc','swe',

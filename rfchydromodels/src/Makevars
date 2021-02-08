@@ -1,2 +1,9 @@
-PKG_FFLAGS = #-O3 #-fno-align-commons -ffixed-line-length-none #-std=f95 -Wall -pedantic
-PKG_FCFLAGS = #-O3 #-fno-align-commons -ffixed-line-length-none #-std=f95 -Wall -pedantic
+PKG_FFLAGS = #-Wall -pedantic #-O3 #-fno-align-commons -ffixed-line-length-none #-std=f95
+PKG_FCFLAGS = -mmacosx-version-min=11.1 #-Wall -pedantic #-O3 #-fno-align-commons -ffixed-line-length-none #-std=f95
+
+all: $(SHLIB)
+
+# need to tell R the order to compile dependent modules
+sac_snow_only.o sac_snow_states.o: utilities.o 
+utilities.o: types.o stats.o sorting.o
+stats.o: types.o sorting.o
