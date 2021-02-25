@@ -1,4 +1,4 @@
-from utilities.optimization import spot_setup
+from utilities.spotpy_optimization import spot_setup
 import spotpy
 
 s = spot_setup('TLMO3','basins/TLMO3-1zone',['rmse','mae','log'])

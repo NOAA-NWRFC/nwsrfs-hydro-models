@@ -96,6 +96,9 @@ sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=TRUE){
                      pars[pars$name == 'ptps_std',]$value[1],
                      pars[pars$name == 'ptps_shift',]$value[1])
 
+  }else{
+    map_limits = mat_limits = pet_limits = ptps_limits = matrix(1,12,2)
+    map_fa_pars = mat_fa_pars = pet_fa_pars = ptps_fa_pars = c(1,0,10,0)
   }
 
   peadj_m = reshape(pars[grepl('peadj_',pars$name),c('name','zone','value')],
@@ -121,6 +124,7 @@ sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=TRUE){
                # zone info
                latitude = pars[pars$name == 'alat',]$value,
                elev = pars[pars$name == 'elev',]$value,
+               area = pars[pars$name == 'zone_area',]$value,
                # sac parameters
                uztwm = pars[pars$name == 'uztwm',]$value,
                uzfwm = pars[pars$name == 'uzfwm',]$value,
@@ -160,7 +164,7 @@ sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=TRUE){
                map_fa_pars = map_fa_pars,
                mat_fa_pars = mat_fa_pars,
                pet_fa_pars = pet_fa_pars,
-               ptps_fa_pars = map_fa_pars,
+               ptps_fa_pars = ptps_fa_pars,
                # forcing adjust limits
                map_fa_limits = map_limits,
                mat_fa_limits = mat_limits,
@@ -258,6 +262,9 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE){
                      pars[pars$name == 'ptps_std',]$value[1],
                      pars[pars$name == 'ptps_shift',]$value[1])
 
+  }else{
+    map_limits = mat_limits = pet_limits = ptps_limits = matrix(1,12,2)
+    map_fa_pars = mat_fa_pars = pet_fa_pars = ptps_fa_pars = c(1,0,10,0)
   }
 
   peadj_m = reshape(pars[grepl('peadj_',pars$name),c('name','zone','value')],
@@ -284,6 +291,7 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE){
                # zone info
                latitude = pars[pars$name == 'alat',]$value,
                elev = pars[pars$name == 'elev',]$value,
+               area = pars[pars$name == 'zone_area',]$value,
                # sac parameters
                uztwm = pars[pars$name == 'uztwm',]$value,
                uzfwm = pars[pars$name == 'uzfwm',]$value,
@@ -323,12 +331,12 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE){
                map_fa_pars = map_fa_pars,
                mat_fa_pars = mat_fa_pars,
                pet_fa_pars = pet_fa_pars,
-               ptps_fa_pars = map_fa_pars,
+               ptps_fa_pars = ptps_fa_pars,
                # forcing adjust limits
                map_fa_limits = map_limits,
-               mat_fa_limits = map_limits,
-               pet_fa_limits = map_limits,
-               ptps_fa_limits = map_limits,
+               mat_fa_limits = mat_limits,
+               pet_fa_limits = pet_limits,
+               ptps_fa_limits = ptps_limits,
                # initial conditions
                init = init,
                # forcings
@@ -544,4 +552,175 @@ interp_fa <- function(factors,month,day,hour){
     }
   }
   factors_step
+}
+
+
+
+#' Adjust monthly climo based on 4 parameters
+#'
+#' description
+#'
+#' @param climo blah
+#' @param pars blah
+#' @param ll blah
+#' @param ul blah
+#' @param return_climo blah
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#' climo = rep(2,12)
+#' pars = c(.5,0,10,0)
+#' forcing_adjust_map_pet_ptps(climo,pars)
+forcing_adjust_map_pet_ptps <- function(climo, pars, ll=0.9*climo, ul=1.1*climo, return_climo = FALSE){
+
+
+  scale = pars[1]
+  p_redist = pars[2]
+  sd = pars[3]
+  shift = pars[4] # days
+
+  # normal weights
+  w = dnorm(1:12, mean=1, sd=sd)
+  w = rev(w/sum(w))
+
+  # apply first scaling parameter
+  climo_adj = climo * scale
+  # get the indexes of the sorted values to re-sort later
+  climo_order = order(order(climo_adj))
+  # sort climo in ascending order to apply weights
+  climo_adj = sort(climo_adj)
+
+  # percent of each month remaining before redistributing
+  climo_remaining = climo_adj * (1.0 - p_redist)
+  # redistribute according to weights
+  climo_redist = climo_remaining + sum(climo_adj * p_redist) * w
+  # re-sort to original order
+  climo_adj = climo_redist[climo_order]
+
+  climo_interp = numeric(14)
+  if( shift != 0 ){
+    # apply shift
+    climo_interp[1] = climo_adj[12]
+    climo_interp[2:13] = climo_adj
+    climo_interp[14] = climo_adj[1]
+
+    # interpolate between (x0,y0) and (x1,y1)
+    # y = y0 + (x-x0)*(y1-y0)/(x1-x0)
+    # interpolate between (month0,climo0) and (month1,climo1)
+    # y = climo0 + ((month0+shift)-month0)*(climo1-climo0)/(month1-month0)
+    # could get fancier here and account for the number of days in each month, but
+    # 30 day months should be a reasonable approximation
+    for(i in 1:12){
+      if(shift > 0 ){
+        climo_adj[i] = climo_interp[i+1] + shift*(climo_interp[i+2]-climo_interp[i+1])/30
+      }else if (shift < 0){
+        climo_adj[i] = climo_interp[i] + shift*(climo_interp[i+1]-climo_interp[i])/30
+      }
+    }
+  }
+
+  out = numeric(12)
+  # enforce limits
+  for( i in 1:12){
+    if(climo_adj[i] > ul[i]) climo_adj[i] = ul[i]
+    if(climo_adj[i] < ll[i]) climo_adj[i] = ll[i]
+    if(climo[i] == 0){
+      out[i] = 1
+    }else{
+      out[i] = climo_adj[i]/climo[i]
+    }
+  }
+  if(return_climo) return(climo_adj) else return(out)
+  #out
+}
+
+
+#' Adjust monthly climo based on 4 parameters
+#'
+#' description
+#'
+#' @param climo blah
+#' @param pars blah
+#' @param ll blah
+#' @param ul blah
+#' @param return_climo blah
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#' climo = rep(2,12)
+#' pars = c(.5,0,10,0)
+#' forcing_adjust_mat(climo,pars)
+forcing_adjust_mat <- function (climo, pars, ll=0.9*climo, ul=1.1*climo, return_climo = FALSE){
+
+  scale = pars[1]
+  p_redist = pars[2]
+  sd = pars[3]
+  shift = pars[4] # days
+
+  # normal weights
+  w = numeric(12)
+  w[1:6] = dnorm(1:6, mean=1, sd=sd)
+  w[7:12] = rev(w[1:6])
+  w = w/sum(w)*2
+
+  # apply first scaling parameter
+  climo_adj = climo * scale
+  med = median(climo_adj)
+  # get the indexes of the sorted values to re-sort later
+  climo_order = order(order(climo_adj))
+  # sort climo in ascending order to apply weights
+  climo_adj = sort(climo_adj)
+  # compute deviation from median
+  climo_dev = climo_adj - med
+
+  # percent of each month remaining before redistributing
+  climo_remaining = climo_dev * (1.0 - p_redist)
+  # get the total temperature to above the median and below median
+  # write(*,*)climo_dev(1:6), p_redist
+  climo_dist = numeric(12)
+  climo_dist[1:6] = sum(climo_dev[1:6] * p_redist)
+  climo_dist[7:12] = sum(climo_dev[7:12] * p_redist)
+
+  # redistribute according to weights
+  climo_redist = med + climo_remaining + climo_dist * w
+
+  # re-sort to original order
+  climo_adj = climo_redist[climo_order]
+
+  climo_interp = numeric(14)
+  if(shift != 0 ){
+    # apply shift
+    climo_interp[1] = climo_adj[12]
+    climo_interp[2:13] = climo_adj
+    climo_interp[14] = climo_adj[1]
+
+    # interpolate between (x0,y0) and (x1,y1)
+    # y = y0 + (x-x0)*(y1-y0)/(x1-x0)
+    # interpolate between (month0,climo0) and (month1,climo1)
+    # y = climo0 + ((month0+shift)-month0)*(climo1-climo0)/(month1-month0)
+    # could get fancier here and account for the number of days in each month, but
+    # 30 day months should be a reasonable approximation
+    for(i in 1:12){
+      if(shift > 0 ){
+        climo_adj[i] = climo_interp[i+1] + shift*(climo_interp[i+2]-climo_interp[i+1])/30
+      }else if (shift < 0 ){
+        climo_adj[i] = climo_interp[i] + shift*(climo_interp[i+1]-climo_interp[i])/30
+      }
+    }
+  }
+
+
+  # enforce limits
+  for(i in 1:12){
+    if(climo_adj[i] > ul[i]) climo_adj[i] = ul[i]
+    if(climo_adj[i] < ll[i]) climo_adj[i] = ll[i]
+  }
+
+  out = climo_adj-climo
+  if(return_climo) return(climo_adj) else return(out)
+
 }

@@ -1,19 +1,17 @@
 import pandas as pd
-import numpy as np
-import sacsnowuh.main as s
 from utilities.model import Model
-from utilities.optimization import ModelWrapper
+from utilities.problems import SacSnowUH
 from plotnine import *
 
-pars_1zone = pd.read_csv('TLMO3-1zone/results_01/pars_optimal.csv')
-pars_2zone = pd.read_csv('TLMO3-2zone/results_01/pars_optimal.csv')
+pars_1zone = pd.read_csv('basins/TLMO3-1zone/results_01/pars_optimal.csv')
+pars_2zone = pd.read_csv('basins/TLMO3-2zone/results_01/pars_optimal.csv')
 
-forcings_1zone = [pd.read_csv('TLMO3-1zone/forcing_TLMO3-1.csv')]
-forcings_2zone = [pd.read_csv('TLMO3-2zone/forcing_TLMO3-1.csv'),
-                  pd.read_csv('TLMO3-2zone/forcing_TLMO3-2.csv')]
+forcings_1zone = [pd.read_csv('basins/TLMO3-1zone/forcing_TLMO3-1.csv')]
+forcings_2zone = [pd.read_csv('basins/TLMO3-2zone/forcing_TLMO3-1.csv'),
+                  pd.read_csv('basins/TLMO3-2zone/forcing_TLMO3-2.csv')]
 
-flow = pd.read_csv('TLMO3-2zone/results_01/optimal_6h.csv')
-states = pd.read_csv('TLMO3-2zone/results_01/optimal_states_6h.csv')
+flow = pd.read_csv('basins/TLMO3-2zone/results_01/optimal_6h.csv')
+states = pd.read_csv('basins/TLMO3-2zone/results_01/optimal_states_6h.csv')
 
 flow.rename(columns={'sim_flow_cfs':'sim_flow_cfs_r'},inplace=True)
 
@@ -44,8 +42,5 @@ p1 = (ggplot(flow) +
     geom_abline(aes(slope=1, intercept=0)) +
     theme_bw())
 
-# test the objective functions
-model_wrapper = ModelWrapper(forcings_1zone,pars_1zone,flow)
-print(model_wrapper.rmse())
-print(model_wrapper.log())
-print(model_wrapper.mae())
+# test setting up the model wrapper
+model_wrapper = SacSnowUH('TLMO3','basins/TLMO3-1zone')

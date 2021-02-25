@@ -1,58 +1,74 @@
              [,1]
-ME         -29.96
-MAE        300.20
-MSE     440989.21
-RMSE       664.07
-NRMSE %     37.10
-PBIAS %     -2.70
+ME         -23.99
+MAE        282.43
+MSE     427537.24
+RMSE       653.86
+NRMSE %     36.50
+PBIAS %     -2.10
 RSR          0.37
 rSD          0.94
-NSE          0.86
-mNSE         0.72
-rNSE         0.87
+NSE          0.87
+mNSE         0.73
+rNSE         0.89
 d            0.96
-md           0.86
-rd           0.96
-cp           0.60
+md           0.87
+rd           0.97
+cp           0.62
 r            0.93
-R2           0.86
+R2           0.87
 bR2          0.78
-KGE          0.90
-VE           0.73
+KGE          0.91
+VE           0.75
 
-# A tibble: 31 x 2
-   `names(p_optimal)`   p_optimal
-   <chr>                    <dbl>
- 1 uztwm_TLMO3-1       345.      
- 2 uzfwm_TLMO3-1        77.4     
- 3 lztwm_TLMO3-1       401.      
- 4 lzfpm_TLMO3-1      1095.      
- 5 lzfsm_TLMO3-1       130.      
- 6 adimp_TLMO3-1         0.0589  
- 7 uzk_TLMO3-1           0.143   
- 8 lzpk_TLMO3-1          0.000483
- 9 lzsk_TLMO3-1          0.0930  
-10 zperc_TLMO3-1        26.8     
-11 rexp_TLMO3-1          4.76    
-12 pctim_TLMO3-1         0.0601  
-13 pfree_TLMO3-1         0.000844
-14 riva_TLMO3-1          0.606   
-15 rserv_TLMO3-1         0.595   
-16 init_uztwc_TLMO3-1   26.9     
-17 init_uzfwc_TLMO3-1  156.      
-18 init_lztwc_TLMO3-1  836.      
-19 init_lzfsc_TLMO3-1   84.7     
-20 init_lzfpc_TLMO3-1  605.      
-21 init_adimc_TLMO3-1  830.      
-22 scf_TLMO3-1           0.831   
-23 mfmax_TLMO3-1         0.903   
-24 mfmin_TLMO3-1         0.166   
-25 uadj_TLMO3-1          0.109   
-26 si_TLMO3-1         3021.      
-27 adc_a_TLMO3-1         0.480   
-28 adc_b_TLMO3-1         3.85    
-29 adc_c_TLMO3-1         0.0501  
-30 unit_shape_TLMO3-1    2.42    
-31 unit_scale_TLMO3-1    0.510   
+# A tibble: 47 x 2
+   `names(p_optimal)`  p_optimal
+   [3m<chr>[23m                   [3m<dbl>[23m
+ 1 uztwm_TLMO3-1       284.     
+ 2 uzfwm_TLMO3-1        83.6    
+ 3 lztwm_TLMO3-1       364.     
+ 4 lzfpm_TLMO3-1       437.     
+ 5 lzfsm_TLMO3-1       254.     
+ 6 adimp_TLMO3-1         0.095[4m7[24m 
+ 7 uzk_TLMO3-1           0.159  
+ 8 lzpk_TLMO3-1          0.002[4m5[24m[4m9[24m
+ 9 lzsk_TLMO3-1          0.029[4m6[24m 
+10 zperc_TLMO3-1        69.8    
+11 rexp_TLMO3-1          5.04   
+12 pctim_TLMO3-1         0.004[4m5[24m[4m4[24m
+13 pfree_TLMO3-1         0.011[4m2[24m 
+14 riva_TLMO3-1          0.842  
+15 rserv_TLMO3-1         0.151  
+16 init_uztwc_TLMO3-1   61.6    
+17 init_uzfwc_TLMO3-1   33.8    
+18 init_lztwc_TLMO3-1  249.     
+19 init_lzfsc_TLMO3-1  118.     
+20 init_lzfpc_TLMO3-1  345.     
+21 init_adimc_TLMO3-1  659.     
+22 scf_TLMO3-1           1.03   
+23 mfmax_TLMO3-1         2.20   
+24 mfmin_TLMO3-1         0.367  
+25 uadj_TLMO3-1          0.208  
+26 si_TLMO3-1          449.     
+27 adc_a_TLMO3-1         0.498  
+28 adc_b_TLMO3-1         0.679  
+29 adc_c_TLMO3-1         8.35   
+30 unit_shape_TLMO3-1    2.12   
+31 unit_scale_TLMO3-1    0.592  
+32 map_scale_TLMO3       1.14   
+33 map_p_redist_TLMO3    0.167  
+34 map_std_TLMO3         1.02   
+35 map_shift_TLMO3       1.77   
+36 mat_scale_TLMO3       0.705  
+37 mat_p_redist_TLMO3    0.063[4m9[24m 
+38 mat_std_TLMO3         0.135  
+39 mat_shift_TLMO3       1.60   
+40 pet_scale_TLMO3       1.15   
+41 pet_p_redist_TLMO3    0.149  
+42 pet_std_TLMO3        14.2    
+43 pet_shift_TLMO3      -[31m0[39m[31m.[39m[31m794[39m  
+44 ptps_scale_TLMO3      0.919  
+45 ptps_p_redist_TLMO3   0.183  
+46 ptps_std_TLMO3        3.34   
+47 ptps_shift_TLMO3    -[31m12[39m[31m.[39m[31m2[39m    
 
 [1] "Converged ('reltol' criterion)"
