@@ -1,14 +1,14 @@
 from platypus import *
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-from utilities.problem_platypus import SacSnowUH
+from utilities.problems import SacSnowUH_platypus
 from timeit import default_timer as timer
 
 if __name__ == '__main__':
     # setup the experiment
     # problem = DTLZ2(3)
 
-    problem = SacSnowUH(basin='TLMO3',
+    problem = SacSnowUH_platypus(basin='TLMO3',
                         basin_dir='basins/TLMO3-1zone',
                         objectives=['rmse', 'log', 'mae'])
 

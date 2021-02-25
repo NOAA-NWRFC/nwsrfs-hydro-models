@@ -4,7 +4,7 @@
 \alias{sac_snow_states}
 \title{Execute SAC-SMA, SNOW17, return total channel inflow per zone, and model states}
 \usage{
-sac_snow_states(dt_hours, forcing, pars, forcing_adjust = FALSE)
+sac_snow_states(dt_hours, forcing, pars, forcing_adjust = TRUE)
 }
 \arguments{
 \item{dt_hours}{timestep in hours}

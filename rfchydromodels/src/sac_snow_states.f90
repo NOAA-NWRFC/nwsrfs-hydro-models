@@ -1,5 +1,5 @@
 subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
-    latitude, elev, &
+    latitude, elev, area, &
     uztwm, uzfwm, lztwm, lzfpm, lzfsm, adimp, uzk, lzpk, lzsk, zperc, &
     rexp, pctim, pfree, riva, side, rserv, &
     peadj, pxadj, peadj_m, &
@@ -65,6 +65,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   ! Snow17_model params 
   double precision, dimension(n_hrus), intent(in):: latitude   ! decimal degrees
   double precision, dimension(n_hrus), intent(in):: elev       ! m
+  double precision, dimension(n_hrus), intent(in):: area       ! km2
   double precision, dimension(n_hrus), intent(in):: scf, mfmax, mfmin, uadj, si, &
                                         nmf, tipm, mbase, plwhc, daygm
   double precision, dimension(n_hrus):: pxtemp ! not used, set to zero
@@ -119,6 +120,9 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   double precision, dimension(sim_length, n_hrus), intent(in):: map, ptps, mat
   double precision, dimension(sim_length, n_hrus):: pet
   double precision:: map_step, ptps_step, mat_step, pet_step
+
+  ! area weighted forcings for climo calculations
+  double precision, dimension(sim_length):: map_aw, ptps_aw, mat_aw, pet_aw
 
   double precision, dimension(12):: map_climo, mat_climo, pet_climo, ptps_climo
 
@@ -232,11 +236,29 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   !   write(*,*)pet(i,:)
   ! end do 
 
+  map_aw = 0 
+  ptps_aw = 0 
+  mat_aw = 0 
+  pet_aw = 0
+
+  ! area weighted forcings 
+  do nh=1,n_hrus
+    map_aw = map_aw + map(:,nh) * area(nh)
+    mat_aw = mat_aw + mat(:,nh) * area(nh)
+    pet_aw = pet_aw + pet(:,nh) * area(nh)
+    ptps_aw = ptps_aw + ptps(:,nh) * area(nh)
+  end do 
+
+  map_aw = map_aw / sum(area)
+  mat_aw = mat_aw / sum(area)
+  pet_aw = pet_aw / sum(area)
+  ptps_aw = ptps_aw / sum(area)
+
   ! compute 12 monthly climo values (calendar year)
-  mat_climo = monthly_climo(mat, month)
-  map_climo = monthly_climo(map, month)
-  pet_climo = monthly_climo(pet, month)
-  ptps_climo = monthly_climo(ptps, month)
+  map_climo = monthly_climo_sum(map_aw, month)
+  mat_climo = monthly_climo_mean(mat_aw, month)
+  pet_climo = monthly_climo_sum(pet_aw, month)
+  ptps_climo = monthly_climo_mean(ptps_aw, month)
   ! write(*,*)'climo: map, mat, pet, ptps'
   ! do k=1,12
   !   write(*,*)map_climo(k), mat_climo(k), pet_climo(k), ptps_climo(k)

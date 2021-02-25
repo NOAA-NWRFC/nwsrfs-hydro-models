@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-import sacsnowuh.main as s
+import nwsrfs_models.main as s
 from utilities.forcing_adjust import *
 from plotnine import *
 
@@ -17,6 +17,7 @@ fa_limits = fa_limits[(fa_limits['basin']==basin) &
 flow.index = pd.to_datetime(flow[['year', 'month', 'day', 'hour']])
 
 zones = pars['zone'].unique()
+zones = [z for z in zones if z != basin]
 n_zones = len(zones)
 sim_length = forcings.shape[0]
 
@@ -27,86 +28,42 @@ dt_days = dt_hours / 24
 adj_names = ['peadj_m', 'map_adj', 'mat_adj', 'ptps_adj', 'pet_adj']
 adj = {}
 peadj_m = np.full([12, n_zones], np.nan)
-map_adj = np.full([12, n_zones], np.nan)
-mat_adj = np.full([12, n_zones], np.nan)
-ptps_adj = np.full([12, n_zones], np.nan)
-pet_adj = np.full([12, n_zones], np.nan)
 
 for i in range(12):
     m = i + 1
     for j, z in zip(range(n_zones), zones):
         peadj_m[i, j] = pars[(pars['name'] == 'peadj_' + f'{m:02}') & (pars['zone'] == z)]['value']
-        map_adj[i, j] = pars[(pars['name'] == 'map_adj_' + f'{m:02}') & (pars['zone'] == z)]['value']
-        mat_adj[i, j] = pars[(pars['name'] == 'mat_adj_' + f'{m:02}') & (pars['zone'] == z)]['value']
-        pet_adj[i, j] = pars[(pars['name'] == 'pet_adj_' + f'{m:02}') & (pars['zone'] == z)]['value']
-        ptps_adj[i, j] = pars[(pars['name'] == 'ptps_adj_' + f'{m:02}') & (pars['zone'] == z)]['value']
+
+# fa adjustemnt parameters:  scale, p_redist, std, shift
+fa = {}
+
+for fa_par in pars.loc[pars['type'] == 'fa', 'name']:
+    fa[fa_par] = pars[pars['name'] == fa_par]['value']
+
+map_fa_pars = pd.concat([fa['map_scale'], fa['map_p_redist'],fa['map_std'], fa['map_shift']]).to_numpy()
+mat_fa_pars = pd.concat([fa['mat_scale'], fa['mat_p_redist'], fa['mat_std'], fa['mat_shift']]).to_numpy()
+ptps_fa_pars = pd.concat([fa['ptps_scale'], fa['ptps_p_redist'], fa['ptps_std'], fa['ptps_shift']]).to_numpy()
+pet_fa_pars = pd.concat([fa['pet_scale'], fa['pet_p_redist'], fa['pet_std'], fa['pet_shift']]).to_numpy()
+
+# combine limits and put in calendar year order
+map_fa_limits = fa_limits[fa_limits['variable']=='map'][['lower','upper']].to_numpy()
+mat_fa_limits = fa_limits[fa_limits['variable']=='mat'][['lower','upper']].to_numpy()
+ptps_fa_limits = fa_limits[fa_limits['variable']=='ptps'][['lower','upper']].to_numpy()
+pet_fa_limits = fa_limits[fa_limits['variable']=='pet'][['lower','upper']].to_numpy()
+
+# PET is computed on the fly so no climo
+# pet_fa_limits['aorc_pet'] = climo['pet'].to_numpy()
 
 p = {}
 for par in pars['name'].unique():
     p[par] = pars[pars['name'] == par]['value']
 
-
-n_zones = 1
-base_year = 2099
-forcing = []
-climo = []
-for i in range(n_zones):
-    forcing.append(pd.read_csv(f'basins/TLMO3-1zone/forcing_TLMO3-{i+1}.csv'))
-    climo.append(forcing[i].groupby('month').mean().reset_index())  # [['map_mm', 'mat_degc', 'ptps']])
-    climo[i]['year'] = [base_year]*9 + [base_year - 1]*3
-    climo[i]['day'] = 15
-    climo[i].index = pd.to_datetime(climo[i][['year', 'month', 'day']])
-    climo[i] = climo[i].sort_index()
-
-map = pd.concat([c['map_mm'] for c in climo], axis=1)
-mat = pd.concat([c['mat_degc'] for c in climo], axis=1)
-ptps = pd.concat([c['ptps'] for c in climo], axis=1)
-map.columns = [c + '_' + str(i+1) for c, i in zip(map.columns.values, range(n_zones))]
-mat.columns = [c + '_' + str(i+1) for c, i in zip(mat.columns.values, range(n_zones))]
-ptps.columns = [c + '_' + str(i+1) for c, i in zip(ptps.columns.values, range(n_zones))]
-
-# single zone
-map_single = map[['map_mm_1']]
-map_lower = map_single-0.5 * map_single
-map_upper = map_single+0.5 * map_single
-gw_map_adj = adj_climo_map_pet(map_single, px_adj=1.1, p_redist=0.1, std=5, shift=5,
-                  upper_limit=map_upper, lower_limit=map_lower)
-
-
-mat_single = mat[['mat_degc_1']]
-mat_lower = mat_single-0.5 * mat_single
-mat_upper = mat_single+0.5 * mat_single
-gw_mat_adj = adj_climo_mat_ptps(mat_single, px_adj=1.1, p_redist=0.1, std=5, shift=5,
-                  upper_limit=mat_upper, lower_limit=mat_lower)
-
-ptps_single = ptps[['ptps_1']]
-ptps_lower = ptps_single-0.5 * ptps_single
-ptps_upper = ptps_single+0.5 * ptps_single
-# gw_mat_adj = adj_climo_mat_ptps(mat_single, px_adj=0.7, p_redist=0.9, std=5, shift=0,
-#                   upper_limit=mat_upper, lower_limit=mat_lower)
-
-
-# scale, p_redist, std, shift
-map_fa_pars = np.full([4], [2, 0, 5, 0])
-mat_fa_pars = np.full([4], [2, 0, 5, 0])
-ptps_fa_pars = np.full([4],[2, 0, 5, 0])
-pet_fa_pars = np.full([4], [2, 0, 5, 0])
-
-# combine limits and put in calendar year order
-climo = forcings.groupby('month').mean()
-map_fa_limits = fa_limits[fa_limits['variable']=='map'][['lower','upper']].to_numpy()
-mat_fa_limits = fa_limits[fa_limits['variable']=='mat'][['lower','upper']].to_numpy()
-ptps_fa_limits = fa_limits[fa_limits['variable']=='ptps'][['lower','upper']].to_numpy()
-pet_fa_limits = fa_limits[fa_limits['variable']=='pet'][['lower','upper']].to_numpy()
-# PET is computed on the fly so no climo
-# pet_fa_limits['aorc_pet'] = climo['pet'].to_numpy()
-
-init = pd.concat([p['init_swe'], p['init_uztwc'], p['init_uzfwc'], p['init_lztwc'],
-                p['init_lzfsc'], p['init_lzfpc'], p['init_adimc']]).to_numpy()
+init = np.concatenate([[p['init_swe']], [p['init_uztwc']], [p['init_uzfwc']], [p['init_lztwc']],
+                       [p['init_lzfsc']], [p['init_lzfpc']], [p['init_adimc']]])
 
 tci = s.sacsnow(dt_seconds, forcings['year'], forcings['month'], forcings['day'], forcings['hour'],
                 # general pars
-                p['alat'], p['elev'],
+                p['alat'], p['elev'], p['zone_area'],
                 # sac pars
                 p['uztwm'], p['uzfwm'], p['lztwm'], p['lzfpm'], p['lzfsm'],
                 p['adimp'], p['uzk'], p['lzpk'], p['lzsk'], p['zperc'], p['rexp'], p['pctim'],

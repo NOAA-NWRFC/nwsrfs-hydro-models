@@ -1,4 +1,4 @@
-from utilities.optimization import spot_setup
+from utilities.spotpy_optimization import spot_setup
 import spotpy
 import pandas as pd
 import numpy as np

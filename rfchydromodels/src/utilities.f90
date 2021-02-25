@@ -89,10 +89,10 @@ module utilities
       do i=1,12
         if(climo_adj(i) > ul(i)) climo_adj(i) = ul(i)
         if(climo_adj(i) < ll(i)) climo_adj(i) = ll(i)
-        if(climo_adj(i) <= 0d0)then
+        if(abs(climo(i)) < 0.1d-5)then
           forcing_adjust_map_pet_ptps(i) = 1
         else
-          forcing_adjust_map_pet_ptps(i) = climo(i)/climo_adj(i)
+          forcing_adjust_map_pet_ptps(i) = climo_adj(i)/climo(i)
         end if
       end do 
 
@@ -220,32 +220,77 @@ module utilities
       !   write(*,*)climo(i)
       ! end do
 
-      forcing_adjust_mat = climo-climo_adj
+      forcing_adjust_mat = climo_adj-climo
 
       return 
   end function
 
-  function monthly_climo(forcing, month)
+  function monthly_climo_mean(forcing, month)
     implicit none
-    double precision, dimension(:,:), intent(in):: forcing
+    double precision, dimension(:), intent(in):: forcing
     integer, dimension(:), intent(in):: month
-    double precision, dimension(12):: monthly_climo, climo_counts
-    integer:: n_zones, nts, i, j
+    double precision, dimension(12):: monthly_climo_mean, climo_counts
+    integer:: nts, i, j
 
     nts = size(month)
-    n_zones = size(forcing,2)
 
-    monthly_climo = 0 
+    monthly_climo_mean = 0 
     climo_counts = 0 
 
     do i=1,nts
-      do j=1,n_zones
-        monthly_climo(month(i)) = monthly_climo(month(i)) + forcing(i,j)
-        climo_counts(month(i)) = climo_counts(month(i)) + 1d0
-      end do 
+      monthly_climo_mean(month(i)) = monthly_climo_mean(month(i)) + forcing(i)
+      climo_counts(month(i)) = climo_counts(month(i)) + 1d0
     end do
 
-    monthly_climo = monthly_climo/climo_counts
+    monthly_climo_mean = monthly_climo_mean/climo_counts
+
+    return
+
+  end function
+
+  function monthly_climo_sum(forcing, month)
+    implicit none
+    double precision, dimension(:), intent(in):: forcing
+    integer, dimension(:), intent(in):: month
+    double precision, dimension(12):: monthly_climo_sum, month_year, month_count, month_sum
+    integer:: nts, i, j, current_month, prev_month
+    double precision:: msum 
+
+    nts = size(month)
+
+    month_count = 0 
+    month_year = 0
+    month_sum = 0 
+    msum = 0 
+
+    if(month(1) .eq. 1) then
+      prev_month = 12
+    else 
+      prev_month = month(1) - 1
+    end if
+
+    do i=1,nts
+        if(i > 1) prev_month = month(i-1)
+        current_month = month(i)
+
+        if (prev_month .eq. current_month) then 
+          msum = msum + forcing(i)
+        else
+          ! new month
+          if(i>1)then
+            month_count(prev_month) = month_count(prev_month) + 1
+            month_sum(prev_month) = month_sum(prev_month) + msum
+          end if
+          msum = forcing(i)
+        end if 
+
+    end do
+
+    ! last month
+    month_count(current_month) = month_count(current_month) + 1
+    month_sum(current_month) = month_sum(current_month) + msum
+
+    monthly_climo_sum = month_sum/month_count
 
     return
 

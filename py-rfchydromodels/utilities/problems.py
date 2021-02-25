@@ -28,7 +28,8 @@ class SacSnowUH(object):
 
         # default parameter file define all the model parameters and number of zones
         self.default_pars = pd.read_csv(os.path.join(basin_dir, 'pars_default.csv'))
-        self.zones = self.default_pars['zone'].unique()
+        zones = self.default_pars['zone'].unique()
+        self.zones = [z for z in zones if z != basin]
         self.n_zones = len(self.zones)
 
         # forcings for each zone, list of pd.DataFrame
