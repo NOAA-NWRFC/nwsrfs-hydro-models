@@ -116,7 +116,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
 
   ! atmospheric forcing variables
   double precision, dimension(sim_length, n_hrus), intent(in):: map, ptps, mat
-  double precision, dimension(sim_length, n_hrus):: pet
+  double precision, dimension(sim_length, n_hrus):: pet, mat_adjusted 
   double precision:: map_step, ptps_step, mat_step, pet_step
 
   ! area weighted forcings for climo calculations
@@ -175,22 +175,86 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   ! julian day 
   jday = julian_day(year,month,day)
 
+  
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  ! Compute the adjusted temperature for the entire POR 
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  mat_adjusted = -99
+  mat_aw = 0 
 
+  ! area weighted forcings 
+  do nh=1,n_hrus
+    mat_aw = mat_aw + mat(:,nh) * area(nh)
+  end do 
+
+  mat_aw = mat_aw / sum(area)
+
+  ! compute 12 monthly climo values (calendar year)
+  mat_climo = monthly_climo_mean(mat_aw, month)
+  
+  ! expand forcing adjustment limits in case the limits are not set properly 
+  do k=1,12
+    if(mat_climo(k) < mat_fa_limits(k,1)) mat_fa_limits(k,1) = mat_climo(k) * 0.9
+    if(mat_climo(k) > mat_fa_limits(k,2)) mat_fa_limits(k,2) = mat_climo(k) * 1.1
+  end do 
+
+  ! compute monthly adjustments using GW's method
+  mat_adj = forcing_adjust_mat(mat_climo, mat_fa_pars, mat_fa_limits(:,1), mat_fa_limits(:,2))
+
+  ! put the forcing adjustments in easy to use vectors
+  mat_adj_prev(1) = mat_adj(12)
+  mat_adj_prev(2:12) = mat_adj(1:11)
+  mat_adj_next(12) = mat_adj(1)
+  mat_adj_next(1:11) = mat_adj(2:12)
+
+  ! compute adjusted temperature
+  do nh = 1, n_hrus
+    do i = 1, sim_length
+      ! adjust days in february if the year is a leap year
+      if(mod(year(i),100) .ne. 0 .and. mod(year(i),4) .eq. 0) then
+        mdays(2) = 29 ! leap year
+      else if(mod(year(i),400).eq.0) then
+        mdays(2) = 29 ! leap year
+      else
+        mdays(2) = 28 ! not leap year
+      endif
+
+      ! interpolate between (x0,y0) and (x1,y1)
+      ! y = y0 + (x-x0)*(y1-y0)/(x1-x0)
+      ! interpolate between (day0,limit0)=(0,limit0) and (day1,limit1)=(dayn,limit1)
+      ! y = limit0 + dayi/dayn*(limit1-limit0)
+      mo = month(i)
+      if(day(i) >= 15)then
+        dayn = dble(mdays(mo))
+        dayi = dble(day(i)) - 15. + dble(hour(i))/24.
+        mat_adj_step = mat_adj(mo) + dayi/dayn*(mat_adj_next(mo)-mat_adj(mo))
+      else if(day(i) < 15)then
+        dayn = dble(mdays_prev(mo))
+        dayi = dble(day(i)) + mdays_prev(mo) - 15. + dble(hour(i))/24.
+        mat_adj_step = mat_adj_prev(mo) + dayi/dayn*(mat_adj(mo)-mat_adj_prev(mo))
+      end if 
+      mat_adjusted(i,nh) = mat(i,nh) + mat_adj_step
+    end do 
+  end do
+
+
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! compute HS PET for the entire run up front 
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   pet_ts = 0d0
   pet = 0d0
 
-  do nh=1,n_hrus
-    do i = 1,sim_length,1
+  do nh = 1, n_hrus
+    do i = 1, sim_length
       ! on the first timestep of the day (or for the whole day if the ts is daily), 
       ! compute the pet for the whole day, then divide it by the number of timesteps
       if((hour(i) .eq. 0) .or. (ts_per_day .eq. 1))then
 
         ! if(i .eq. 1)write(*,*)'mat',mat(i:(i+ts_per_day-1),nh)
         ! if(i .eq. 1)write(*,*) 'timestep', i, 'of', sim_length, year(i), month(i), day(i), hour(i), jday(i)
-        tmax_daily = maxval(mat(i:(i+ts_per_day-1),nh))
-        tmin_daily = minval(mat(i:(i+ts_per_day-1),nh))
-        tave_daily = sum(mat(i:(i+ts_per_day-1),nh))/dble(ts_per_day)
+        tmax_daily = maxval(mat_adjusted(i:(i+ts_per_day-1),nh))
+        tmin_daily = minval(mat_adjusted(i:(i+ts_per_day-1),nh))
+        tave_daily = sum(mat_adjusted(i:(i+ts_per_day-1),nh))/dble(ts_per_day)
 
         !Calculate extraterrestrial radiation
         !Inverse Relative Distance Earth to Sun
@@ -241,25 +305,21 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
 
   map_aw = 0 
   ptps_aw = 0 
-  mat_aw = 0 
   pet_aw = 0
 
   ! area weighted forcings 
   do nh=1,n_hrus
     map_aw = map_aw + map(:,nh) * area(nh)
-    mat_aw = mat_aw + mat(:,nh) * area(nh)
     pet_aw = pet_aw + pet(:,nh) * area(nh)
     ptps_aw = ptps_aw + ptps(:,nh) * area(nh)
   end do 
 
   map_aw = map_aw / sum(area)
-  mat_aw = mat_aw / sum(area)
   pet_aw = pet_aw / sum(area)
   ptps_aw = ptps_aw / sum(area)
 
   ! compute 12 monthly climo values (calendar year)
   map_climo = monthly_climo_sum(map_aw, month)
-  mat_climo = monthly_climo_mean(mat_aw, month)
   pet_climo = monthly_climo_sum(pet_aw, month)
   ptps_climo = monthly_climo_mean(ptps_aw, month)
   ! write(*,*)'climo: map, mat, pet, ptps'
@@ -276,8 +336,6 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   do k=1,12
     if(map_climo(k) < map_fa_limits(k,1)) map_fa_limits(k,1) = map_climo(k) * 0.9
     if(map_climo(k) > map_fa_limits(k,2)) map_fa_limits(k,2) = map_climo(k) * 1.1
-    if(mat_climo(k) < mat_fa_limits(k,1)) mat_fa_limits(k,1) = mat_climo(k) * 0.9
-    if(mat_climo(k) > mat_fa_limits(k,2)) mat_fa_limits(k,2) = mat_climo(k) * 1.1
     if(pet_climo(k) < pet_fa_limits(k,1)) pet_fa_limits(k,1) = pet_climo(k) * 0.9
     if(pet_climo(k) > pet_fa_limits(k,2)) pet_fa_limits(k,2) = pet_climo(k) * 1.1
     if(ptps_climo(k) < ptps_fa_limits(k,1)) ptps_fa_limits(k,1) = ptps_climo(k) * 0.75
@@ -289,7 +347,6 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   pet_adj = forcing_adjust_map_pet_ptps(pet_climo, pet_fa_pars, pet_fa_limits(:,1), pet_fa_limits(:,2))
   ptps_adj = forcing_adjust_map_pet_ptps(ptps_climo, ptps_fa_pars, ptps_fa_limits(:,1), ptps_fa_limits(:,2))
 
-  mat_adj = forcing_adjust_mat(mat_climo, mat_fa_pars, mat_fa_limits(:,1), mat_fa_limits(:,2))
   ! write(*,*)'FA pars: ', mat_fa_pars
   ! do k=1,12
   !  write(*,*)map_adj(k),mat_adj(k),pet_adj(k),ptps_adj(k)
@@ -300,11 +357,6 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   map_adj_prev(2:12) = map_adj(1:11)
   map_adj_next(12) = map_adj(1)
   map_adj_next(1:11) = map_adj(2:12)
-
-  mat_adj_prev(1) = mat_adj(12)
-  mat_adj_prev(2:12) = mat_adj(1:11)
-  mat_adj_next(12) = mat_adj(1)
-  mat_adj_next(1:11) = mat_adj(2:12)
 
   pet_adj_prev(1) = pet_adj(12)
   pet_adj_prev(2:12) = pet_adj(1:11)
@@ -395,7 +447,6 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
       if(day(i) >= 15)then
         dayn = dble(mdays(mo))
         dayi = dble(day(i)) - 15. + dble(hour(i))/24.
-        mat_adj_step = mat_adj(mo) + dayi/dayn*(mat_adj_next(mo)-mat_adj(mo))
         map_adj_step = map_adj(mo) + dayi/dayn*(map_adj_next(mo)-map_adj(mo))
         pet_adj_step = pet_adj(mo) + dayi/dayn*(pet_adj_next(mo)-pet_adj(mo))
         ptps_adj_step = ptps_adj(mo) + dayi/dayn*(ptps_adj_next(mo)-ptps_adj(mo))
@@ -403,7 +454,6 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
       else if(day(i) < 15)then
         dayn = dble(mdays_prev(mo))
         dayi = dble(day(i)) + mdays_prev(mo) - 15. + dble(hour(i))/24.
-        mat_adj_step = mat_adj_prev(mo) + dayi/dayn*(mat_adj(mo)-mat_adj_prev(mo))
         map_adj_step = map_adj_prev(mo) + dayi/dayn*(map_adj(mo)-map_adj_prev(mo))
         pet_adj_step = pet_adj_prev(mo) + dayi/dayn*(pet_adj(mo)-pet_adj_prev(mo))
         ptps_adj_step = ptps_adj_prev(mo) + dayi/dayn*(ptps_adj(mo)-ptps_adj_prev(mo))
@@ -413,7 +463,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
       ! write(*,'(a,5i5,8f8.2)')'before adj',nh, year(i), month(i), day(i), hour(i), map(i,nh), mat(i,nh), ptps(i,nh), pet(i,nh), &
       !                                    mat_adj_step, map_adj_step, pet_adj_step, ptps_adj_step
 
-      mat_step = mat(i,nh) + mat_adj_step
+      mat_step = mat_adjusted(i,nh)
       ! apply PXADJ (scaling the input values)
       map_step = map(i,nh) * pxadj(nh) * map_adj_step
       ! pet(i,nh) is the pet from HS, 
@@ -525,7 +575,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
       !write(*,*)tprev
 
       ! tprev does not get updated in place like cs does
-      tprev = real(map_step)
+      tprev = real(mat_step)
 
       ! if(i .eq. 1)then
       !   write(*,*)
