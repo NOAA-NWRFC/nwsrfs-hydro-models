@@ -62,8 +62,8 @@ C
 CFC      DIMENSION P(LP),C(LC)
       DIMENSION P(500),C(100)
 CGW   Adding FTPY help
-Cf2py intent(out) P
-Cf2py intent(out) C
+CGW Cf2py intent(out) P
+CGW Cf2py intent(out) C
 CGW      DIMENSION TSIDA(2),TSIDB(2)
       CHARACTER*8 SNAME/'PIN7'/
       LOGICAL FOP7,MEANQ

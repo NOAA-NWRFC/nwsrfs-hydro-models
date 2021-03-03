@@ -9,17 +9,30 @@ class Model:
     def __init__(self,
                  forcings: list,
                  pars: pd.DataFrame,
-                 obs: pd.DataFrame):
+                 route: list=None,
+                 obs: pd.DataFrame=None):
 
         self.pars = pars.sort_values(['name', 'zone'])
         self.obs = obs
-
+        
         zones = pars.loc[pars['zone'].str.contains('-')].zone.unique()
         n_zones = len(zones)
         sim_length = forcings[0].shape[0]
         self.zones = zones
         self.n_zones = n_zones
         self.sim_length = sim_length
+
+        #Dummy place holder for upstream flow at headwater basins
+        if route is None:
+           route=[pd.DataFrame({'flow_cfs':np.zeros(len(forcings[0].index))},index=forcings[0].index,)]
+           uptribs=['None']
+           n_uptribs = 0
+        else:
+           uptribs=pars.loc[pars['zone'].str.endswith('R')].zone.unique()
+           n_uptribs=len(uptribs)
+        self.uptribs=uptribs
+        self.n_uptribs=n_uptribs
+           
 
         # Timestep in different units
         self.dt_seconds = int((forcings[0].index[1] - forcings[0].index[0]).total_seconds())
@@ -78,11 +91,21 @@ class Model:
             self.map[:, i] = forcings[i]['map_mm']
             self.mat[:, i] = forcings[i]['mat_degc']
             self.ptps[:, i] = forcings[i]['ptps']
+        
+        self.uptribs = np.full([sim_length, max(1,n_uptribs)], np.nan)
+        
+        for i in range(len(uptribs)):
+            self.uptribs[:, i] = route[i]['flow_cfs']#.astype('f4').to_numpy()
 
         self.p = {}
         for par in self.pars['name'].unique():
-            self.p[par] = self.pars[self.pars['name'] == par]['value'].to_numpy()
-
+            self.p[par] = self.pars[self.pars['name'] == par].sort_values(by='zone')['value'].to_numpy()
+        
+        self.p['lagq']=np.stack(([10, 0, 10, 1130, 16, 2548,16, 2549,16, 2550],[6, 0, 4, 28, 3.5, 56, 3, 113, 3, 2830]),axis=-1)
+        self.p['n_lagq']=[len(self.p['lagq'][:,0])/2,len(self.p['lagq'][:,1])/2]
+        self.p['kq']=np.stack(([1, 3, 1, 283, 2, 566,2,2548,9,2831],[1, 3, 1, 1133, 3, 2831, 3, 2832, 3, 2833]),axis=-1)
+        self.p['n_kq']=[len(self.p['kq'][:,0])/2,len(self.p['kq'][:,1])/2]
+        
         self.init = np.concatenate([[self.p['init_swe']], [self.p['init_uztwc']], [self.p['init_uzfwc']],
                                     [self.p['init_lztwc']],[self.p['init_lzfsc']], [self.p['init_lzfpc']],
                                     [self.p['init_adimc']]],axis=0)
@@ -90,37 +113,66 @@ class Model:
     def update_pars(self, pars):
         self.pars = pars
 
-    def run(self):
+    def lagk_run(self,n=None): 
+        
+        if n is None:
+            n=list(range(self.n_uptribs))
+        elif isinstance(n, int):
+            n=[n]
+            
+        par = self.p
+                
+        lagk_route=s.lagk(self.dt_hours,self.dt_hours,'METR',par['lagq'][:,n],
+                    par['kq'][:,n], par['init_co'][n],par['init_if'][n],
+                    par['init_of'][n],par['init_stor'][n],
+                    self.uptribs[:,n]*0.0283168)
+        
+        sim_flow_inst_cfs=np.sum(lagk_route,axis=1)*35.3147
+            
+        next_sim = pd.DataFrame(sim_flow_inst_cfs).shift(-1).to_numpy().flatten()
+        sim_flow_cfs = (sim_flow_inst_cfs + next_sim) / 2
+        
+        self.lagk_flow_cfs = pd.Series(sim_flow_cfs, index=self.dates)
+        
+        return self.lagk_flow_cfs
 
+    def sacsnow_run(self,n=None):
+        
+        if n is None:
+            n=list(range(self.n_uptribs))
+        elif isinstance(n, int):
+            n=[n]
+            len
+        
         p = self.p
 
         # simulates all zones
         tci = s.sacsnow(self.dt_seconds, self.year, self.month, self.day, self.hour,
                         # general pars
-                        p['alat'], p['elev'], p['zone_area'],
+                        p['alat'][n], p['elev'][n], p['zone_area'][n],
                         # sac pars
-                        p['uztwm'], p['uzfwm'], p['lztwm'], p['lzfpm'], p['lzfsm'],
-                        p['adimp'], p['uzk'], p['lzpk'], p['lzsk'], p['zperc'], p['rexp'], p['pctim'],
-                        p['pfree'], p['riva'], p['side'], p['rserv'], p['peadj'], p['pxadj'],
+                        p['uztwm'][n], p['uzfwm'][n], p['lztwm'][n], p['lzfpm'][n], p['lzfsm'][n],
+                        p['adimp'][n], p['uzk'][n], p['lzpk'][n], p['lzsk'][n], p['zperc'][n], p['rexp'][n], p['pctim'][n],
+                        p['pfree'][n], p['riva'][n], p['side'][n], p['rserv'][n], p['peadj'][n], p['pxadj'][n],
                         # monthly peadj
-                        self.peadj_m,
+                        self.peadj_m[:,n],
                         # snow pars
-                        p['scf'], p['mfmax'], p['mfmin'], p['uadj'], p['si'], p['nmf'], p['tipm'], p['mbase'],
-                        p['plwhc'], p['daygm'], p['adc_a'], p['adc_b'], p['adc_c'],
+                        p['scf'][n], p['mfmax'][n], p['mfmin'][n], p['uadj'][n], p['si'][n], p['nmf'][n], p['tipm'][n], p['mbase'][n],
+                        p['plwhc'][n], p['daygm'][n], p['adc_a'][n], p['adc_b'][n], p['adc_c'][n],
                         # forcing adjustment
                         self.map_fa_pars, self.mat_fa_pars, self.pet_fa_pars, self.ptps_fa_pars,
                         self.map_fa_limits, self.mat_fa_limits, self.pet_fa_limits, self.ptps_fa_limits,
                         # initial conditions
-                        self.init,
+                        self.init[:,n],
                         # forcings
-                        self.map, self.ptps, self.mat)
+                        self.map[:,n], self.ptps[:,n], self.mat[:,n])
 
         # channel routing
         m_uh = 1000  # max UH length
         n_uh = self.sim_length + m_uh
         sim_flow_inst_cfs = np.full([self.sim_length], 0)
-        for z in range(self.n_zones):
-            flow_routed = s.duamel(tci[:, z], p['unit_shape'][z], p['unit_scale'][z],
+        for y, z in zip(range(len(tci[0])),n):
+            flow_routed = s.duamel(tci[:, y], p['unit_shape'][z], p['unit_scale'][z],
                                    self.dt_days, n_uh, m_uh, 1, 0)
 
             # flow_routed units:  mm, zone_area units:  km2,  1000 is a combined conversion of km2->m2 and mm->m
@@ -129,13 +181,19 @@ class Model:
             # instantaneous routed flow weighted by zone area
             sim_flow_inst_cfs = sim_flow_inst_cfs + flow_routed[0:self.sim_length] * 1000 * 3.28084 ** 3 / \
                                 self.dt_seconds * p['zone_area'][z]
-
-
+        
         next_sim = pd.DataFrame(sim_flow_inst_cfs).shift(-1).to_numpy().flatten()
         sim_flow_cfs = (sim_flow_inst_cfs + next_sim) / 2
-        self.sim_flow_cfs = pd.Series(sim_flow_cfs, index=self.dates)
+        self.sacsnow_flow_cfs = pd.Series(sim_flow_cfs, index=self.dates)
 
-        return self.sim_flow_cfs
+        return self.sacsnow_flow_cfs
+        
+    def run_all(self):
+        
+        self.run_all=self.lagk_run()+self.sacsnow_run()
+        
+        return self.run_all_flow_cfs
+            
 
 
 

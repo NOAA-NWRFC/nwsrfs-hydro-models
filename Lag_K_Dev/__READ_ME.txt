@@ -1,6 +1,4 @@
-#f2py command: f2py -c -m model_lagk fintp7.f fka7.f flag7.f fop7.f
-#              fprpc7.f fserc7.f fslag7.f initCommonBlocksPin.f pin7.f 
-#              pina7.f umemov.f umemst.f 
+#f2py command: f2py -c -m model_lagk fintp7.f fka7.f flag7.f fop7.f fprpc7.f fserc7.f fslag7.f initCommonBlocksPin.f pin7.f  pina7.f umemov.f umemst.f 
 #
 #loading the library to python:  lagk_f2py.model_lagk as lagk                  
 #
