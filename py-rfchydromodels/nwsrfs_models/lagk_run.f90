@@ -1,15 +1,16 @@
 subroutine lagk(n_hrus, ita, itb, meteng, &
-    lagtbl_in, &
-    ktbl_in, &
+    lagtbl_a_in, lagtbl_b_in, lagtbl_c_in, lagtbl_d_in,&
+    ktbl_a_in, ktbl_b_in, ktbl_c_in, ktbl_d_in, &
+    lagk_lagmax_in, lagk_kmax_in, lagk_qmax_in, &
     ico_in, iinfl_in, ioutfl_in, istor_in, &
-    sim_length, qa_in, lagk_out)
+    qa_in, sim_length,lagk_out)
     
     ! !There are three subroutines to execute:  pin7, flag7, fka7
     ! !subroutines should be ran in the order presented
     ! !
     ! !pin7:  Formats inputs (via a P and C array) run LagK operations
     ! !
-    ! !   p,c = pin7(ita,itb,jlag,jk,meteng,lagtbl,ktbl,ico,iinfl,ioutfl,istor)
+    ! !         pin7(p,c,ita,itb,jlag,jk,meteng,lagtbl,ktbl,ico,iinfl,ioutfl,istor)
     ! !          p:  output from pin7 subroutine.  Contains lag/q, k/q, and 
     ! !              2*S/(DT/4)+O, O tables.  Also specifies the timestep of 
     ! !              Input output
@@ -40,8 +41,9 @@ subroutine lagk(n_hrus, ita, itb, meteng, &
     ! !  !!Notes: 
     ! !           1) This routine handles all the variables which would be optimized:  
     ! !              lagtbl, ktble, ico, iinfl, ioutfl, istor
-    ! !           2) %EDIT% This wrapper Fortran code uses parameters:  X, Y, Z to develop lagtbl and ktbl
-    ! !              See comment below %EDIT%
+    ! !           2) %EDIT% This wrapper Fortran code uses parameters:  a, b c, d to develop 
+    ! !              lagtbl and ktbl.  The equation is lag/k_table_entry=a*(Q-d)**2+b*Q+c
+    ! !              Q is the flow table entry
     ! !           3) The pin7.f subroutine was edited to start with a empty c/p array
     ! !              far larger than which should be needed [p(500),c(100)].  Below is 
     ! !              python code I used to chop the unused lines after executing the
@@ -56,7 +58,7 @@ subroutine lagk(n_hrus, ita, itb, meteng, &
     ! !               c=c[:int(c[0])]
     ! !
     ! !flag7:  Controls the Lag Operation
-    ! !    qb = flag7(p,c,qa,[ndt])
+    ! !             flag7(p,c,qa,qb[ndt])
     ! !
     ! !            qb: downstream streamflow values (single column array) with only
     ! !                lag applied, time step is assumed to correspond to itb.  
@@ -72,7 +74,7 @@ subroutine lagk(n_hrus, ita, itb, meteng, &
     ! !                  if less than full qa array is desired 
     ! !
     ! !fka7:    Perform the attenuation (K) computations 
-    ! !    qc = flag7(p,c,qb,[ndt])
+    ! !             flag7(p,c,qb,qc [ndt])
     ! !
     ! !            qc: downstream streamflow values (single column array) with both
     ! !                lag and attenuation applied, time step is assumed to correspond
@@ -93,19 +95,25 @@ subroutine lagk(n_hrus, ita, itb, meteng, &
   integer, intent(in):: n_hrus, ita, itb, sim_length
   character(len = 4), intent(in):: meteng
   double precision, dimension(n_hrus), intent(in):: ico_in, iinfl_in, ioutfl_in, istor_in
-  double precision, dimension(10, n_hrus), intent(in):: lagtbl_in, ktbl_in
+  double precision, dimension(n_hrus), intent(in):: lagtbl_a_in, lagtbl_b_in, lagtbl_c_in, lagtbl_d_in  
+  double precision, dimension(n_hrus), intent(in):: ktbl_a_in, ktbl_b_in, ktbl_c_in, ktbl_d_in
+  double precision, dimension(n_hrus), intent(in):: lagk_kmax_in, lagk_lagmax_in, lagk_qmax_in
   double precision, dimension(sim_length, n_hrus), intent(in):: qa_in
   
   ! ! local varible
   real, dimension(n_hrus):: ico, iinfl, ioutfl, istor
-  real, dimension(10, n_hrus):: lagtbl, ktbl
+  real, dimension(n_hrus):: lagtbl_a, lagtbl_b, lagtbl_c, lagtbl_d    
+  real, dimension(n_hrus):: ktbl_a, ktbl_b, ktbl_c, ktbl_d
+  real, dimension(n_hrus):: lagk_kmax, lagk_lagmax, lagk_qmax
+  real, dimension(22, n_hrus):: lagtbl, ktbl
   real, dimension(sim_length, n_hrus):: qa 
   real, dimension(500,n_hrus):: p
   real, dimension(100,n_hrus):: c
   real, dimension(100):: c_cpy
   real, dimension(sim_length ,n_hrus):: qb, qc
   integer, dimension(n_hrus):: jlag, jk
-  integer:: nh
+  integer:: nh, i
+  real::  ndq, lag_entry, k_entry
   
   ! ! output 
   double precision, dimension(sim_length ,n_hrus), intent(out):: lagk_out
@@ -116,29 +124,61 @@ subroutine lagk(n_hrus, ita, itb, meteng, &
   ioutfl=real(ioutfl_in)
   istor=real(istor_in)
   
-  lagtbl=real(lagtbl_in)
-  ktbl=real(ktbl_in)
+  lagtbl_a=real(lagtbl_a_in)
+  lagtbl_b=real(lagtbl_b_in)
+  lagtbl_c=real(lagtbl_c_in)
+  lagtbl_d=real(lagtbl_d_in) 
+  ktbl_a=real(ktbl_a_in) 
+  ktbl_b=real(ktbl_b_in) 
+  ktbl_c=real(ktbl_c_in) 
+  ktbl_d=real(ktbl_d_in)
+  lagk_kmax=real(lagk_kmax_in)
+  lagk_lagmax=real(lagk_lagmax_in) 
+  lagk_qmax=real(lagk_qmax_in)
   
   qa=real(qa_in)
+  
+  ! ! Populate Lag and K tables  
+  do nh=1,n_hrus  
+   ndq=0   
+   do i=1,11
 
+    lagtbl(i*2,nh)=ndq*lagk_qmax(nh)
+    ktbl(i*2,nh)=ndq*lagk_qmax(nh)
+   
+    lag_entry=lagtbl_a(nh)*(ndq-lagtbl_d(nh))**2+lagtbl_b(nh)*ndq+lagtbl_c(nh)
+    k_entry=ktbl_a(nh)*(ndq-ktbl_d(nh))**2+ktbl_b(nh)*ndq+ktbl_c(nh)
+   
+    if (lag_entry > 0) then
+     lagtbl(i*2-1,nh)=lag_entry*lagk_lagmax(nh)
+    else
+     lagtbl(i*2-1,nh)=0
+    end if
+   
+    if (k_entry > 0) then
+     ktbl(i*2-1,nh)=k_entry*lagk_kmax(nh)
+    else
+     ktbl(i*2-1,nh)=0
+    end if
+   
+    ndq=ndq+.1
+   end do
+  end do
+  
+  ! ! Get length of K and Lag Table
   do nh=1,n_hrus  
    jlag(nh)=size(lagtbl(:, nh),1)/2
    jk(nh)=size(ktbl(:,nh),1)/2
   end do
-      
+  
+  ! ! Loop through each reach and calculate lag 
   do nh=1,n_hrus
     
     call pin7(p(:,nh),c(:,nh),ita,itb,jlag(nh),jk(nh),meteng,lagtbl(:,nh), &
        ktbl(:,nh),ico(nh),iinfl(nh),ioutfl(nh),istor(nh))
     
     c_cpy=c(:,nh)
- 
-! !   write(*,*) c_cpy
-! !   write(*,*) "BREAK"
-! !   write(*,*) p(:,nh)
-    write(*,*) qb(1:10,nh)
-    write(*,*) sim_length
-    
+
     call flag7(p(:,nh),c_cpy,qa(:,nh),qb(:,nh),sim_length)
     
     call fka7(p(:,nh),c_cpy,qb(:,nh),qc(:,nh),sim_length)

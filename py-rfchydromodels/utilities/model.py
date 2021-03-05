@@ -101,11 +101,6 @@ class Model:
         for par in self.pars['name'].unique():
             self.p[par] = self.pars[self.pars['name'] == par].sort_values(by='zone')['value'].to_numpy()
         
-        self.p['lagq']=np.stack(([10, 0, 10, 1130, 16, 2548,16, 2549,16, 2550],[6, 0, 4, 28, 3.5, 56, 3, 113, 3, 2830]),axis=-1)
-        self.p['n_lagq']=[len(self.p['lagq'][:,0])/2,len(self.p['lagq'][:,1])/2]
-        self.p['kq']=np.stack(([1, 3, 1, 283, 2, 566,2,2548,9,2831],[1, 3, 1, 1133, 3, 2831, 3, 2832, 3, 2833]),axis=-1)
-        self.p['n_kq']=[len(self.p['kq'][:,0])/2,len(self.p['kq'][:,1])/2]
-        
         self.init = np.concatenate([[self.p['init_swe']], [self.p['init_uztwc']], [self.p['init_uzfwc']],
                                     [self.p['init_lztwc']],[self.p['init_lzfsc']], [self.p['init_lzfpc']],
                                     [self.p['init_adimc']]],axis=0)
@@ -122,9 +117,11 @@ class Model:
             
         par = self.p
                 
-        lagk_route=s.lagk(self.dt_hours,self.dt_hours,'METR',par['lagq'][:,n],
-                    par['kq'][:,n], par['init_co'][n],par['init_if'][n],
-                    par['init_of'][n],par['init_stor'][n],
+        lagk_route=s.lagk(self.dt_hours,self.dt_hours,'METR',
+                    par['lagtbl_a'][n],par['lagtbl_b'][n],par['lagtbl_c'][n],par['lagtbl_d'][n],
+                    par['ktbl_a'][n],par['ktbl_b'][n],par['ktbl_c'][n],par['ktbl_d'][n],
+                    par['lagk_lagmax'][n], par['lagk_kmax'][n],par['lagk_qmax'][n],
+                    par['init_co'][n],par['init_if'][n], par['init_of'][n],par['init_stor'][n],              
                     self.uptribs[:,n]*0.0283168)
         
         sim_flow_inst_cfs=np.sum(lagk_route,axis=1)*35.3147
