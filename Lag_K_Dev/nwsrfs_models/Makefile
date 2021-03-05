@@ -1,2 +1,0 @@
-all:
-	f2py3 -m nwsrfs_models -c types.f90 sorting.f90 stats.f90 utilities.f90 sac_snow_only.f90 sac_snow_states.f90 fintp7.f fka7.f flag7.f fop7.f fprpc7.f fserc7.f fslag7.f initCommonBlocksPin.f pin7.f pina7.f umemov.f umemst.f PACK19.f adjc19.f exsnow19.f SNDEPTH.f aeco19.f updt19.f SNEW.f aesc19.f rout19.f zero19.f SNOWPACK.f duamel.f sac1.f SNOWT.f ex_sac1.f melt19.f
