@@ -67,9 +67,9 @@ module utilities
         ! 30 day months should be a reasonable approximation 
         do i=1,12
           if(shift > 0 ) then
-            climo_adj(i) = climo_interp(i+1) + shift*(climo_interp(i+2)-climo_interp(i+1))/30
+            climo_adj(i) = climo_interp(i+1) + shift*(climo_interp(i+2)-climo_interp(i+1))/30d0
           else if (shift < 0 ) then
-            climo_adj(i) = climo_interp(i) + shift*(climo_interp(i+1)-climo_interp(i))/30
+            climo_adj(i) = climo_interp(i) + (30d0-abs(shift))*(climo_interp(i+1)-climo_interp(i))/30d0
           end if 
         end do 
       end if 
@@ -192,9 +192,9 @@ module utilities
         ! 30 day months should be a reasonable approximation 
         do i=1,12
           if(shift > 0 ) then
-            climo_adj(i) = climo_interp(i+1) + shift*(climo_interp(i+2)-climo_interp(i+1))/30
+            climo_adj(i) = climo_interp(i+1) + shift*(climo_interp(i+2)-climo_interp(i+1))/30d0
           else if (shift < 0 ) then
-            climo_adj(i) = climo_interp(i) + shift*(climo_interp(i+1)-climo_interp(i))/30
+            climo_adj(i) = climo_interp(i) + (30d0-abs(shift))*(climo_interp(i+1)-climo_interp(i))/30d0
           end if 
         end do 
       end if 

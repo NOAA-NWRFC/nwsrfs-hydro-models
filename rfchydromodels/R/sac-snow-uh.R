@@ -49,7 +49,7 @@ sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=TRUE){
   if(forcing_adjust){
     # using base R here to avoid package dependency
     map_lower = reshape(pars[grepl('map_lower',pars$name),c('name','zone','value')],
-                      timevar='zone',idvar='name',direction='wide')[,-1]
+                        timevar='zone',idvar='name',direction='wide')[,-1]
     map_upper = reshape(pars[grepl('map_upper',pars$name),c('name','zone','value')],
                         timevar='zone',idvar='name',direction='wide')[,-1]
     mat_lower = reshape(pars[grepl('mat_lower',pars$name),c('name','zone','value')],
@@ -61,9 +61,9 @@ sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=TRUE){
     pet_upper = reshape(pars[grepl('pet_upper',pars$name),c('name','zone','value')],
                         timevar='zone',idvar='name',direction='wide')[,-1]
     ptps_lower = reshape(pars[grepl('ptps_lower',pars$name),c('name','zone','value')],
-                        timevar='zone',idvar='name',direction='wide')[,-1]
+                         timevar='zone',idvar='name',direction='wide')[,-1]
     ptps_upper = reshape(pars[grepl('ptps_upper',pars$name),c('name','zone','value')],
-                        timevar='zone',idvar='name',direction='wide')[,-1]
+                         timevar='zone',idvar='name',direction='wide')[,-1]
 
     # limits are applied basin wide
     if(n_zones == 1){
@@ -143,23 +143,23 @@ sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=TRUE){
                 side = pars[pars$name ==  'side',]$value,
                rserv = pars[pars$name == 'rserv',]$value,
                # pet and precp adjustments
-                 peadj = rep(1,n_zones),
-                 pxadj = rep(1,n_zones),
+               peadj = rep(1,n_zones),
+               pxadj = rep(1,n_zones),
                peadj_m = as.matrix(peadj_m),
                # snow parameters
-                  scf = pars[pars$name ==    'scf',]$value,
-                mfmax = pars[pars$name ==  'mfmax',]$value,
-                mfmin = pars[pars$name ==  'mfmin',]$value,
-                 uadj = pars[pars$name ==   'uadj',]$value,
-                   si = pars[pars$name ==     'si',]$value,
-                  nmf = pars[pars$name ==    'nmf',]$value,
-                 tipm = pars[pars$name ==   'tipm',]$value,
-                mbase = pars[pars$name ==  'mbase',]$value,
-                plwhc = pars[pars$name ==  'plwhc',]$value,
-                daygm = pars[pars$name ==  'daygm',]$value,
-                adc_a = pars[pars$name ==  'adc_a',]$value,
-                adc_b = pars[pars$name ==  'adc_b',]$value,
-                adc_c = pars[pars$name ==  'adc_c',]$value,
+                 scf = pars[pars$name ==    'scf',]$value,
+               mfmax = pars[pars$name ==  'mfmax',]$value,
+               mfmin = pars[pars$name ==  'mfmin',]$value,
+                uadj = pars[pars$name ==   'uadj',]$value,
+                  si = pars[pars$name ==     'si',]$value,
+                 nmf = pars[pars$name ==    'nmf',]$value,
+                tipm = pars[pars$name ==   'tipm',]$value,
+               mbase = pars[pars$name ==  'mbase',]$value,
+               plwhc = pars[pars$name ==  'plwhc',]$value,
+               daygm = pars[pars$name ==  'daygm',]$value,
+               adc_a = pars[pars$name ==  'adc_a',]$value,
+               adc_b = pars[pars$name ==  'adc_b',]$value,
+               adc_c = pars[pars$name ==  'adc_c',]$value,
                # forcing adjust parameters
                map_fa_pars = map_fa_pars,
                mat_fa_pars = mat_fa_pars,
@@ -299,28 +299,28 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE){
                lzfpm = pars[pars$name == 'lzfpm',]$value,
                lzfsm = pars[pars$name == 'lzfsm',]$value,
                adimp = pars[pars$name == 'adimp',]$value,
-               uzk = pars[pars$name ==   'uzk',]$value,
-               lzpk = pars[pars$name ==  'lzpk',]$value,
-               lzsk = pars[pars$name ==  'lzsk',]$value,
+                 uzk = pars[pars$name ==   'uzk',]$value,
+                lzpk = pars[pars$name ==  'lzpk',]$value,
+                lzsk = pars[pars$name ==  'lzsk',]$value,
                zperc = pars[pars$name == 'zperc',]$value,
-               rexp = pars[pars$name ==  'rexp',]$value,
+                rexp = pars[pars$name ==  'rexp',]$value,
                pctim = pars[pars$name == 'pctim',]$value,
                pfree = pars[pars$name == 'pfree',]$value,
-               riva = pars[pars$name ==  'riva',]$value,
-               side = pars[pars$name ==  'side',]$value,
+                riva = pars[pars$name ==  'riva',]$value,
+                side = pars[pars$name ==  'side',]$value,
                rserv = pars[pars$name == 'rserv',]$value,
                # pet and precp adjustments
                peadj = rep(1,n_zones),
                pxadj = rep(1,n_zones),
                peadj_m = as.matrix(peadj_m),
                # snow parameters
-               scf = pars[pars$name ==    'scf',]$value,
+                 scf = pars[pars$name ==    'scf',]$value,
                mfmax = pars[pars$name ==  'mfmax',]$value,
                mfmin = pars[pars$name ==  'mfmin',]$value,
-               uadj = pars[pars$name ==   'uadj',]$value,
-               si = pars[pars$name ==     'si',]$value,
-               nmf = pars[pars$name ==    'nmf',]$value,
-               tipm = pars[pars$name ==   'tipm',]$value,
+                uadj = pars[pars$name ==   'uadj',]$value,
+                  si = pars[pars$name ==     'si',]$value,
+                 nmf = pars[pars$name ==    'nmf',]$value,
+                tipm = pars[pars$name ==   'tipm',]$value,
                mbase = pars[pars$name ==  'mbase',]$value,
                plwhc = pars[pars$name ==  'plwhc',]$value,
                daygm = pars[pars$name ==  'daygm',]$value,
@@ -410,15 +410,15 @@ uh <- function(dt_hours, tci, pars){
   flow_cfs = numeric(sim_length)
   for(i in 1:n_zones){
     routed = .Fortran('duamel',
-                 tci = as.single(tci[,i]),
-                 as.single(pars[pars$name == 'unit_shape',]$value[i]),
-                 as.single(pars[pars$name == 'unit_scale',]$value[i]),
-                 as.single(dt_days),
-                 as.integer(n),
-                 as.integer(m),
-                 1L,
-                 0L,
-                 qr = as.single(numeric(n)))
+                      tci = as.single(tci[,i]),
+                      as.single(pars[pars$name == 'unit_shape',]$value[i]),
+                      as.single(pars[pars$name == 'unit_scale',]$value[i]),
+                      as.single(dt_days),
+                      as.integer(n),
+                      as.integer(m),
+                      1L,
+                      0L,
+                      qr = as.single(numeric(n)))
 
     # convert to cfs
     flow_cfs = flow_cfs +
@@ -474,7 +474,7 @@ pet_hs <- function(lat,jday,tave,tmax,tmin){
   omega_s=acos(-tan(lat*pi/180)*tan(rho))
   #Extraterrestrial Radiation (MJm^-2*day^-1)
   r_e=(24*60)/pi*0.0820*d_r*(omega_s*sin(lat*pi/180)*sin(rho)+
-                   cos(lat*pi/180)*cos(rho)*sin(omega_s))
+                               cos(lat*pi/180)*cos(rho)*sin(omega_s))
   # mm
   0.0023*(tave+17.8)*(tmax-tmin)**0.5*r_e/2.45/4
 }
@@ -616,7 +616,7 @@ forcing_adjust_map_pet_ptps <- function(climo, pars, ll=0.9*climo, ul=1.1*climo,
       if(shift > 0 ){
         climo_adj[i] = climo_interp[i+1] + shift*(climo_interp[i+2]-climo_interp[i+1])/30
       }else if (shift < 0){
-        climo_adj[i] = climo_interp[i] + shift*(climo_interp[i+1]-climo_interp[i])/30
+        climo_adj[i] = climo_interp[i] + (30-abs(shift))*(climo_interp[i+1]-climo_interp[i])/30
       }
     }
   }
@@ -708,7 +708,7 @@ forcing_adjust_mat <- function (climo, pars, ll=0.9*climo, ul=1.1*climo, return_
       if(shift > 0 ){
         climo_adj[i] = climo_interp[i+1] + shift*(climo_interp[i+2]-climo_interp[i+1])/30
       }else if (shift < 0 ){
-        climo_adj[i] = climo_interp[i] + shift*(climo_interp[i+1]-climo_interp[i])/30
+        climo_adj[i] = climo_interp[i] + (30-abs(shift))*(climo_interp[i+1]-climo_interp[i])/30
       }
     }
   }
