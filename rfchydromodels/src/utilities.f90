@@ -69,7 +69,7 @@ module utilities
           if(shift > 0 ) then
             climo_adj(i) = climo_interp(i+1) + shift*(climo_interp(i+2)-climo_interp(i+1))/30
           else if (shift < 0 ) then
-            climo_adj(i) = climo_interp(i) + (30-abs(shift))*(climo_interp(i+1)-climo_interp(i))/30
+            climo_adj(i) = climo_interp(i) + shift*(climo_interp(i+1)-climo_interp(i))/30
           end if 
         end do 
       end if 
@@ -194,9 +194,7 @@ module utilities
           if(shift > 0 ) then
             climo_adj(i) = climo_interp(i+1) + shift*(climo_interp(i+2)-climo_interp(i+1))/30
           else if (shift < 0 ) then
-            ! for negative shift the shift applies from the right endpoint of the 
-            ! interpolation, so need to convert it to a shift from the left endpoint
-            climo_adj(i) = climo_interp(i) + (30-abs(shift))*(climo_interp(i+1)-climo_interp(i))/30
+            climo_adj(i) = climo_interp(i) + shift*(climo_interp(i+1)-climo_interp(i))/30
           end if 
         end do 
       end if 
