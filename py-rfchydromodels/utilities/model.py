@@ -116,18 +116,18 @@ class Model:
             n=[n]
             
         par = self.p
+
+        cms_to_cfs = 35.3147
+        cfs_to_cms = 1/cms_to_cfs
                 
         lagk_route=s.lagk(self.dt_hours,self.dt_hours,'METR',
-                    par['lagtbl_a'][n],par['lagtbl_b'][n],par['lagtbl_c'][n],par['lagtbl_d'][n],
-                    par['ktbl_a'][n],par['ktbl_b'][n],par['ktbl_c'][n],par['ktbl_d'][n],
-                    par['lagk_lagmax'][n], par['lagk_kmax'][n],par['lagk_qmax'][n],
-                    par['init_co'][n],par['init_if'][n], par['init_of'][n],par['init_stor'][n],              
-                    self.uptribs[:,n]*0.0283168)
-        
-        sim_flow_inst_cfs=np.sum(lagk_route,axis=1)*35.3147
-            
-        next_sim = pd.DataFrame(sim_flow_inst_cfs).shift(-1).to_numpy().flatten()
-        sim_flow_cfs = (sim_flow_inst_cfs + next_sim) / 2
+                    par['lagtbl_a'][n], par['lagtbl_b'][n], par['lagtbl_c'][n], par['lagtbl_d'][n],
+                    par['ktbl_a'][n], par['ktbl_b'][n], par['ktbl_c'][n], par['ktbl_d'][n],
+                    par['lagk_lagmax'][n], par['lagk_kmax'][n], par['lagk_qmax'][n],
+                    par['init_co'][n], par['init_if'][n], par['init_of'][n], par['init_stor'][n],
+                    self.uptribs[:,n]*cfs_to_cms)
+
+        sim_flow_cfs = np.sum(lagk_route,axis=1)*cms_to_cfs
         
         self.lagk_flow_cfs = pd.Series(sim_flow_cfs, index=self.dates)
         
@@ -136,11 +136,10 @@ class Model:
     def sacsnow_run(self,n=None):
         
         if n is None:
-            n=list(range(self.n_uptribs))
+            n=list(range(self.n_zones))
         elif isinstance(n, int):
             n=[n]
-            len
-        
+
         p = self.p
 
         # simulates all zones
@@ -149,13 +148,15 @@ class Model:
                         p['alat'][n], p['elev'][n], p['zone_area'][n],
                         # sac pars
                         p['uztwm'][n], p['uzfwm'][n], p['lztwm'][n], p['lzfpm'][n], p['lzfsm'][n],
-                        p['adimp'][n], p['uzk'][n], p['lzpk'][n], p['lzsk'][n], p['zperc'][n], p['rexp'][n], p['pctim'][n],
-                        p['pfree'][n], p['riva'][n], p['side'][n], p['rserv'][n], p['peadj'][n], p['pxadj'][n],
+                        p['adimp'][n], p['uzk'][n], p['lzpk'][n], p['lzsk'][n], p['zperc'][n],
+                        p['rexp'][n], p['pctim'][n], p['pfree'][n], p['riva'][n], p['side'][n],
+                        p['rserv'][n], p['peadj'][n], p['pxadj'][n],
                         # monthly peadj
                         self.peadj_m[:,n],
                         # snow pars
-                        p['scf'][n], p['mfmax'][n], p['mfmin'][n], p['uadj'][n], p['si'][n], p['nmf'][n], p['tipm'][n], p['mbase'][n],
-                        p['plwhc'][n], p['daygm'][n], p['adc_a'][n], p['adc_b'][n], p['adc_c'][n],
+                        p['scf'][n], p['mfmax'][n], p['mfmin'][n], p['uadj'][n], p['si'][n],
+                        p['nmf'][n], p['tipm'][n], p['mbase'][n], p['plwhc'][n], p['daygm'][n],
+                        p['adc_a'][n], p['adc_b'][n], p['adc_c'][n],
                         # forcing adjustment
                         self.map_fa_pars, self.mat_fa_pars, self.pet_fa_pars, self.ptps_fa_pars,
                         self.map_fa_limits, self.mat_fa_limits, self.pet_fa_limits, self.ptps_fa_limits,
@@ -186,10 +187,13 @@ class Model:
         return self.sacsnow_flow_cfs
         
     def run_all(self):
-        
-        self.run_all=self.lagk_run()+self.sacsnow_run()
-        
-        return self.run_all_flow_cfs
+
+        if self.n_uptribs > 0:
+            self.sim = self.lagk_run() + self.sacsnow_run()
+        else:
+            self.sim = self.sacsnow_run()
+
+        return self.sim
             
 
 

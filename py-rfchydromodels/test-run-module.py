@@ -28,9 +28,8 @@ for f in forcings_2zone:
     f.index = pd.to_datetime(f[['year', 'month', 'day', 'hour']])
 for f in forcings_2zone_2route:
     f.index = pd.to_datetime(f[['year', 'month', 'day', 'hour']])
-
 for f in upflow_2zone_2route:
-    f.index = pd.to_datetime(f[['year', 'month', 'day', 'hour']]
+    f.index = pd.to_datetime(f[['year', 'month', 'day', 'hour']])
 
 flow.index = pd.to_datetime(flow[['year', 'month', 'day', 'hour']])
 flow['datetime'] = flow.index
