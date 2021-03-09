@@ -429,6 +429,54 @@ uh <- function(dt_hours, tci, pars){
   flow_cfs
 }
 
+#' Lag-K Routing for any number of upstream points
+#'
+#' @param dt_hours timestep in hours
+#' @param uptribs a matrix where each column contains flow data (in cfs) for an upstream point
+#' @param pars parameters
+#'
+#' @return vector of routed flows
+#' @export
+#'
+#' @examples NULL
+lagk <- function(dt_hours, uptribs, pars){
+
+  sec_per_day = 86400
+  dt_seconds = sec_per_day/(24/dt_hours)
+  dt_days = dt_seconds / sec_per_day
+
+  n_uptribs = ncol(uptribs)
+  sim_length = nrow(uptribs)
+
+
+  lagk_out = numeric(sim_length)
+  routed = .Fortran('lagk',
+                    n_hrus = as.integer(n_uptribs),
+                       ita = as.integer(dt_hours),
+                       itb = as.integer(dt_hours),
+                    #meteng = as.character('METR'),
+                  lagtbl_a = pars[pars$name == 'lagtbl_a',]$value,
+                  lagtbl_b = pars[pars$name == 'lagtbl_b',]$value,
+                  lagtbl_c = pars[pars$name == 'lagtbl_c',]$value,
+                  lagtbl_d = pars[pars$name == 'lagtbl_d',]$value,
+                    ktbl_a = pars[pars$name == 'ktbl_a',]$value,
+                    ktbl_b = pars[pars$name == 'ktbl_b',]$value,
+                    ktbl_c = pars[pars$name == 'ktbl_c',]$value,
+                    ktbl_d = pars[pars$name == 'ktbl_d',]$value,
+               lagk_lagmax = pars[pars$name == 'lagk_lagmax',]$value,
+                 lagk_kmax = pars[pars$name == 'lagk_kmax',]$value,
+                 lagk_qmax = pars[pars$name == 'lagk_qmax',]$value,
+                   init_co = pars[pars$name == 'init_co',]$value,
+                   init_if = pars[pars$name == 'init_if',]$value,
+                   init_of = pars[pars$name == 'init_of',]$value,
+                 init_stor = pars[pars$name == 'init_stor',]$value,
+                     qa_in = uptribs,
+                sim_length = sim_length,
+                  lagk_out = lagk_out)
+
+  routed$lagk_out
+}
+
 
 
 #' Title
