@@ -1,7 +1,7 @@
 #' Execute SAC-SMA, SNOW17 and UH with given parameters
 #'
 #' @param dt_hours timestep in hours
-#' @param forcing data frame with with columns for forcing inputs
+#' @param forcing data frame with columns for forcing inputs
 #' @param pars sac parameters
 #' @param forcing_adjust does the parameter set include forcing adjustments
 #' @return Vector of routed flow in cfs
@@ -17,6 +17,30 @@ sac_snow_uh <- function(dt_hours, forcing, pars, forcing_adjust=TRUE){
   tci = sac_snow(dt_hours, forcing, pars, forcing_adjust = forcing_adjust)
   flow_cfs = uh(dt_hours, tci, pars)
   flow_cfs
+}
+
+#' Execute SAC-SMA, SNOW17, UH and LAG-K with given parameters
+#'
+#' @param dt_hours timestep in hours
+#' @param forcing data frame with columns for forcing inputs
+#' @param uptribs data frame with columns for upstream flow data
+#' @param pars sac parameters
+#' @param forcing_adjust does the parameter set include forcing adjustments
+#' @return Vector of routed flow in cfs
+#' @export
+#'
+#' @examples
+#' data(forcing)
+#' data(pars)
+#' data(upflows)
+#' dt_hours = 6
+#' flow_cfs = sac_snow_uh_lagk(dt_hours, forcing, uptribs, pars)
+sac_snow_uh_lagk <- function(dt_hours, forcing, uptribs, pars, forcing_adjust=TRUE){
+
+  tci = sac_snow(dt_hours, forcing, pars, forcing_adjust = forcing_adjust)
+  flow_cfs = uh(dt_hours, tci, pars)
+  lagk_flow_cfs = lagk(dt_hours, uptribs, pars)
+  flow_cfs + lagk_flow_cfs
 }
 
 #' Execute SAC-SMA, SNOW17, return total channel inflow per zone
@@ -439,17 +463,17 @@ uh <- function(dt_hours, tci, pars){
 #' @export
 #'
 #' @examples NULL
-lagk <- function(dt_hours, uptribs, pars){
+lagk <- function(dt_hours, uptribs, pars, sum_routes = TRUE){
 
   sec_per_day = 86400
   dt_seconds = sec_per_day/(24/dt_hours)
   dt_days = dt_seconds / sec_per_day
 
-  n_uptribs = ncol(uptribs)
-  sim_length = nrow(uptribs)
+  n_uptribs = length(uptribs)
+  sim_length = nrow(uptribs[[1]])
 
 
-  lagk_out = numeric(sim_length)
+  lagk_out = matrix(0,sim_length,n_uptribs)
   routed = .Fortran('lagk',
                     n_hrus = as.integer(n_uptribs),
                        ita = as.integer(dt_hours),
@@ -470,11 +494,17 @@ lagk <- function(dt_hours, uptribs, pars){
                    init_if = pars[pars$name == 'init_if',]$value,
                    init_of = pars[pars$name == 'init_of',]$value,
                  init_stor = pars[pars$name == 'init_stor',]$value,
-                     qa_in = uptribs,
-                sim_length = sim_length,
+                     qa_in = do.call('cbind',lapply(uptribs,'[[','flow_cfs')),
+                sim_length = as.integer(sim_length),
                   lagk_out = lagk_out)
 
-  routed$lagk_out
+  if(sum_routes & n_uptribs>1){
+    return(apply(routed$lagk_out,1,sum))
+  }else if(n_uptribs > 1){
+    return(routed$lagk_out)
+  }else{
+    return(as.vector(routed$lagk_out))
+  }
 }
 
 

@@ -118,7 +118,7 @@ subroutine lagk(n_hrus, ita, itb, &
   ! ! output 
   double precision, dimension(sim_length ,n_hrus), intent(out):: lagk_out
 
-  ! ! Convert data types
+  ! ! Convert double precision to single precision 
   ico=real(ico_in)
   iinfl=real(iinfl_in)
   ioutfl=real(ioutfl_in)
@@ -138,13 +138,36 @@ subroutine lagk(n_hrus, ita, itb, &
   
   qa=real(qa_in)
 
-  ! write(*,*) n_hrus, ita, itb
-  ! write(*,*) lagtbl_a_in, lagtbl_b_in, lagtbl_c_in, lagtbl_d_in
-  ! write(*,*) ktbl_a_in, ktbl_b_in, ktbl_c_in, ktbl_d_in
-  ! write(*,*) lagk_lagmax_in, lagk_kmax_in, lagk_qmax_in
-  ! write(*,*) ico_in, iinfl_in, ioutfl_in, istor_in
-  ! write(*,*) sim_length
+  lagk_out = 0
+  lagtbl = 0 
+  ktbl = 0
+  lag_entry = 0
+  k_entry = 0
+  p = 0 
+  c = 0
+  c_cpy = 0
+  qb = 0 
+  qc = 0
 
+  ! write(*,*) 'n_hrus',n_hrus
+  ! write(*,*) 'ita',ita
+  ! write(*,*) 'itb',itb
+  ! write(*,*) 'lagtbl_a_in',lagtbl_a_in
+  ! write(*,*) 'lagtbl_b_in',lagtbl_b_in
+  ! write(*,*) 'lagtbl_c_in',lagtbl_c_in
+  ! write(*,*) 'lagtbl_d_in',lagtbl_d_in
+  ! write(*,*) 'ktbl_a_in',ktbl_a_in
+  ! write(*,*) 'ktbl_b_in',ktbl_b_in
+  ! write(*,*) 'ktbl_c_in',ktbl_c_in
+  ! write(*,*) 'ktbl_d_in',ktbl_d_in
+  ! write(*,*) 'lagk_lagmax_in',lagk_lagmax_in
+  ! write(*,*) 'lagk_kmax_in',lagk_kmax_in
+  ! write(*,*) 'lagk_qmax_in',lagk_qmax_in
+  ! write(*,*) 'ico_in',ico_in
+  ! write(*,*) 'iinfl_in',iinfl_in
+  ! write(*,*) 'ioutfl_in',ioutfl_in
+  ! write(*,*) 'istor_in',istor_in
+  ! write(*,*) 'sim_length',sim_length
   
   ! ! Populate Lag and K tables  
   do nh=1,n_hrus  
@@ -172,11 +195,23 @@ subroutine lagk(n_hrus, ita, itb, &
     ndq=ndq+.1
    end do
   end do
+
+  ! write(*,*)'lagtbl'
+  ! do i=1,22
+  !   write(*,*)lagtbl(i,:)
+  ! end do
+
+  ! write(*,*)'ktbl'
+  ! do i=1,22
+  !   write(*,*)ktbl(i,:)
+  ! end do
+
+  ! return
   
   ! ! Get length of K and Lag Table
   do nh=1,n_hrus  
-   jlag(nh)=size(lagtbl(:, nh),1)/2
-   jk(nh)=size(ktbl(:,nh),1)/2
+   jlag(nh)=size(lagtbl,2)/2
+   jk(nh)=size(ktbl,2)/2
   end do
   
   ! ! Loop through each reach and calculate lag 
