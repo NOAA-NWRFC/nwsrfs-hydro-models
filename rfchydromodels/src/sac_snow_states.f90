@@ -108,7 +108,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   ! sac-sma output variables and routed flow
   !real(sp), dimension(sim_length):: qs_sp, qg_sp, aet_sp, tci_sp
   real(sp), dimension(sim_length, n_hrus):: qs, qg, aet_sp, tci_sp
-  double precision, dimension(sim_length ,n_hrus), intent(out):: tci, aet
+  double precision, dimension(sim_length ,n_hrus), intent(out):: tci, aet, pet
 
   ! snow-17 output variables  
   real(sp), dimension(sim_length, n_hrus):: raim, snowh, sneqv, snow 
@@ -117,8 +117,8 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   integer, dimension(sim_length), intent(in):: year, month, day, hour
 
   ! atmospheric forcing variables
-  double precision, dimension(sim_length, n_hrus), intent(in):: map, ptps, mat
-  double precision, dimension(sim_length, n_hrus):: pet, mat_adjusted
+  double precision, dimension(sim_length, n_hrus), intent(inout):: map, ptps, mat
+  double precision, dimension(sim_length, n_hrus):: pet_hs, mat_adjusted
   double precision:: map_step, ptps_step, mat_step, pet_step
 
   ! area weighted forcings for climo calculations
@@ -243,7 +243,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   ! compute HS PET for the entire run up front 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   pet_ts = 0d0
-  pet = 0d0
+  pet_hs = 0d0
 
   do nh = 1, n_hrus
     do i = 1, sim_length
@@ -291,7 +291,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
         pet_ts = pet_ts * peadj(nh) / dble(ts_per_day)
         ! write(*,*)'pet_ts',pet_ts
       end if 
-      pet(i,nh) = pet_ts 
+      pet_hs(i,nh) = pet_ts 
     end do 
   end do
 
@@ -308,7 +308,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   ! area weighted forcings 
   do nh=1,n_hrus
     map_aw = map_aw + map(:,nh) * area(nh)
-    pet_aw = pet_aw + pet(:,nh) * area(nh)
+    pet_aw = pet_aw + pet_hs(:,nh) * area(nh)
     ptps_aw = ptps_aw + ptps(:,nh) * area(nh)
   end do 
 
@@ -461,7 +461,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       ! pet(i,nh) is the pet from HS, 
       ! peadj_step is the conversion to etdemand (crop factor)
       ! pet_adj_step is the forcing adjustment
-      pet_step = pet(i,nh) * peadj_step * pet_adj_step
+      pet_step = pet_hs(i,nh) * peadj_step * pet_adj_step
       ptps_step = min(ptps(i,nh) * ptps_adj_step, 1d0)
       ! write(*,'(a,5i5,8f8.2)')' after adj',nh, year(i), month(i), day(i), hour(i), map_step, mat_step, ptps_step, pet_step, &
       !                                    mat_adj_step, map_adj_step, pet_adj_step, ptps_adj_step
@@ -646,6 +646,13 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       adimc(i,nh) = dble(adimc_sp)
       tci(i,nh) = dble(tci_sp(i,nh))
       aet(i,nh) = dble(aet_sp(i,nh))
+      pet(i,nh) = pet_step
+
+      map(i,nh) = map_step
+      mat(i,nh) = mat_step
+      ptps(i,nh) = ptps_step 
+
+
 
       !write(*,'(5i5,4f8.2)')nh, year(i), month(i), day(i), hour(i), map(i,nh), mat(i,nh), ptps(i,nh), pet(i,nh), 
       !write(*,'(4i5,7f8.3)')year(i), month(i), day(i), hour(i), uztwc_sp, uzfwc_sp, lztwc_sp, &
