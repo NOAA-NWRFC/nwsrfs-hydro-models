@@ -326,14 +326,14 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   ! end do 
 
   ! expand forcing adjustment limits in case the limits are not set properly 
-  do k=1,12
-    if(map_climo(k) < map_fa_limits(k,1)) map_fa_limits(k,1) = map_climo(k) * 0.9
-    if(map_climo(k) > map_fa_limits(k,2)) map_fa_limits(k,2) = map_climo(k) * 1.1
-    if(pet_climo(k) < pet_fa_limits(k,1)) pet_fa_limits(k,1) = pet_climo(k) * 0.9
-    if(pet_climo(k) > pet_fa_limits(k,2)) pet_fa_limits(k,2) = pet_climo(k) * 1.1
-    if(ptps_climo(k) < ptps_fa_limits(k,1)) ptps_fa_limits(k,1) = ptps_climo(k) * 0.75
-    if(ptps_climo(k) > ptps_fa_limits(k,2)) ptps_fa_limits(k,2) = ptps_climo(k) * 1.25
-  end do 
+  ! do k=1,12
+  !   if(map_climo(k) < map_fa_limits(k,1)) map_fa_limits(k,1) = map_climo(k) * 0.9
+  !   if(map_climo(k) > map_fa_limits(k,2)) map_fa_limits(k,2) = map_climo(k) * 1.1
+  !   if(pet_climo(k) < pet_fa_limits(k,1)) pet_fa_limits(k,1) = pet_climo(k) * 0.9
+  !   if(pet_climo(k) > pet_fa_limits(k,2)) pet_fa_limits(k,2) = pet_climo(k) * 1.1
+  !   if(ptps_climo(k) < ptps_fa_limits(k,1)) ptps_fa_limits(k,1) = ptps_climo(k) * 0.75
+  !   if(ptps_climo(k) > ptps_fa_limits(k,2)) ptps_fa_limits(k,2) = ptps_climo(k) * 1.25
+  ! end do 
 
   ! compute monthly adjustments using GW's method
   map_adj = forcing_adjust_map_pet_ptps(map_climo, map_fa_pars, map_fa_limits(:,1), map_fa_limits(:,2))
