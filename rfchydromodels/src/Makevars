@@ -7,3 +7,13 @@ all: $(SHLIB)
 sac_snow_only.o sac_snow_states.o: utilities.o
 utilities.o: types.o stats.o sorting.o
 stats.o: types.o sorting.o
+
+# These files use obsolete features and so fail when using the default -std=f95 
+fka7.o: fka7.f
+	gfortran -c -fPIC  -O3 fka7.f
+flag7.o: flag7.f
+	gfortran -c -fPIC  -O3 flag7.f
+initCommonBlocksPin.o: initCommonBlocksPin.f
+	gfortran -c -fPIC  -O3 initCommonBlocksPin.f
+pin7.o: pin7.f
+	gfortran -c -fPIC  -O3 pin7.f

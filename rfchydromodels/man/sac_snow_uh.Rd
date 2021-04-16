@@ -9,7 +9,7 @@ sac_snow_uh(dt_hours, forcing, pars, forcing_adjust = TRUE)
 \arguments{
 \item{dt_hours}{timestep in hours}
 
-\item{forcing}{data frame with with columns for forcing inputs}
+\item{forcing}{data frame with columns for forcing inputs}
 
 \item{pars}{sac parameters}
 
