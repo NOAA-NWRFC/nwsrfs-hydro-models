@@ -12,9 +12,9 @@
 #' data(pars)
 #' dt_hours = 6
 #' flow_cfs = sac_snow_uh(dt_hours,forcing, pars)
-sac_snow_uh <- function(dt_hours, forcing, pars, forcing_adjust=TRUE){
+sac_snow_uh <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=NULL){
 
-  tci = sac_snow(dt_hours, forcing, pars, forcing_adjust = forcing_adjust)
+  tci = sac_snow(dt_hours, forcing, pars, forcing_adjust = forcing_adjust, climo = climo)
   flow_cfs = uh(dt_hours, tci, pars)
   flow_cfs
 }
@@ -35,9 +35,9 @@ sac_snow_uh <- function(dt_hours, forcing, pars, forcing_adjust=TRUE){
 #' data(upflows)
 #' dt_hours = 6
 #' flow_cfs = sac_snow_uh_lagk(dt_hours, forcing, uptribs, pars)
-sac_snow_uh_lagk <- function(dt_hours, forcing, uptribs, pars, forcing_adjust=TRUE){
+sac_snow_uh_lagk <- function(dt_hours, forcing, uptribs, pars, forcing_adjust=TRUE, climo=NULL){
 
-  tci = sac_snow(dt_hours, forcing, pars, forcing_adjust = forcing_adjust)
+  tci = sac_snow(dt_hours, forcing, pars, forcing_adjust = forcing_adjust, climo = climo)
   flow_cfs = uh(dt_hours, tci, pars)
   lagk_flow_cfs = lagk(dt_hours, uptribs, pars)
   flow_cfs + lagk_flow_cfs
@@ -49,6 +49,7 @@ sac_snow_uh_lagk <- function(dt_hours, forcing, uptribs, pars, forcing_adjust=TR
 #' @param forcing data frame with with columns for forcing inputs
 #' @param pars sac parameters
 #' @param forcing_adjust does the parameter set include forcing adjustments
+#' @param climo
 #' @return Matrix (1 column per zone) of unrouted channel inflow
 #' @export
 #'
@@ -59,7 +60,7 @@ sac_snow_uh_lagk <- function(dt_hours, forcing, uptribs, pars, forcing_adjust=TR
 #' tci = sac_snow(dt_hours, forcing, pars)
 #' @useDynLib rfchydromodels sacsnow_
 #' @importFrom stats reshape
-sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=TRUE){
+sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=NULL){
 
   pars = as.data.frame(pars)
 
@@ -136,6 +137,8 @@ sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=TRUE){
                pars[pars$name == 'init_lzfpc',]$value,
                pars[pars$name == 'init_adimc',]$value)
 
+  if(is.null(climo)) climo = matrix(-9999,12,4)
+
 
   x = .Fortran('sacsnow',
                n_hrus=as.integer(n_zones),
@@ -196,6 +199,8 @@ sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=TRUE){
                ptps_fa_limits = ptps_limits,
                # initial conditions
                init = init,
+               # externally specified climatology
+               climo = climo,
                # forcings
                map = do.call('cbind',lapply(forcing,'[[','map_mm')),
                ptps = do.call('cbind',lapply(forcing,'[[','ptps')),
@@ -224,7 +229,7 @@ sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=TRUE){
 #' states = sac_snow_states(dt_hours, forcing, pars)
 #' @useDynLib rfchydromodels sacsnowstates_
 #' @importFrom stats reshape
-sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE){
+sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=NULL){
 
   pars = as.data.frame(pars)
 
@@ -304,6 +309,8 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE){
                pars[pars$name == 'init_lzfpc',]$value,
                pars[pars$name == 'init_adimc',]$value)
 
+  if(is.null(climo)) climo = matrix(-9999,12,4)
+
   x = .Fortran('sacsnowstates',
                n_hrus=as.integer(n_zones),
                dt=as.integer(dt_seconds),
@@ -363,6 +370,8 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE){
                ptps_fa_limits = ptps_limits,
                # initial conditions
                init = init,
+               # externally specefied climatology
+               climo = climo,
                # forcings
                map = do.call('cbind',lapply(forcing,'[[','map_mm')),
                ptps = do.call('cbind',lapply(forcing,'[[','ptps')),

@@ -7,7 +7,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
     adc_a, adc_b, adc_c, & 
     map_fa_pars, mat_fa_pars, pet_fa_pars, ptps_fa_pars, & 
     map_fa_limits, mat_fa_limits, pet_fa_limits, ptps_fa_limits, & 
-    init, & 
+    init, climo, & 
     map, ptps, mat, &
     tci)
 
@@ -54,6 +54,10 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   double precision, dimension(7, n_hrus), intent(in):: init
   double precision, dimension(n_hrus):: init_swe, init_uztwc, init_uzfwc, init_lztwc, init_lzfsc, &
           init_lzfpc, init_adimc
+
+  ! 4 columns, map, mat, pet, ptps 
+  double precision, dimension(12, 4), intent(in):: climo
+  logical:: calc_climo
 
   ! SAC_model params & other key inputs in the sace param file
   !character(len = 20), dimension(n_hrus) :: hru_id   ! local hru id
@@ -175,6 +179,12 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   ! julian day 
   jday = julian_day(year,month,day)
 
+  ! check if real climo data is input 
+  if(climo(1,1) <= -9999)then 
+    calc_climo = .true.
+  else 
+    calc_climo = .false.
+  end if 
   
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! Compute the adjusted temperature for the entire POR 
@@ -189,8 +199,14 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
 
   mat_aw = mat_aw / sum(area)
 
-  ! compute 12 monthly climo values (calendar year)
-  mat_climo = monthly_climo_mean(mat_aw, month)
+  if(calc_climo)then
+    ! compute 12 monthly climo values (calendar year)
+    mat_climo = monthly_climo_mean(mat_aw, month)
+  else
+    do i = 1,12
+      mat_climo(i) = climo(i,2)
+    end do
+  end if 
   
   ! expand forcing adjustment limits in case the limits are not set properly 
   do k=1,12
@@ -318,10 +334,19 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   pet_aw = pet_aw / sum(area)
   ptps_aw = ptps_aw / sum(area)
 
-  ! compute 12 monthly climo values (calendar year)
-  map_climo = monthly_climo_sum(map_aw, month)
-  pet_climo = monthly_climo_sum(pet_aw, month)
-  ptps_climo = monthly_climo_mean(ptps_aw, month)
+  if(calc_climo)then
+    ! compute 12 monthly climo values (calendar year)
+    map_climo = monthly_climo_sum(map_aw, month)
+    pet_climo = monthly_climo_sum(pet_aw, month)
+    ptps_climo = monthly_climo_mean(ptps_aw, month)
+  else 
+    do i = 1,12
+      map_climo(i) = climo(i,1)
+      pet_climo(i) = climo(i,3)
+      ptps_climo(i) = climo(i,4)
+    end do
+  end if 
+
   ! write(*,*)'climo: map, mat, pet, ptps'
   ! do k=1,12
   !   write(*,*)map_climo(k), mat_climo(k), pet_climo(k), ptps_climo(k)
