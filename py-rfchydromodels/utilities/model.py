@@ -25,12 +25,12 @@ class Model:
         #Dummy place holder for upstream flow at headwater basins
         if route is None:
            route=[pd.DataFrame({'flow_cfs':np.zeros(len(forcings[0].index))},index=forcings[0].index,)]
-           uptribs=['None']
+           uptribs_name=['None']
            n_uptribs = 0
         else:
-           uptribs=pars.loc[pars['zone'].str.endswith('R')].zone.unique()
-           n_uptribs=len(uptribs)
-        self.uptribs=uptribs
+           uptribs_name=pars.loc[pars.type=='lagk'].zone.unique()
+           n_uptribs=len(uptribs_name)
+        self.uptribs_name=uptribs_name
         self.n_uptribs=n_uptribs
            
 
@@ -94,7 +94,7 @@ class Model:
         
         self.uptribs = np.full([sim_length, max(1,n_uptribs)], np.nan)
         
-        for i in range(len(uptribs)):
+        for i in range(len(uptribs_name)):
             self.uptribs[:, i] = route[i]['flow_cfs']#.astype('f4').to_numpy()
 
         self.p = {}
@@ -120,7 +120,7 @@ class Model:
         cms_to_cfs = 35.3147
         cfs_to_cms = 1/cms_to_cfs
                 
-        lagk_route=s.lagk(self.dt_hours,self.dt_hours,'METR',
+        lagk_route=s.lagk(self.dt_hours,self.dt_hours,
                     par['lagtbl_a'][n], par['lagtbl_b'][n], par['lagtbl_c'][n], par['lagtbl_d'][n],
                     par['ktbl_a'][n], par['ktbl_b'][n], par['ktbl_c'][n], par['ktbl_d'][n],
                     par['lagk_lagmax'][n], par['lagk_kmax'][n], par['lagk_qmax'][n],
