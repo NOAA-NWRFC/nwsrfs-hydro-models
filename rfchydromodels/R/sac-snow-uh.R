@@ -503,7 +503,7 @@ lagk <- function(dt_hours, uptribs, pars, sum_routes = TRUE){
                    init_if = pars[pars$name == 'init_if',]$value,
                    init_of = pars[pars$name == 'init_of',]$value,
                  init_stor = pars[pars$name == 'init_stor',]$value,
-                     qa_in = do.call('cbind',lapply(uptribs,'[[','flow_cfs')),
+                     qa_in = do.call("cbind", lapply(uptribs, function(x)as.numeric(x[['flow_cfs']]))),
                 sim_length = as.integer(sim_length),
                   lagk_out = lagk_out)
 

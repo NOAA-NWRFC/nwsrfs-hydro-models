@@ -138,6 +138,11 @@ subroutine lagk(n_hrus, ita, itb, &
   
   qa=real(qa_in)
 
+  ! write(*,*)'qa_in'
+  ! do i=1,100
+  !   write(*,*)qa_in(i,:)
+  ! end do
+
   lagk_out = 0
   lagtbl = 0 
   ktbl = 0
@@ -219,12 +224,32 @@ subroutine lagk(n_hrus, ita, itb, &
     
     call pin7(p(:,nh),c(:,nh),int(ita,4),int(itb,4),jlag(nh),jk(nh),meteng,lagtbl(:,nh), &
        ktbl(:,nh),ico(nh),iinfl(nh),ioutfl(nh),istor(nh))
+
+    ! write(*,*)'p'
+    ! do i=1,500
+    !   if(p(i,nh) .ne. 0) write(*,*) p(i,nh)
+    ! end do
+
+    ! write(*,*)'c'
+    ! do i=1,100
+    !   if(c(i,nh) .ne. 0) write(*,*) c(i,nh)
+    ! end do
     
     c_cpy=c(:,nh)
 
-    call flag7(p(:,nh),c_cpy,qa(:,nh),qb(:,nh),sim_length)
+    ! write(*,*)'qa'
+    ! do i=1,100
+    !   write(*,*)qa(i,:)
+    ! end do
+
+    call flag7(p(:,nh),c_cpy,qa(:,nh),qb(:,nh),int(sim_length,4))
+
+    ! write(*,*)'qb'
+    ! do i=1,100
+    !   write(*,*)qb(i,:)
+    ! end do
     
-    call fka7(p(:,nh),c_cpy,qb(:,nh),qc(:,nh),sim_length)
+    call fka7(p(:,nh),c_cpy,qb(:,nh),qc(:,nh),int(sim_length,4))
     
   end do
   
