@@ -1,10 +1,8 @@
 subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
     latitude, elev, area, &
-    uztwm, uzfwm, lztwm, lzfpm, lzfsm, adimp, uzk, lzpk, lzsk, zperc, &
-    rexp, pctim, pfree, riva, side, rserv, &
+    sac_pars, &
     peadj, pxadj, peadj_m, &
-    scf, mfmax, mfmin, uadj, si, nmf, tipm, mbase, plwhc, daygm, &
-    adc_a, adc_b, adc_c, & 
+    snow_pars, & 
     map_fa_pars, mat_fa_pars, pet_fa_pars, ptps_fa_pars, & 
     map_fa_limits, mat_fa_limits, pet_fa_limits, ptps_fa_limits, & 
     init, climo, & 
@@ -44,6 +42,15 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   ! initialization variables
   integer, intent(in):: n_hrus ! number of zones
 
+  ! sac pars matrix 
+  ! uztwm, uzfwm, lztwm, lzfpm, lzfsm, adimp, uzk, lzpk, lzsk, zperc, rexp, pctim, pfree, riva, side, rserv
+  double precision, dimension(16,n_hrus), intent(in):: sac_pars 
+
+  ! snow pars marix 
+  ! scf, mfmax, mfmin, uadj, si, nmf, tipm, mbase, plwhc, daygm, adc_a, adc_b, adc_c
+  double precision, dimension(13,n_hrus), intent(in):: snow_pars 
+
+
   integer, intent(in):: dt    ! model timestep in seconds
   !integer:: start_month, start_hour, start_day, start_year, &
   !          end_month, end_day, end_hour, end_year   
@@ -61,7 +68,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
 
   ! SAC_model params & other key inputs in the sace param file
   !character(len = 20), dimension(n_hrus) :: hru_id   ! local hru id
-  double precision, dimension(n_hrus), intent(in):: uztwm, uzfwm, uzk, pctim, adimp, zperc, rexp, &
+  double precision, dimension(n_hrus):: uztwm, uzfwm, uzk, pctim, adimp, zperc, rexp, &
                                 lztwm, lzfsm, lzfpm, lzsk, lzpk, pfree, &
                                 riva, side, rserv, peadj, pxadj
 
@@ -69,11 +76,10 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   double precision, dimension(n_hrus), intent(in):: latitude   ! decimal degrees
   double precision, dimension(n_hrus), intent(in):: elev       ! m
   double precision, dimension(n_hrus), intent(in):: area       ! km2
-  double precision, dimension(n_hrus), intent(in):: scf, mfmax, mfmin, uadj, si, &
-                                        nmf, tipm, mbase, plwhc, daygm
+  double precision, dimension(n_hrus):: scf, mfmax, mfmin, uadj, si, nmf, tipm, mbase, plwhc, daygm
   double precision, dimension(n_hrus):: pxtemp ! not used, set to zero
   double precision, dimension(11):: adc  ! different for each hru
-  double precision, dimension(n_hrus), intent(in):: adc_a, adc_b, adc_c ! areal depletion curve parameters ax^b+(1-a)x^c
+  double precision, dimension(n_hrus):: adc_a, adc_b, adc_c ! areal depletion curve parameters ax^b+(1-a)x^c
   double precision, dimension(11) :: adc_x
 
   ! forcing adjustment parameter vectors: mult, p_redist, std, shift 
@@ -160,6 +166,40 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   init_lzfpc = init(6,:)
   init_adimc = init(7,:)
 
+  ! pull out sac params to separate variables
+  uztwm = sac_pars(1,:)
+  uzfwm = sac_pars(2,:)
+  lztwm = sac_pars(3,:)
+  lzfpm = sac_pars(4,:)
+  lzfsm = sac_pars(5,:)
+  adimp = sac_pars(6,:)
+    uzk = sac_pars(7,:)
+   lzpk = sac_pars(8,:)
+   lzsk = sac_pars(9,:)
+  zperc = sac_pars(10,:)
+   rexp = sac_pars(11,:)
+  pctim = sac_pars(12,:)
+  pfree = sac_pars(13,:)
+   riva = sac_pars(14,:)
+   side = sac_pars(15,:)
+  rserv = sac_pars(16,:)
+
+  ! pull out snow params to separate variables
+    scf = snow_pars(1,:)
+  mfmax = snow_pars(2,:)
+  mfmin = snow_pars(3,:)
+   uadj = snow_pars(4,:)
+     si = snow_pars(5,:)
+    nmf = snow_pars(6,:)
+   tipm = snow_pars(7,:)
+  mbase = snow_pars(8,:)
+  plwhc = snow_pars(9,:)
+  daygm = snow_pars(10,:)
+  adc_a = snow_pars(11,:)
+  adc_b = snow_pars(12,:)
+  adc_c = snow_pars(13,:)
+
+
   ! do i=1,7
   !   write(*,*)init(i,:)
   ! end do
@@ -167,8 +207,6 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   !   write(*,*)map_fa_limits(i,:)
   ! end do
   ! write(*,*)map_fa_pars
-
-  ! =======  CODE starts below =====================================================================
 
   ts_per_day = 86400/dt
   ! write(*,*)'Timesteps per day:',ts_per_day
