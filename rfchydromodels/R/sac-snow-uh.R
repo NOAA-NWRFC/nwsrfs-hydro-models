@@ -152,7 +152,8 @@ sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=NULL){
                    pars[pars$name == 'pfree',]$value,
                    pars[pars$name ==  'riva',]$value,
                    pars[pars$name ==  'side',]$value,
-                   pars[pars$name == 'rserv',]$value)
+                   pars[pars$name == 'rserv',]$value,
+                   pars[pars$name ==   'efc',]$value)
 
   snow_pars = rbind(pars[pars$name ==    'scf',]$value,
                     pars[pars$name ==  'mfmax',]$value,
@@ -328,7 +329,8 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=
                    pars[pars$name == 'pfree',]$value,
                    pars[pars$name ==  'riva',]$value,
                    pars[pars$name ==  'side',]$value,
-                   pars[pars$name == 'rserv',]$value)
+                   pars[pars$name == 'rserv',]$value,
+                   pars[pars$name ==   'efc',]$value)
 
   snow_pars = rbind(pars[pars$name ==    'scf',]$value,
                     pars[pars$name ==  'mfmax',]$value,

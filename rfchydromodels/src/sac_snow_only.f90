@@ -43,8 +43,8 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   integer, intent(in):: n_hrus ! number of zones
 
   ! sac pars matrix 
-  ! uztwm, uzfwm, lztwm, lzfpm, lzfsm, adimp, uzk, lzpk, lzsk, zperc, rexp, pctim, pfree, riva, side, rserv
-  double precision, dimension(16,n_hrus), intent(in):: sac_pars 
+  ! uztwm, uzfwm, lztwm, lzfpm, lzfsm, adimp, uzk, lzpk, lzsk, zperc, rexp, pctim, pfree, riva, side, rserv, efc
+  double precision, dimension(17,n_hrus), intent(in):: sac_pars 
 
   ! snow pars marix 
   ! scf, mfmax, mfmin, uadj, si, nmf, tipm, mbase, plwhc, daygm, adc_a, adc_b, adc_c
@@ -70,7 +70,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   !character(len = 20), dimension(n_hrus) :: hru_id   ! local hru id
   double precision, dimension(n_hrus):: uztwm, uzfwm, uzk, pctim, adimp, zperc, rexp, &
                                 lztwm, lzfsm, lzfpm, lzsk, lzpk, pfree, &
-                                riva, side, rserv, peadj, pxadj
+                                riva, side, rserv, efc, peadj, pxadj
 
   ! Snow17_model params 
   double precision, dimension(n_hrus), intent(in):: latitude   ! decimal degrees
@@ -127,7 +127,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   ! atmospheric forcing variables
   double precision, dimension(sim_length, n_hrus), intent(in):: map, ptps, mat
   double precision, dimension(sim_length, n_hrus):: pet, mat_adjusted 
-  double precision:: map_step, ptps_step, mat_step, pet_step
+  double precision:: map_step, ptps_step, mat_step, pet_step, aesc
 
   ! area weighted forcings for climo calculations
   double precision, dimension(sim_length):: map_aw, ptps_aw, mat_aw, pet_aw
@@ -183,6 +183,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
    riva = sac_pars(14,:)
    side = sac_pars(15,:)
   rserv = sac_pars(16,:)
+    efc = sac_pars(17,:)
 
   ! pull out snow params to separate variables
     scf = snow_pars(1,:)
@@ -675,6 +676,16 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
       !   write(*,'(a10,f30.17)')'lzfpc',lzfpc_sp
       !   write(*,'(a10,f30.17)')'adimc',adimc_sp
       ! end if 
+
+      ! grab areal extent of snow cover from snow17 output 
+      aesc = dble(cs(7))
+      ! write(*,*)'aesc', aesc
+
+      ! modify ET demand using the effective forest cover 
+      ! Anderson calb manual pdf page 232
+      ! write(*,*) 'pet before efc', pet_step
+      pet_step = efc(nh)*pet_step+(1d0-efc(nh))*(1d0-aesc)*pet_step
+      ! write(*,*) ' pet after efc', pet_step
   
       call exsac(1, real(dt), raim(i,nh), real(mat_step), real(pet_step), &
           !SAC PARAMETERS
