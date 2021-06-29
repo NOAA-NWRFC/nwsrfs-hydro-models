@@ -16,6 +16,7 @@ sac_snow_uh <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=NULL
 
   tci = sac_snow(dt_hours, forcing, pars, forcing_adjust = forcing_adjust, climo = climo)
   flow_cfs = uh(dt_hours, tci, pars)
+  flow_cfs = chanloss(flow_cfs, pars)
   flow_cfs
 }
 
@@ -39,6 +40,7 @@ sac_snow_uh_lagk <- function(dt_hours, forcing, uptribs, pars, forcing_adjust=TR
 
   tci = sac_snow(dt_hours, forcing, pars, forcing_adjust = forcing_adjust, climo = climo)
   flow_cfs = uh(dt_hours, tci, pars)
+  flow_cfs = chanloss(flow_cfs, pars)
   lagk_flow_cfs = lagk(dt_hours, uptribs, pars)
   flow_cfs + lagk_flow_cfs
 }
@@ -470,6 +472,26 @@ uh <- function(dt_hours, tci, pars){
   }
 
   flow_cfs
+}
+
+#' Two parameter unit hydrograph routing for one or more basin zones
+#'
+#' @param flow_cfs streamflow vector
+#' @param pars parameters
+#' @return Vector of flow scaled by the fixp parameter (if it exists)
+#' @export
+#'
+#' @examples
+#' @useDynLib rfchydromodels sacsnow_
+chanloss <- function(flow, pars){
+
+  fixp_row = pars[pars$name == 'fixp',]
+  if(nrow(fixp_row)==0)
+    return(flow)
+  else
+    return(flow*fixp_row$value)
+
+  flow
 }
 
 #' Lag-K Routing for any number of upstream points
