@@ -2,6 +2,7 @@ subroutine lagk(n_hrus, ita, itb, &
     lagtbl_a_in, lagtbl_b_in, lagtbl_c_in, lagtbl_d_in,&
     ktbl_a_in, ktbl_b_in, ktbl_c_in, ktbl_d_in, &
     lagk_lagmax_in, lagk_kmax_in, lagk_qmax_in, &
+    lagk_lagmin_in, lagk_kmin_in, lagk_qmin_in, &
     ico_in, iinfl_in, ioutfl_in, istor_in, &
     qa_in, sim_length,lagk_out)
     
@@ -98,6 +99,7 @@ subroutine lagk(n_hrus, ita, itb, &
   double precision, dimension(n_hrus), intent(in):: lagtbl_a_in, lagtbl_b_in, lagtbl_c_in, lagtbl_d_in  
   double precision, dimension(n_hrus), intent(in):: ktbl_a_in, ktbl_b_in, ktbl_c_in, ktbl_d_in
   double precision, dimension(n_hrus), intent(in):: lagk_kmax_in, lagk_lagmax_in, lagk_qmax_in
+  double precision, dimension(n_hrus), intent(in):: lagk_kmin_in, lagk_lagmin_in, lagk_qmin_in
   double precision, dimension(sim_length, n_hrus), intent(in):: qa_in
   
   ! ! local varible
@@ -105,6 +107,7 @@ subroutine lagk(n_hrus, ita, itb, &
   real, dimension(n_hrus):: lagtbl_a, lagtbl_b, lagtbl_c, lagtbl_d    
   real, dimension(n_hrus):: ktbl_a, ktbl_b, ktbl_c, ktbl_d
   real, dimension(n_hrus):: lagk_kmax, lagk_lagmax, lagk_qmax
+  real, dimension(n_hrus):: lagk_kmin, lagk_lagmin, lagk_qmin
   real, dimension(22, n_hrus):: lagtbl, ktbl
   real, dimension(sim_length, n_hrus):: qa 
   real, dimension(500,n_hrus):: p
@@ -133,8 +136,11 @@ subroutine lagk(n_hrus, ita, itb, &
   ktbl_c=real(ktbl_c_in) 
   ktbl_d=real(ktbl_d_in)
   lagk_kmax=real(lagk_kmax_in)
-  lagk_lagmax=real(lagk_lagmax_in) 
+  lagk_lagmax=real(lagk_lagmax_in)
   lagk_qmax=real(lagk_qmax_in)
+  lagk_kmin=real(lagk_kmin_in)
+  lagk_lagmin=real(lagk_lagmin_in) 
+  lagk_qmin=real(lagk_qmin_in)
   
   qa=real(qa_in)
 
@@ -179,22 +185,26 @@ subroutine lagk(n_hrus, ita, itb, &
    ndq=0   
    do i=1,11
 
-    lagtbl(i*2,nh)=ndq*lagk_qmax(nh)
-    ktbl(i*2,nh)=ndq*lagk_qmax(nh)
+    lagtbl(i*2,nh)=ndq*(lagk_qmax(nh)-lagk_qmin(nh))+lagk_qmin(nh)
+    ktbl(i*2,nh)=ndq*(lagk_qmax(nh)-lagk_qmin(nh))+lagk_qmin(nh)
    
     lag_entry=lagtbl_a(nh)*(ndq-lagtbl_d(nh))**2+lagtbl_b(nh)*ndq+lagtbl_c(nh)
     k_entry=ktbl_a(nh)*(ndq-ktbl_d(nh))**2+ktbl_b(nh)*ndq+ktbl_c(nh)
    
-    if (lag_entry > 0) then
-     lagtbl(i*2-1,nh)=lag_entry*lagk_lagmax(nh)
+    if (lag_entry > 0 .AND. lag_entry < 1) then
+     lagtbl(i*2-1,nh)=lag_entry*(lagk_lagmax(nh)-lagk_lagmin(nh))+lagk_lagmin(nh)
+    else if (lag_entry >= 1) then
+     lagtbl(i*2-1,nh)=lagk_lagmax(nh)
     else
-     lagtbl(i*2-1,nh)=0
+     lagtbl(i*2-1,nh)=lagk_lagmin(nh)
     end if
-   
-    if (k_entry > 0) then
-     ktbl(i*2-1,nh)=k_entry*lagk_kmax(nh)
+    
+    if (k_entry > 0 .AND. k_entry < 1) then
+     ktbl(i*2-1,nh)=k_entry*(lagk_kmax(nh)-lagk_kmin(nh))+lagk_kmin(nh)
+    else if (k_entry >= 1) then
+     ktbl(i*2-1,nh)=lagk_kmax(nh)
     else
-     ktbl(i*2-1,nh)=0
+     ktbl(i*2-1,nh)=lagk_kmin(nh)
     end if
    
     ndq=ndq+.1

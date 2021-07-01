@@ -124,6 +124,7 @@ class Model:
                     par['lagtbl_a'][n], par['lagtbl_b'][n], par['lagtbl_c'][n], par['lagtbl_d'][n],
                     par['ktbl_a'][n], par['ktbl_b'][n], par['ktbl_c'][n], par['ktbl_d'][n],
                     par['lagk_lagmax'][n], par['lagk_kmax'][n], par['lagk_qmax'][n],
+                    par['lagk_lagmin'][n], par['lagk_kmin'][n], par['lagk_qmin'][n],
                     par['init_co'][n], par['init_if'][n], par['init_of'][n], par['init_stor'][n],
                     self.uptribs[:,n]*cfs_to_cms)
 
