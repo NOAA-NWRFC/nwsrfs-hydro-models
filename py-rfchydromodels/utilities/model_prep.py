@@ -36,8 +36,7 @@ def nwsrfs_prep(autocalb_dir, results_dir_name='results_01'):
 
     forcing=[]
 
-    forcing_df=autocalb_files.loc[(autocalb_files.file_name.str.contains('forcing_'))&
-                                  (~autocalb_files.file_name.str.contains('validation'))].copy()
+    forcing_df=autocalb_files.loc[(autocalb_files.file_name.str.contains('forcing_por'))].copy()
     forcing_df.sort_values(by='file_name',inplace=True)
 
     for index, row in forcing_df.iterrows():
@@ -47,8 +46,7 @@ def nwsrfs_prep(autocalb_dir, results_dir_name='results_01'):
 
     upflow=[]
 
-    upflow_df=autocalb_files.loc[(autocalb_files.file_name.str.contains('upflow_'))&
-                                  (~autocalb_files.file_name.str.contains('validation'))].copy()
+    upflow_df=autocalb_files.loc[(autocalb_files.file_name.str.contains('upflow_por'))].copy()
     upflow_df.sort_values(by='file_name',inplace=True)
 
     for index, row in upflow_df.iterrows():
