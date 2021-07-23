@@ -454,10 +454,17 @@ uh <- function(dt_hours, tci, pars){
 
   flow_cfs = numeric(sim_length)
   for(i in 1:n_zones){
+
+    shape=pars[pars$name == 'unit_shape',]$value[i]
+    toc_gis=pars[pars$name == 'unit_toc',]$value[i]
+    toc_adj=pars[pars$name == 'unit_toc_adj',]$value[i]
+    toc=(toc_gis*toc_adj)/24
+    scale=toc/(shape-1+sqrt(shape-1))
+
     routed = .Fortran('duamel',
                       tci = as.single(tci[,i]),
-                      as.single(pars[pars$name == 'unit_shape',]$value[i]),
-                      as.single(pars[pars$name == 'unit_scale',]$value[i]),
+                      as.single(shape),
+                      as.single(scale),
                       as.single(dt_days),
                       as.integer(n),
                       as.integer(m),
