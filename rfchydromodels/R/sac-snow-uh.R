@@ -389,6 +389,7 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=
                ptps = do.call('cbind',lapply(forcing,'[[','ptps')),
                mat = do.call('cbind',lapply(forcing,'[[','mat_degc')),
                # output
+               etd = output_matrix,
                pet = output_matrix,
                tci = output_matrix,
                aet = output_matrix,

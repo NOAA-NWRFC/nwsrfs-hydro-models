@@ -7,7 +7,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
     map_fa_limits, mat_fa_limits, pet_fa_limits, ptps_fa_limits, & 
     init, climo, & 
     map, ptps, mat, &
-    pet, tci, aet, uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, swe)
+    etd, pet, tci, aet, uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, swe)
 
     ! !start_month, start_hour, start_day, start_year, end_month, end_day, end_hour, end_year, &
     ! ! zone info 
@@ -115,7 +115,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   ! sac-sma output variables and routed flow
   !real(sp), dimension(sim_length):: qs_sp, qg_sp, aet_sp, tci_sp
   real(sp), dimension(sim_length, n_hrus):: qs, qg, aet_sp, tci_sp
-  double precision, dimension(sim_length ,n_hrus), intent(out):: tci, aet, pet
+  double precision, dimension(sim_length ,n_hrus), intent(out):: tci, aet, pet, etd
 
   ! snow-17 output variables  
   real(sp), dimension(sim_length, n_hrus):: raim, snowh, sneqv, snow 
@@ -124,6 +124,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   integer, dimension(sim_length), intent(in):: year, month, day, hour
 
   ! atmospheric forcing variables
+  !f2py intent(in,out) map, ptps, mat
   double precision, dimension(sim_length, n_hrus), intent(inout):: map, ptps, mat
   double precision, dimension(sim_length, n_hrus):: pet_hs, mat_adjusted
   double precision:: map_step, ptps_step, mat_step, pet_step, aesc
@@ -153,6 +154,8 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   ! initilize outputs 
   tci = 0
   aet = 0 
+  etd = 0
+  pet = 0
   uztwc = 0 
   uzfwc = 0 
   lztwc = 0 
@@ -724,7 +727,8 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       adimc(i,nh) = dble(adimc_sp)
       tci(i,nh) = dble(tci_sp(i,nh))
       aet(i,nh) = dble(aet_sp(i,nh))
-      pet(i,nh) = pet_step
+      etd(i,nh) = pet_step
+      pet(i,nh) = pet_hs(i,nh)
 
       map(i,nh) = map_step
       mat(i,nh) = mat_step
