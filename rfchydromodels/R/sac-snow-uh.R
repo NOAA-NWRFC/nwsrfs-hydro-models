@@ -404,7 +404,7 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=
 
   format_states(x[c('year','month','day','hour','tci','aet',
                     'uztwc','uzfwc','lztwc','lzfsc','lzfpc','adimc','swe',
-                    'map','mat','ptps','pet')])
+                    'map','mat','ptps','etd','pet')])
 }
 
 
