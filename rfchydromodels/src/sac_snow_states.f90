@@ -728,7 +728,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       tci(i,nh) = dble(tci_sp(i,nh))
       aet(i,nh) = dble(aet_sp(i,nh))
       etd(i,nh) = pet_step
-      pet(i,nh) = pet_hs(i,nh)
+      pet(i,nh) = pet_hs(i,nh) * ptps_adj_step
 
       map(i,nh) = map_step
       mat(i,nh) = mat_step

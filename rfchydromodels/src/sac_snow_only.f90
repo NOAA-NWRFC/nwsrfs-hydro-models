@@ -248,10 +248,10 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   end if 
   
   ! expand forcing adjustment limits in case the limits are not set properly 
-  do k=1,12
-    if(mat_climo(k) < mat_fa_limits(k,1)) mat_fa_limits(k,1) = mat_climo(k) * 0.9
-    if(mat_climo(k) > mat_fa_limits(k,2)) mat_fa_limits(k,2) = mat_climo(k) * 1.1
-  end do 
+  ! do k=1,12
+  !   if(mat_climo(k) < mat_fa_limits(k,1)) mat_fa_limits(k,1) = mat_climo(k) * 0.9
+  !   if(mat_climo(k) > mat_fa_limits(k,2)) mat_fa_limits(k,2) = mat_climo(k) * 1.1
+  ! end do 
 
   ! compute monthly adjustments using GW's method
   mat_adj = forcing_adjust_mat(mat_climo, mat_fa_pars, mat_fa_limits(:,1), mat_fa_limits(:,2))
