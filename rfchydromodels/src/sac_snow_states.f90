@@ -249,14 +249,19 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
     end do
   end if 
   
-  ! expand forcing adjustment limits in case the limits are not set properly 
-  do k=1,12
-    if(mat_climo(k) < mat_fa_limits(k,1)) mat_fa_limits(k,1) = mat_climo(k) * 0.9
-    if(mat_climo(k) > mat_fa_limits(k,2)) mat_fa_limits(k,2) = mat_climo(k) * 1.1
-  end do 
+  ! ! expand forcing adjustment limits in case the limits are not set properly 
+  ! do k=1,12
+  !   if(mat_climo(k) < mat_fa_limits(k,1)) mat_fa_limits(k,1) = mat_climo(k) * 0.9
+  !   if(mat_climo(k) > mat_fa_limits(k,2)) mat_fa_limits(k,2) = mat_climo(k) * 1.1
+  ! end do 
 
   ! compute monthly adjustments using GW's method
   mat_adj = forcing_adjust_mat(mat_climo, mat_fa_pars, mat_fa_limits(:,1), mat_fa_limits(:,2))
+
+  ! write(*,*)'mat_adj'
+  ! do i = 1,12
+  !   write(*,*)mat_adj(i)
+  ! end do
 
   ! put the forcing adjustments in easy to use vectors
   mat_adj_prev(1) = mat_adj(12)
@@ -313,7 +318,6 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
         tmin_daily = minval(mat_adjusted(i:(i+ts_per_day-1),nh))
         tave_daily = sum(mat_adjusted(i:(i+ts_per_day-1),nh))/dble(ts_per_day)
 
-
         !Calculate extraterrestrial radiation
         !Inverse Relative Distance Earth to Sun
         dr = 1. + 0.033 * dcos((2. * pi) / 365. * dble(jday(i)))
@@ -324,15 +328,20 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
         !Extraterrestrial Radiation (MJm^-2*day^-1)
         Ra = (24. * 60.) / pi * 0.0820 * dr * (omega_s * dsin(latitude(nh) * pi / 180.) * dsin(rho) + &
                          dcos(latitude(nh) * pi / 180.) * dcos(rho) * dsin(omega_s))
-        ! write(*,*)jday(i)
-        ! write(*,*)'dr',dr
-        ! write(*,*)'rho',rho
-        ! write(*,*)'omega_s',omega_s
-        ! write(*,*)'mat',mat(i:(i+ts_per_day-1),nh)
-        ! write(*,*)'mat',mat(1:4,nh)
-        ! write(*,*)'tave_daily',tmax_daily
-        ! write(*,*)'tmax_daily',tmin_daily
-        ! write(*,*)'tmin_daily',tave_daily
+
+        ! if(i<=1)then
+        !   write(*,*)i, nh, jday(i)
+        !   write(*,*)'lat',latitude(nh)
+        !   write(*,*)'dr',dr
+        !   write(*,*)'rho',rho
+        !   write(*,*)'omega_s',omega_s
+        !   write(*,*)'Ra',Ra
+        !   write(*,*)'mat',mat_adjusted(i:(i+ts_per_day-1),nh)
+        !   write(*,*)'mat',mat_adjusted(1:4,nh)
+        !   write(*,*)'tave_daily',tave_daily
+        !   write(*,*)'tmax_daily',tmax_daily
+        !   write(*,*)'tmin_daily',tmin_daily
+        ! end if
 
         ! daily pet from Hargreaves-Semani equation, units are mm/day, so divide 
         ! by number of timesteps in a day   
@@ -345,7 +354,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
         ! apply global scaling peadj and distibute across timesteps 
         ! write(*,*)'pet_ts',pet_ts
         pet_ts = pet_ts * peadj(nh) / dble(ts_per_day)
-        ! write(*,*)'pet_ts',pet_ts
+        ! if(i<10)write(*,*)'pet_ts',pet_ts
       end if 
       pet_hs(i,nh) = pet_ts 
     end do 
