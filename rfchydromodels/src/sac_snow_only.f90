@@ -50,8 +50,9 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   ! scf, mfmax, mfmin, uadj, si, nmf, tipm, mbase, plwhc, daygm, adc_a, adc_b, adc_c
   double precision, dimension(13,n_hrus), intent(in):: snow_pars 
 
-
-  integer, intent(in):: dt    ! model timestep in seconds
+  ! this code is currently not set up to do any timestep less than 1 hour, 
+  ! nor could it do fractional hour timesteps.
+  integer, intent(in):: dt, dt_hours          ! model timestep in seconds, hours
   !integer:: start_month, start_hour, start_day, start_year, &
   !          end_month, end_day, end_hour, end_year   
 
@@ -210,6 +211,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   ! write(*,*)map_fa_pars
 
   ts_per_day = 86400/dt
+  dt_hours = dt/3600
   ! write(*,*)'Timesteps per day:',ts_per_day
 
   ! this is not used, since ptps is input, but set it just so its not empty
@@ -279,13 +281,13 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
       ! interpolate between (day0,limit0)=(0,limit0) and (day1,limit1)=(dayn,limit1)
       ! y = limit0 + dayi/dayn*(limit1-limit0)
       mo = month(i)
-      if(day(i) >= 15)then
+      if(day(i) >= 16 .and. hour(i) >= dt_hours)then
         dayn = dble(mdays(mo))
-        dayi = dble(day(i)) - 15. + dble(hour(i))/24.
+        dayi = dble(day(i)) - (16. + dble(dt_hours)/24.) + dble(hour(i))/24.
         mat_adj_step = mat_adj(mo) + dayi/dayn*(mat_adj_next(mo)-mat_adj(mo))
-      else if(day(i) < 15)then
+      else 
         dayn = dble(mdays_prev(mo))
-        dayi = dble(day(i)) + mdays_prev(mo) - 15. + dble(hour(i))/24.
+        dayi = dble(day(i)) + mdays_prev(mo) - (16. + dble(dt_hours)/24.) + dble(hour(i))/24.
         mat_adj_step = mat_adj_prev(mo) + dayi/dayn*(mat_adj(mo)-mat_adj_prev(mo))
       end if 
       mat_adjusted(i,nh) = mat(i,nh) + mat_adj_step
@@ -510,16 +512,16 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
       ! y = limit0 + dayi/dayn*(limit1-limit0)
       mo = month(i)
       !write(*,*)mdays, mdays(mo), day(i), hour(i)
-      if(day(i) >= 15)then
+      if(day(i) >= 16 .and. hour(i) >= dt_hours)then
         dayn = dble(mdays(mo))
-        dayi = dble(day(i)) - 15. + dble(hour(i))/24.
+        dayi = dble(day(i)) - (16. + dble(dt_hours)/24.) + dble(hour(i))/24.
         map_adj_step = map_adj(mo) + dayi/dayn*(map_adj_next(mo)-map_adj(mo))
         pet_adj_step = pet_adj(mo) + dayi/dayn*(pet_adj_next(mo)-pet_adj(mo))
         ptps_adj_step = ptps_adj(mo) + dayi/dayn*(ptps_adj_next(mo)-ptps_adj(mo))
         peadj_step = peadj_m(mo,nh) + dayi/dayn*(peadj_m_next(mo,nh)-peadj_m(mo,nh))
-      else if(day(i) < 15)then
+      else 
         dayn = dble(mdays_prev(mo))
-        dayi = dble(day(i)) + mdays_prev(mo) - 15. + dble(hour(i))/24.
+        dayi = dble(day(i)) + mdays_prev(mo) - (16. + dble(dt_hours)/24.) + dble(hour(i))/24.
         map_adj_step = map_adj_prev(mo) + dayi/dayn*(map_adj(mo)-map_adj_prev(mo))
         pet_adj_step = pet_adj_prev(mo) + dayi/dayn*(pet_adj(mo)-pet_adj_prev(mo))
         ptps_adj_step = ptps_adj_prev(mo) + dayi/dayn*(ptps_adj(mo)-ptps_adj_prev(mo))
