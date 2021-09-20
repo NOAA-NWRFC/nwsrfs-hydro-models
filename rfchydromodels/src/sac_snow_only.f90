@@ -462,7 +462,9 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
     ! "A value of As = 0.05 is used for a W/Ai = 0.0 ratio so that small amounts of snow
     ! don’t continue to exist well past the time when all the snow is gone in nature."
     ! - snow 17 manual 
-    adc(1) = 0.05
+    do i=1,11
+      if(adc(i) < 0.05) adc(i) = 0.05
+    end do
 
     ! print run dates
     ! write(*,*)'  start:',year(1), month(1), day(1), hour(1)
