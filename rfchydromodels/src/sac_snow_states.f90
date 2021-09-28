@@ -49,7 +49,10 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   ! scf, mfmax, mfmin, uadj, si, nmf, tipm, mbase, plwhc, daygm, adc_a, adc_b, adc_c
   double precision, dimension(13,n_hrus), intent(in):: snow_pars 
 
+  ! this code is currently not set up to do any timestep less than 1 hour, 
+  ! nor could it do fractional hour timesteps.
   integer, intent(in):: dt    ! model timestep in seconds
+  integer:: dt_hours          ! model timestep in hours
   !integer:: start_month, start_hour, start_day, start_year, &
   !          end_month, end_day, end_hour, end_year   
 

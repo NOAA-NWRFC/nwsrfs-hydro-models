@@ -674,15 +674,15 @@ interp_fa <- function(factors,month,day,hour){
 
   for(i in 1:length(month)){
     m = month[i]
-    if(day[i] >= 16 & hour <= dt_hours){
+    if(day[i] >= 16 & hour[i] <= dt_hours){
       dayn[i] = mdays[m]
       dayi[i] = day[i] - (16 + dt_hours/24) + hour[i]/24
       factors_step[i] = factors[m] + dayi[i]/dayn[i]*(factors_next[m]-factors[m])
-    }else if(day[i] < 16 & hour <= dt_hours & m == 1){
+    }else if(day[i] < 16 & hour[i] <= dt_hours & m == 1){
       dayn[i] = mdays[12]
       dayi[i] = day[i] + mdays[12] - (16 + dt_hours/24) + hour[i]/24
       factors_step[i] = factors_prev[m] + dayi[i]/dayn[i]*(factors[m]-factors_prev[m])
-    }else if(day[i] < 16 & hour <= dt_hours & m > 1){
+    }else if(day[i] < 16 & hour[i] <= dt_hours & m > 1){
       dayn[i] = mdays[m-1]
       dayi[i] = day[i] + mdays[m - 1] - (16 + dt_hours/24) + hour[i]/24
       factors_step[i] = factors_prev[m] + dayi[i]/dayn[i]*(factors[m]-factors_prev[m])
@@ -690,7 +690,6 @@ interp_fa <- function(factors,month,day,hour){
   }
   factors_step
 }
-
 
 
 #' Adjust monthly climo based on 4 parameters

@@ -52,7 +52,8 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
 
   ! this code is currently not set up to do any timestep less than 1 hour, 
   ! nor could it do fractional hour timesteps.
-  integer, intent(in):: dt, dt_hours          ! model timestep in seconds, hours
+  integer, intent(in):: dt    ! model timestep in seconds
+  integer:: dt_hours          ! model timestep in hours
   !integer:: start_month, start_hour, start_day, start_year, &
   !          end_month, end_day, end_hour, end_year   
 
