@@ -92,18 +92,39 @@ class Model:
             self.mat[:, i] = forcings[i]['mat_degc']
             self.ptps[:, i] = forcings[i]['ptps']
         
+        #Get upstream tributary flows
         self.uptribs = np.full([sim_length, max(1,n_uptribs)], np.nan)
         
         for i in range(len(uptribs_name)):
             self.uptribs[:, i] = route[i]['flow_cfs']#.astype('f4').to_numpy()
-
+        
+        #Get parameter values
         self.p = {}
         for par in self.pars['name'].unique():
             self.p[par] = self.pars[self.pars['name'] == par].sort_values(by='zone')['value'].to_numpy()
-        
+        #Create numpy collection of sac, snow, inital conditions
         self.init = np.concatenate([[self.p['init_swe']], [self.p['init_uztwc']], [self.p['init_uzfwc']],
                                     [self.p['init_lztwc']],[self.p['init_lzfsc']], [self.p['init_lzfpc']],
-                                    [self.p['init_adimc']]],axis=0)
+                                    [self.p['init_adimc']]
+                                    ],axis=0)
+
+        self.sac_pars = np.concatenate([[self.p['uztwm']], [self.p['uzfwm']], [self.p['lztwm']],
+                                    [self.p['lzfpm']],[self.p['lzfsm']], [self.p['adimp']],
+                                    [self.p['uzk']],[self.p['lzpk']], [self.p['lzsk']],
+                                    [self.p['zperc']],[self.p['rexp']], [self.p['pctim']],
+                                    [self.p['pfree']],[self.p['riva']], [self.p['side']],
+                                    [self.p['rserv']],[self.p['efc']]
+                                    ],axis=0)
+
+        self.snow_pars = np.concatenate([[self.p['scf']], [self.p['mfmax']], [self.p['mfmin']],
+                            [self.p['uadj']],[self.p['si']], [self.p['nmf']],
+                            [self.p['tipm']],[self.p['mbase']], [self.p['plwhc']],
+                            [self.p['daygm']],[self.p['adc_a']], [self.p['adc_b']],
+                            [self.p['adc_c']]
+                            ],axis=0)
+
+        #Make dummy climo input
+        self.climo=np.full((12, 4), -9999)
 
     def update_pars(self, pars):
         self.pars = pars
@@ -148,21 +169,19 @@ class Model:
                         # general pars
                         p['alat'][n], p['elev'][n], p['zone_area'][n],
                         # sac pars
-                        p['uztwm'][n], p['uzfwm'][n], p['lztwm'][n], p['lzfpm'][n], p['lzfsm'][n],
-                        p['adimp'][n], p['uzk'][n], p['lzpk'][n], p['lzsk'][n], p['zperc'][n],
-                        p['rexp'][n], p['pctim'][n], p['pfree'][n], p['riva'][n], p['side'][n],
-                        p['rserv'][n], p['peadj'][n], p['pxadj'][n],
-                        # monthly peadj
-                        self.peadj_m[:,n],
+                        self.sac_pars[:,n],
+                        # pet and precp adjustments
+                        p['peadj'][n], p['pxadj'][n],self.peadj_m[:,n],
                         # snow pars
-                        p['scf'][n], p['mfmax'][n], p['mfmin'][n], p['uadj'][n], p['si'][n],
-                        p['nmf'][n], p['tipm'][n], p['mbase'][n], p['plwhc'][n], p['daygm'][n],
-                        p['adc_a'][n], p['adc_b'][n], p['adc_c'][n],
+                        self.snow_pars[:,n],
                         # forcing adjustment
                         self.map_fa_pars, self.mat_fa_pars, self.pet_fa_pars, self.ptps_fa_pars,
+                        # forcing adjust limits
                         self.map_fa_limits, self.mat_fa_limits, self.pet_fa_limits, self.ptps_fa_limits,
                         # initial conditions
                         self.init[:,n],
+                        # climo
+                        self.climo,
                         # forcings
                         self.map[:,n], self.ptps[:,n], self.mat[:,n])
 
@@ -171,7 +190,12 @@ class Model:
         n_uh = self.sim_length + m_uh
         sim_flow_inst_cfs = np.full([self.sim_length], 0)
         for y, z in zip(range(len(tci[0])),n):
-            flow_routed = s.duamel(tci[:, y], p['unit_shape'][z], p['unit_scale'][z],
+            
+            shape=p['unit_shape'][z]
+            toc=(p['unit_toc'][z]*p['unit_toc_adj'][z])/24
+            scale=toc/(shape-1+np.sqrt(shape-1))
+            
+            flow_routed = s.duamel(tci[:, y], shape, scale,
                                    self.dt_days, n_uh, m_uh, 1, 0)
 
             # flow_routed units:  mm, zone_area units:  km2,  1000 is a combined conversion of km2->m2 and mm->m
@@ -186,6 +210,41 @@ class Model:
         self.sacsnow_flow_cfs = pd.Series(sim_flow_cfs, index=self.dates)
 
         return self.sacsnow_flow_cfs
+
+    def sacsnow_states_run(self):
+
+        p = self.p
+        
+        n=list(range(self.n_zones))
+
+        # simulates all zones
+        states = s.sacsnowstates(self.dt_seconds, self.year, self.month, self.day, self.hour,
+                        # general pars
+                        p['alat'][n], p['elev'][n], p['zone_area'][n],
+                        # sac pars
+                        self.sac_pars[:,n],
+                        # pet and precp adjustments
+                        p['peadj'][n], p['pxadj'][n],self.peadj_m[:,n],
+                        # snow pars
+                        self.snow_pars[:,n],
+                        # forcing adjustment
+                        self.map_fa_pars, self.mat_fa_pars, self.pet_fa_pars, self.ptps_fa_pars,
+                        # forcing adjust limits
+                        self.map_fa_limits, self.mat_fa_limits, self.pet_fa_limits, self.ptps_fa_limits,
+                        # initial conditions
+                        self.init[:,n],
+                        # climo
+                        self.climo,
+                        # forcings
+                        self.map[:,n], self.ptps[:,n], self.mat[:,n])
+        
+        state_param=['map_fa','ptps_fa','mat_fa','etd','pet','tci','aet',
+                        'uztwc','uzfwc','lztwc','lzfsc','lzfpc','adimc','swe']
+        self.sacsnow_states={}
+        for count, param in  enumerate(state_param):
+            self.sacsnow_states[param]=pd.DataFrame(states[count], index=self.dates,columns=self.zones)
+
+        return self.sacsnow_states
         
     def run_all(self):
 
