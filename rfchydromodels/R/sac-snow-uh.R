@@ -671,20 +671,22 @@ interp_fa <- function(factors,month,day,hour){
   factors_step = dayi = dayn = numeric(length(month))
 
   dt_hours = hour[2]-hour[1]
+  interp_day = 16+dt_hours/24
 
   for(i in 1:length(month)){
     m = month[i]
-    if(day[i] >= 16 & hour[i] <= dt_hours){
+    decimal_day = day[i]+hour[i]/24
+    if(decimal_day >= interp_day){
       dayn[i] = mdays[m]
-      dayi[i] = day[i] - (16 + dt_hours/24) + hour[i]/24
+      dayi[i] = decimal_day - interp_day
       factors_step[i] = factors[m] + dayi[i]/dayn[i]*(factors_next[m]-factors[m])
-    }else if(day[i] < 16 & hour[i] <= dt_hours & m == 1){
+    }else if(decimal_day < interp_day & m == 1){
       dayn[i] = mdays[12]
-      dayi[i] = day[i] + mdays[12] - (16 + dt_hours/24) + hour[i]/24
+      dayi[i] = decimal_day - interp_day + mdays[12]
       factors_step[i] = factors_prev[m] + dayi[i]/dayn[i]*(factors[m]-factors_prev[m])
-    }else if(day[i] < 16 & hour[i] <= dt_hours & m > 1){
+    }else if(decimal_day < interp_day & m > 1){
       dayn[i] = mdays[m-1]
-      dayi[i] = day[i] + mdays[m - 1] - (16 + dt_hours/24) + hour[i]/24
+      dayi[i] = decimal_day - interp_day + mdays[m - 1]
       factors_step[i] = factors_prev[m] + dayi[i]/dayn[i]*(factors[m]-factors_prev[m])
     }
   }
