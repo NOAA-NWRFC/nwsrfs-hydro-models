@@ -7,7 +7,8 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
     map_fa_limits, mat_fa_limits, pet_fa_limits, ptps_fa_limits, & 
     init, climo, & 
     map, ptps, mat, &
-    etd, pet, tci, aet, uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, swe)
+    etd, pet, tci, aet, uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, &
+    swe, aesc)
 
     ! !start_month, start_hour, start_day, start_year, end_month, end_day, end_hour, end_year, &
     ! ! zone info 
@@ -113,7 +114,9 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
 
 
   ! sac-sma state variables
-  double precision, dimension(sim_length ,n_hrus), intent(out):: uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, swe
+  double precision, dimension(sim_length ,n_hrus), intent(out):: uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc
+  ! snow state variables
+  double precision, dimension(sim_length ,n_hrus), intent(out):: swe, aesc
 
   ! sac-sma output variables and routed flow
   !real(sp), dimension(sim_length):: qs_sp, qg_sp, aet_sp, tci_sp
@@ -130,7 +133,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   !f2py intent(in,out) map, ptps, mat
   double precision, dimension(sim_length, n_hrus), intent(inout):: map, ptps, mat
   double precision, dimension(sim_length, n_hrus):: pet_hs, mat_adjusted
-  double precision:: map_step, ptps_step, mat_step, pet_step, aesc
+  double precision:: map_step, ptps_step, mat_step, pet_step
 
   ! area weighted forcings for climo calculations
   double precision, dimension(sim_length):: map_aw, ptps_aw, mat_aw, pet_aw
@@ -167,6 +170,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   lzfpc = 0 
   adimc = 0 
   swe = 0
+  aesc = 0
 
   mdays =      (/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /) 
   mdays_prev = (/ 31, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30 /) 
@@ -721,13 +725,13 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       ! end if 
 
       ! grab areal extent of snow cover from snow17 output 
-      aesc = dble(cs(7))
+      aesc(i,nh) = dble(cs(7))
       ! if(aesc > 0.1) write(*,*)'aesc ',aesc
 
       ! modify ET demand using the effective forest cover 
       ! Anderson calb manual pdf page 232
       ! if(aesc > 0.1) write(*,*) 'pet before efc', pet_step
-      pet_step = efc(nh)*pet_step+(1d0-efc(nh))*(1d0-aesc)*pet_step
+      pet_step = efc(nh)*pet_step+(1d0-efc(nh))*(1d0-aesc(i,nh))*pet_step
       ! if(aesc > 0.1) write(*,*) 'pet after efc', pet_step
   
       call exsac(1, real(dt), raim(i,nh), real(mat_step), real(pet_step), &
