@@ -8,7 +8,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
     init, climo, & 
     map, ptps, mat, &
     etd, pet, tci, aet, uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, &
-    swe, aesc)
+    swe, aesc, neghs, liqw, raim)
 
     ! !start_month, start_hour, start_day, start_year, end_month, end_day, end_hour, end_year, &
     ! ! zone info 
@@ -116,7 +116,8 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   ! sac-sma state variables
   double precision, dimension(sim_length ,n_hrus), intent(out):: uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc
   ! snow state variables
-  double precision, dimension(sim_length ,n_hrus), intent(out):: swe, aesc
+  double precision, dimension(sim_length ,n_hrus), intent(out):: swe, aesc, neghs, liqw, raim
+
 
   ! sac-sma output variables and routed flow
   !real(sp), dimension(sim_length):: qs_sp, qg_sp, aet_sp, tci_sp
@@ -124,7 +125,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   double precision, dimension(sim_length ,n_hrus), intent(out):: tci, aet, pet, etd
 
   ! snow-17 output variables  
-  real(sp), dimension(sim_length, n_hrus):: raim, snowh, sneqv, snow 
+  real(sp), dimension(sim_length, n_hrus):: raim_sp, snowh, sneqv, snow 
 
   ! date variables
   integer, dimension(sim_length), intent(in):: year, month, day, hour
@@ -171,6 +172,9 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   adimc = 0 
   swe = 0
   aesc = 0
+  neghs = 0
+  liqw = 0
+  raim = 0
 
   mdays =      (/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /) 
   mdays_prev = (/ 31, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30 /) 
@@ -639,7 +643,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       call exsnow19(int(dt,4),int(dt/sec_hour,4),int(day(i),4),int(month(i),4),int(year(i),4),&
           !SNOW17 INPUT AND OUTPUT VARIABLES
           real(map_step), real(ptps_step), real(mat_step), &
-          raim(i,nh), sneqv(i,nh), snow(i,nh), snowh(i,nh),&
+          raim_sp(i,nh), sneqv(i,nh), snow(i,nh), snowh(i,nh),&
           !SNOW17 PARAMETERS
           !ALAT,SCF,MFMAX,MFMIN,UADJ,SI,NMF,TIPM,MBASE,PXTEMP,PLWHC,DAYGM,ELEV,PA,ADC
           real(latitude(nh)), real(scf(nh)), real(mfmax(nh)), real(mfmin(nh)), &
@@ -734,7 +738,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       pet_step = efc(nh)*pet_step+(1d0-efc(nh))*(1d0-aesc(i,nh))*pet_step
       ! if(aesc > 0.1) write(*,*) 'pet after efc', pet_step
   
-      call exsac(1, real(dt), raim(i,nh), real(mat_step), real(pet_step), &
+      call exsac(1, real(dt), raim_sp(i,nh), real(mat_step), real(pet_step), &
           !SAC PARAMETERS
           !UZTWM,UZFWM,UZK,PCTIM,ADIMP,RIVA,ZPERC, &
           !REXP,LZTWM,LZFSM,LZFPM,LZSK,LZPK,PFREE, &
@@ -781,7 +785,9 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       mat(i,nh) = mat_step
       ptps(i,nh) = ptps_step 
 
-
+      raim(i,nh) = dble(raim_sp(i,nh))
+      neghs(i,nh) = dble(cs(2))
+      liqw(i,nh) = dble(cs(3))
 
       !write(*,'(5i5,4f8.2)')nh, year(i), month(i), day(i), hour(i), map(i,nh), mat(i,nh), ptps(i,nh), pet(i,nh), 
       !write(*,'(4i5,7f8.3)')year(i), month(i), day(i), hour(i), uztwc_sp, uzfwc_sp, lztwc_sp, &

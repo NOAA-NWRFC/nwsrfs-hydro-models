@@ -382,7 +382,7 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=
                ptps_fa_limits = ptps_limits,
                # initial conditions
                init = init,
-               # externally specefied climatology
+               # externally specified climatology
                climo = climo,
                # forcings
                map = do.call('cbind',lapply(forcing,'[[','map_mm')),
@@ -400,12 +400,16 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=
                lzfpc = output_matrix,
                adimc = output_matrix,
                swe = output_matrix,
-               aesc = output_matrix)
+               aesc = output_matrix,
+               neghs = output_matrix,
+               liqw = output_matrix,
+               raim = output_matrix)
   #print(head(x))
 
   format_states(x[c('year','month','day','hour','tci','aet',
-                    'uztwc','uzfwc','lztwc','lzfsc','lzfpc','adimc','swe',
-                    'map','mat','ptps','etd','pet','aesc')])
+                    'uztwc','uzfwc','lztwc','lzfsc','lzfpc','adimc',
+                    'swe','aesc','neghs','liqw','raim',
+                    'map','mat','ptps','etd','pet')])
 }
 
 
