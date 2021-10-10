@@ -8,7 +8,8 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
     init, climo, & 
     map, ptps, mat, &
     etd, pet, tci, aet, uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, &
-    swe, aesc, neghs, liqw, raim)
+    swe, aesc, neghs, liqw, raim, taprev, tindex, accmax, sb, sbaesc, & 
+    sbws, storage, aeadj, sndpt, sntmp)
 
     ! !start_month, start_hour, start_day, start_year, end_month, end_day, end_hour, end_year, &
     ! ! zone info 
@@ -109,14 +110,16 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
 
   ! snow-17 carry over variables
   double precision:: pa       ! snow-17 surface pressure
-  real(sp):: tprev    ! carry over variable
+  real(sp):: taprev_sp    ! carry over variable
   real(sp), dimension(19):: cs       ! carry over variable array
 
 
   ! sac-sma state variables
   double precision, dimension(sim_length ,n_hrus), intent(out):: uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc
   ! snow state variables
-  double precision, dimension(sim_length ,n_hrus), intent(out):: swe, aesc, neghs, liqw, raim
+  double precision, dimension(sim_length ,n_hrus), intent(out):: swe, aesc, neghs, liqw, raim, taprev, tindex, &
+    accmax, sb, sbaesc, sbws, storage, aeadj, sndpt, sntmp
+  integer:: nexlag
 
 
   ! sac-sma output variables and routed flow
@@ -526,7 +529,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
     cs(1)    = real(init_swe(nh))
     ! set the rest to zero
     cs(2:19) = 0
-    tprev    = real(mat(1,nh))
+    taprev_sp    = real(mat(1,nh))
      
     ! =============== START SIMULATION TIME LOOP =====================================
     do i = 1,sim_length,1
@@ -635,7 +638,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       !   write(*,'(a10,f30.17)')'cs(17)',cs(17)
       !   write(*,'(a10,f30.17)')'cs(18)',cs(18)
       !   write(*,'(a10,f30.17)')'cs(19)',cs(19)
-      !   write(*,'(a10,f30.17)')'tprev',tprev
+      !   write(*,'(a10,f30.17)')'taprev',taprev
       ! end if 
 
 
@@ -651,9 +654,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
           real(tipm(nh)), real(mbase(nh)), real(pxtemp(nh)), real(plwhc(nh)), real(daygm(nh)),&
           real(elev(nh)), real(pa), real(adc), &
           !SNOW17 CARRYOVER VARIABLES
-          cs, tprev) 
-
-      swe(i,nh) = dble(cs(1))
+          cs, taprev_sp) 
 
       ! if(i .eq. 1)then
       !   write(*,*)
@@ -681,16 +682,16 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       !   write(*,'(a10,f30.17)')'cs(17)',cs(17)
       !   write(*,'(a10,f30.17)')'cs(18)',cs(18)
       !   write(*,'(a10,f30.17)')'cs(19)',cs(19)
-      !   write(*,'(a10,f30.17)')'tprev',tprev
+      !   write(*,'(a10,f30.17)')'taprev',taprev
       ! end if 
 
       !cs_states(:,i,nh)  = cs
-      !tprev_states(i,nh) = tprev
+      !taprev_states(i,nh) = taprev
 
-      !write(*,*)tprev
+      !write(*,*)taprev
 
-      ! tprev does not get updated in place like cs does
-      tprev = real(mat_step)
+      ! taprev does not get updated in place like cs does
+      taprev_sp = real(mat_step)
 
       ! if(i .eq. 1)then
       !   write(*,*)
@@ -785,9 +786,42 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       mat(i,nh) = mat_step
       ptps(i,nh) = ptps_step 
 
+      swe(i,nh) = dble(cs(1))
+      !swe(i,nh) = dble(sneqv(i,nh))
+
       raim(i,nh) = dble(raim_sp(i,nh))
       neghs(i,nh) = dble(cs(2))
       liqw(i,nh) = dble(cs(3))
+
+      taprev(i,nh) = dble(taprev_sp)
+      tindex(i,nh) = dble(cs(4))
+
+      accmax(i,nh) = dble(cs(5))
+      sb(i,nh) = dble(cs(6))
+      sbaesc(i,nh) = dble(cs(7))
+      sbws(i,nh) = dble(cs(8))
+      storage(i,nh) = dble(cs(9))
+      aeadj(i,nh) = dble(cs(10))
+
+      nexlag = 5/int(dt/sec_hour) + 2
+
+      sndpt(i,nh) = dble(cs(11+nexlag))
+      sntmp(i,nh) = dble(cs(12+nexlag))
+
+      
+      ! PQNET
+      ! PRAIN
+      ! PROBG
+      ! PSNWRO
+      ! SNSG
+      ! TINDEX
+      ! SWE
+
+      ! SNOW=SXFALL
+      ! RAIM=RM(1)
+      ! SNEQV=TWE/1000.
+      ! SNOWH=SNDPT/100.
+
 
       !write(*,'(5i5,4f8.2)')nh, year(i), month(i), day(i), hour(i), map(i,nh), mat(i,nh), ptps(i,nh), pet(i,nh), 
       !write(*,'(4i5,7f8.3)')year(i), month(i), day(i), hour(i), uztwc_sp, uzfwc_sp, lztwc_sp, &

@@ -403,12 +403,23 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=
                aesc = output_matrix,
                neghs = output_matrix,
                liqw = output_matrix,
-               raim = output_matrix)
+               raim = output_matrix,
+               taprev = output_matrix,
+               tindex = output_matrix,
+               accmax = output_matrix,
+               sb = output_matrix,
+               sbaesc = output_matrix,
+               sbws = output_matrix,
+               storage = output_matrix,
+               aeadj = output_matrix,
+               sndpt = output_matrix,
+               sntmp = output_matrix)
   #print(head(x))
 
   format_states(x[c('year','month','day','hour','tci','aet',
                     'uztwc','uzfwc','lztwc','lzfsc','lzfpc','adimc',
-                    'swe','aesc','neghs','liqw','raim',
+                    'swe','aesc','neghs','liqw','raim','taprev', 'tindex', 'accmax',
+                    'sb', 'sbaesc', 'sbws', 'storage', 'aeadj', 'sndpt', 'sntmp',
                     'map','mat','ptps','etd','pet')])
 }
 
