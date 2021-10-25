@@ -440,6 +440,83 @@ format_states <- function(x) {
   }
   df
 }
+#########################Geoffrey's Attempt##############################
+gf = function(x){
+  h=1
+  if(x <= 0)return(NaN)
+  while(TRUE){
+    if(x>0 & x<2){
+      h = h/x
+      x = x+1
+    }else if(x==2){
+      return(h)
+    }else if (x>2 & x<=3){
+      x=x-2
+      h=(((((((.0016063118*x+0.0051589951)*x+0.0044511400)*x+.0721101567
+      )*x+.0821117404)*x+.4117741955)*x+.4227874605)*x+.9999999758)*h
+      return(h)
+    }else{ # x>3
+      x=x-1
+      h=h*x
+    }
+  }
+}
+
+uh2p <- function(shape, scale, timestep, len = 1000){
+  # this code needs timestep in days
+  timestep = timestep/24
+  uh = numeric(len)
+  toc = log(gf(shape)*scale)
+  #print(toc)
+  for(i in 1:len){
+    top=i*timestep/scale
+    tor=(shape-1)*log(top)-top-toc
+    uh[i] = 0
+    if(tor > -8.0){
+      uh[i]=exp(tor)
+    }else{
+      if(i > 1){
+        uh[i] = 0.0
+        len = i
+        break
+      }
+    }
+  }
+  s = sum(uh)
+  s = ifelse(s==0,1.0e-5,s)
+  # turn it into a unit hydrograph (sums to 1)
+  uh=uh/s
+  # dont return all the trailing zero values
+  first0 = which(uh==0)[1]
+  if(is.na(first0)){
+    warning('UH may have been truncated, increase len.')
+    return(uh)
+  }
+  return(uh[1:(first0-1)])
+}
+
+uh2p_seek <- function(scale,shape,dt_hours,toc){
+
+  uh_len=round((toc*24)/dt_hours,0)
+
+  # timestep in hours
+  # area in sq mi
+  len_dif=abs(length(uh2p(shape,scale,dt_hours))-uh_len)
+  return(len_dif)}
+
+scale_uplimit <- function(shape,dt_hours){
+  scale=0.1
+  len_1=0
+  len_2=length(uh2p(shape,scale,dt_hours))
+
+  while ((len_1 <= len_2) & (scale < 5)){
+    len_1=len_2
+    scale=scale+.1
+    len_2=length(uh2p(shape,scale,dt_hours))
+  }
+  return(scale-.1)}
+
+#########################Geoffrey's Attempt##############################
 
 #' Two parameter unit hydrograph routing for one or more basin zones
 #'
@@ -480,7 +557,9 @@ uh <- function(dt_hours, tci, pars){
       scale = pars[pars$name == 'unit_scale',]$value[i]
     }else{
       toc = (toc_gis*toc_adj)/24
-      scale = toc/(shape-1+sqrt(shape-1))
+      #scale = toc/(shape-1+sqrt(shape-1))
+      scale_lim=scale_uplimit(shape,dt_hours)
+      scale=optimize(uh2p_seek,shape,dt_hours,toc,interval=c(.01:scale_lim))$minimum
     }
 
     routed = .Fortran('duamel',
