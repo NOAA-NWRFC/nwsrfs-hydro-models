@@ -50,8 +50,10 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   ! scf, mfmax, mfmin, uadj, si, nmf, tipm, mbase, plwhc, daygm, adc_a, adc_b, adc_c
   double precision, dimension(13,n_hrus), intent(in):: snow_pars 
 
-
+  ! this code is currently not set up to do any timestep less than 1 hour, 
+  ! nor could it do fractional hour timesteps.
   integer, intent(in):: dt    ! model timestep in seconds
+  integer:: dt_hours          ! model timestep in hours
   !integer:: start_month, start_hour, start_day, start_year, &
   !          end_month, end_day, end_hour, end_year   
 
@@ -150,6 +152,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   integer, dimension(sim_length):: jday
   double precision:: pet_ts, tmax_daily, tmin_daily, tave_daily
   integer:: ts_per_day
+  double precision:: interp_day, decimal_day
 
   ! initilize outputs 
   tci = 0
@@ -210,6 +213,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   ! write(*,*)map_fa_pars
 
   ts_per_day = 86400/dt
+  dt_hours = dt/3600
   ! write(*,*)'Timesteps per day:',ts_per_day
 
   ! this is not used, since ptps is input, but set it just so its not empty
@@ -278,14 +282,20 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
       ! y = y0 + (x-x0)*(y1-y0)/(x1-x0)
       ! interpolate between (day0,limit0)=(0,limit0) and (day1,limit1)=(dayn,limit1)
       ! y = limit0 + dayi/dayn*(limit1-limit0)
+
+      ! decimal day to start interpolation
+      interp_day = 16. + dble(dt_hours)/24
+      ! current decimal day
+      decimal_day = dble(day(i)) + dble(dt_hours)/24.
+
       mo = month(i)
-      if(day(i) >= 15)then
+      if(decimal_day >= interp_day)then
         dayn = dble(mdays(mo))
-        dayi = dble(day(i)) - 15. + dble(hour(i))/24.
+        dayi = decimal_day - interp_day 
         mat_adj_step = mat_adj(mo) + dayi/dayn*(mat_adj_next(mo)-mat_adj(mo))
-      else if(day(i) < 15)then
+      else 
         dayn = dble(mdays_prev(mo))
-        dayi = dble(day(i)) + mdays_prev(mo) - 15. + dble(hour(i))/24.
+        dayi = decimal_day - interp_day + mdays_prev(mo) 
         mat_adj_step = mat_adj_prev(mo) + dayi/dayn*(mat_adj(mo)-mat_adj_prev(mo))
       end if 
       mat_adjusted(i,nh) = mat(i,nh) + mat_adj_step
@@ -322,16 +332,18 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
         Ra = (24. * 60.) / pi * 0.0820 * dr * (omega_s * dsin(latitude(nh) * pi / 180.) * dsin(rho) + &
                          dcos(latitude(nh) * pi / 180.) * dcos(rho) * dsin(omega_s))
         
-        ! if(i .eq. 1)then
-        !   write(*,*)'jday',jday(i)
+        ! if(i<=1)then
+        !   write(*,*)i, nh, jday(i)
+        !   write(*,*)'lat',latitude(nh)
         !   write(*,*)'dr',dr
         !   write(*,*)'rho',rho
         !   write(*,*)'omega_s',omega_s
-        !   write(*,*)'mat',mat(i:(i+ts_per_day-1),nh)
-        !   write(*,*)'mat',mat(1:4,nh)
-        !   write(*,*)'tave_daily',tmax_daily
-        !   write(*,*)'tmax_daily',tmin_daily
-        !   write(*,*)'tmin_daily',tave_daily
+        !   write(*,*)'Ra',Ra
+        !   write(*,*)'mat',mat_adjusted(i:(i+ts_per_day-1),nh)
+        !   write(*,*)'mat',mat_adjusted(1:4,nh)
+        !   write(*,*)'tave_daily',tave_daily
+        !   write(*,*)'tmax_daily',tmax_daily
+        !   write(*,*)'tmin_daily',tmin_daily
         ! end if
 
         ! daily pet from Hargreaves-Semani equation, units are mm/day, so divide 
@@ -462,7 +474,9 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
     ! "A value of As = 0.05 is used for a W/Ai = 0.0 ratio so that small amounts of snow
     ! don’t continue to exist well past the time when all the snow is gone in nature."
     ! - snow 17 manual 
-    adc(1) = 0.05
+    do i=1,11
+      if(adc(i) < 0.05) adc(i) = 0.05
+    end do
 
     ! print run dates
     ! write(*,*)'  start:',year(1), month(1), day(1), hour(1)
@@ -506,23 +520,29 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
       ! y = y0 + (x-x0)*(y1-y0)/(x1-x0)
       ! interpolate between (day0,limit0)=(0,limit0) and (day1,limit1)=(dayn,limit1)
       ! y = limit0 + dayi/dayn*(limit1-limit0)
+
+      ! decimal day to start interpolation
+      interp_day = 16. + dble(dt_hours)/24
+      ! current decimal day
+      decimal_day = dble(day(i)) + dble(dt_hours)/24.
       mo = month(i)
       !write(*,*)mdays, mdays(mo), day(i), hour(i)
-      if(day(i) >= 15)then
+      if(decimal_day >= interp_day)then
         dayn = dble(mdays(mo))
-        dayi = dble(day(i)) - 15. + dble(hour(i))/24.
+        dayi = decimal_day - interp_day 
         map_adj_step = map_adj(mo) + dayi/dayn*(map_adj_next(mo)-map_adj(mo))
         pet_adj_step = pet_adj(mo) + dayi/dayn*(pet_adj_next(mo)-pet_adj(mo))
         ptps_adj_step = ptps_adj(mo) + dayi/dayn*(ptps_adj_next(mo)-ptps_adj(mo))
         peadj_step = peadj_m(mo,nh) + dayi/dayn*(peadj_m_next(mo,nh)-peadj_m(mo,nh))
-      else if(day(i) < 15)then
+      else 
         dayn = dble(mdays_prev(mo))
-        dayi = dble(day(i)) + mdays_prev(mo) - 15. + dble(hour(i))/24.
+        dayi = decimal_day - interp_day + mdays_prev(mo) 
         map_adj_step = map_adj_prev(mo) + dayi/dayn*(map_adj(mo)-map_adj_prev(mo))
         pet_adj_step = pet_adj_prev(mo) + dayi/dayn*(pet_adj(mo)-pet_adj_prev(mo))
         ptps_adj_step = ptps_adj_prev(mo) + dayi/dayn*(ptps_adj(mo)-ptps_adj_prev(mo))
         peadj_step = peadj_m_prev(mo,nh) + dayi/dayn*(peadj_m(mo,nh)-peadj_m_prev(mo,nh))
       end if 
+
 
       ! write(*,'(a,5i5,8f8.2)')'before adj',nh, year(i), month(i), day(i), hour(i), map(i,nh), mat(i,nh), ptps(i,nh), pet(i,nh), &
       !                                    mat_adj_step, map_adj_step, pet_adj_step, ptps_adj_step
