@@ -4,7 +4,7 @@
 \alias{lagk}
 \title{Lag-K Routing for any number of upstream points}
 \usage{
-lagk(dt_hours, uptribs, pars)
+lagk(dt_hours, uptribs, pars, sum_routes = TRUE)
 }
 \arguments{
 \item{dt_hours}{timestep in hours}
