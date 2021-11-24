@@ -441,6 +441,106 @@ format_states <- function(x) {
   df
 }
 
+
+#' R port of the nwsrfs UH fortran code
+#'
+#' Returns ordinates for a 2 parameter (shape,scale) gamma unit hydrograph. The ordinates are
+#' based on the given timestep (in hours). To match the Fortran code, a max length is used.
+#' A warning is issued if the UH does not terminate before the given max length.
+#'
+#' @param shape gamma shape parameter
+#' @param scale gamma scale parameter
+#' @param timestep timestep in hours
+#' @param max_len max length of the uh
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#' dt = 6
+#' shape = 2
+#' scale = 1
+#' y = uh2p(2,1,6)
+#' x = seq(dt,dt*length(y),by=dt)
+#' plot(x,y,t='l')
+uh2p <- function(shape, scale, timestep, max_len = 1000){
+  # this code needs timestep in days
+  timestep = timestep/24
+  uh = numeric(max_len)
+  toc = log(gamma(shape)*scale)
+  #print(toc)
+  for(i in 1:max_len){
+    top=i*timestep/scale
+    tor=(shape-1)*log(top)-top-toc
+    uh[i] = 0
+    if(tor > -8.0){
+      uh[i]=exp(tor)
+    }else{
+      if(i > 1){
+        uh[i] = 0.0
+        max_len = i
+        break
+      }
+    }
+  }
+  s = sum(uh)
+  s = ifelse(s==0,1.0e-5,s)
+  # turn it into a unit hydrograph (sums to 1)
+  uh=uh/s
+  # dont return all the trailing zero values
+  first0 = which(uh==0)[1]
+  if(is.na(first0)){
+    warning('UH may have been truncated, increase max_len.')
+    return(uh)
+  }
+  return(uh[1:(first0-1)])
+}
+
+#' Create a 2 parameter gamma unit hydrograph with units cfs/in
+#'
+#' @param shape gamma shape parameter
+#' @param scale gamma scale parameter
+#' @param timestep timestep in hours
+#' @param area basin area in square miles
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#' dt = 6
+#' shape = 2
+#' scale = 1
+#' y = uh2p_cfs_in(2,1,6)
+#' x = seq(dt,dt*length(y),by=dt)
+#' plot(x,y,t='l')
+uh2p_cfs_in <- function(shape, scale, timestep, area){
+  # convert to cfs/in
+  # timestep in hours
+  # area in sq mi
+  uh2p(shape,scale,timestep)*5280^2*24/12/86400/timestep*area
+}
+
+#' Get the scale parameter from a 2 parameter gamma unit hydrograph given
+#' the shape parameter and time of concentration.
+#'
+#' @param shape gamma shape parameter
+#' @param toc time of concentration (hours)
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#' uh2p_get_scale(2,50)
+uh2p_get_scale <- function(shape,toc){
+  b = c(`(Intercept)` = 0.255299308548535, shape = -0.314173822659083,
+        toc = 0.0061508368818229, `I(shape^2)` = 0.0809339755573929,
+        `I(toc^2)` = 1.42743463788263e-06, `I(shape * toc)` = -0.00111691593640601)
+  scale = b[1] + b[2]*shape + b[3]*toc + b[4]*shape^2 + b[5]*toc^2 + b[6]*shape*toc
+  # bump up very small or negative values to prevent 0 length UH
+  max(as.numeric(scale),0.02)
+}
+
+
 #' Two parameter unit hydrograph routing for one or more basin zones
 #'
 #' @param dt_hours timestep in hours
@@ -479,8 +579,12 @@ uh <- function(dt_hours, tci, pars){
     if(is.na(toc_gis) | is.na(toc_adj)){
       scale = pars[pars$name == 'unit_scale',]$value[i]
     }else{
-      toc = (toc_gis*toc_adj)/24
-      scale = toc/(shape-1+sqrt(shape-1))
+      toc = toc_gis * toc_adj
+      # fitted regression parameters to shape vs. toc relationship
+      b = c(`(Intercept)` = 0.255299308548535, shape = -0.314173822659083,
+            toc = 0.0061508368818229, `I(shape^2)` = 0.0809339755573929,
+            `I(toc^2)` = 1.42743463788263e-06, `I(shape * toc)` = -0.00111691593640601)
+      scale = b[1] + b[2]*shape + b[3]*toc + b[4]*shape^2 + b[5]*toc^2 + b[6]*shape*toc
     }
 
     routed = .Fortran('duamel',
