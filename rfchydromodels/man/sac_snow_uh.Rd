@@ -4,7 +4,7 @@
 \alias{sac_snow_uh}
 \title{Execute SAC-SMA, SNOW17 and UH with given parameters}
 \usage{
-sac_snow_uh(dt_hours, forcing, pars, forcing_adjust = TRUE)
+sac_snow_uh(dt_hours, forcing, pars, forcing_adjust = TRUE, climo = NULL)
 }
 \arguments{
 \item{dt_hours}{timestep in hours}

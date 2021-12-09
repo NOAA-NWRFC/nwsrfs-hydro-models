@@ -4,7 +4,14 @@
 \alias{sac_snow_uh_lagk}
 \title{Execute SAC-SMA, SNOW17, UH and LAG-K with given parameters}
 \usage{
-sac_snow_uh_lagk(dt_hours, forcing, uptribs, pars, forcing_adjust = TRUE)
+sac_snow_uh_lagk(
+  dt_hours,
+  forcing,
+  uptribs,
+  pars,
+  forcing_adjust = TRUE,
+  climo = NULL
+)
 }
 \arguments{
 \item{dt_hours}{timestep in hours}
