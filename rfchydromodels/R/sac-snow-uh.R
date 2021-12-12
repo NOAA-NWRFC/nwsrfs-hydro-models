@@ -531,6 +531,7 @@ uh2p_cfs_in <- function(shape, scale, timestep, area){
 #' @examples
 #' uh2p_get_scale(2,50)
 uh2p_get_scale <- function(shape,toc){
+  # fitted regression parameters to shape vs. toc relationship
   b = c(`(Intercept)` = 0.255299308548535, shape = -0.314173822659083,
         toc = 0.0061508368818229, `I(shape^2)` = 0.0809339755573929,
         `I(toc^2)` = 1.42743463788263e-06, `I(shape * toc)` = -0.00111691593640601)
@@ -579,11 +580,7 @@ uh <- function(dt_hours, tci, pars){
       scale = pars[pars$name == 'unit_scale',]$value[i]
     }else{
       toc = toc_gis * toc_adj
-      # fitted regression parameters to shape vs. toc relationship
-      b = c(`(Intercept)` = 0.255299308548535, shape = -0.314173822659083,
-            toc = 0.0061508368818229, `I(shape^2)` = 0.0809339755573929,
-            `I(toc^2)` = 1.42743463788263e-06, `I(shape * toc)` = -0.00111691593640601)
-      scale = b[1] + b[2]*shape + b[3]*toc + b[4]*shape^2 + b[5]*toc^2 + b[6]*shape*toc
+      scale = uh2p_get_scale(shape,toc)
     }
 
     routed = .Fortran('duamel',
@@ -606,7 +603,7 @@ uh <- function(dt_hours, tci, pars){
   flow_cfs
 }
 
-#' Two parameter unit hydrograph routing for one or more basin zones
+#' Simple proportional chanloss
 #'
 #' @param flow_cfs streamflow vector
 #' @param pars parameters
@@ -626,6 +623,54 @@ chanloss <- function(flow, pars){
   flow
 }
 
+#' Title
+#'
+#' @param flow
+#' @param pars
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#' @useDynLib rfchydromodels sacsnow_
+consuse <- function(flow, etd, pars){
+  zones = unique(pars$zone)
+  cu_zones = grep('_CU',zones,value = T)
+  cu_pars = pars[type=='consuse']
+  for(cu_zone in cu_zones){
+
+    # consuse(NDT_in,AREA_in,EFF_in,MFLOW_in, &
+    #           IRFSTOR_in,ACCUM_in,DECAY_in, &
+    #           ETD_in,QNAT_in, &
+    #           QADJ_out,QDIV_out,QRFIN_out,QRFOUT_out, &
+    #           QOL_out,QCD_out,CE_out)
+    ndt = as.integer(length(flow))
+    x = .Fortran('consuse',
+                 # inputs
+                 NDT_in = ndt,
+                 AREA_in = cu_pars[pars$zone==cu_zone & pars$name=='area_km2'],
+                 EFF_in = cu_pars[pars$zone==cu_zone & pars$name=='irr_eff'],
+                 MFLOW_in = cu_pars[pars$zone==cu_zone & pars$name=='min_flow_cmsd'],
+                 IRFSTOR_in = cu_pars[pars$zone==cu_zone & pars$name=='init_rf_storage'],
+                 ACCUM_in = cu_pars[pars$zone==cu_zone & pars$name=='rf_accum_rate'],
+                 DECAY_in = cu_pars[pars$zone==cu_zone & pars$name=='rf_decay_rate'],
+                 ETD_in = etd,
+                 QNAT_in = flow,
+                 # outputs
+                 QADJ_out = numeric(ndt),
+                 QDIV_out = numeric(ndt),
+                 QRFIN_out = numeric(ndt),
+                 QRFOUT_out = numeric(ndt),
+                 QOL_out = numeric(ndt),
+                 QCD_out = numeric(ndt),
+                 CE_out = numeric(ndt)
+                 )
+    flow = x$QADJ_out
+  }
+  flow
+}
+
+
 #' Lag-K Routing for any number of upstream points
 #'
 #' @param dt_hours timestep in hours
@@ -636,6 +681,7 @@ chanloss <- function(flow, pars){
 #' @export
 #'
 #' @examples NULL
+#' @useDynLib rfchydromodels sacsnow_
 lagk <- function(dt_hours, uptribs, pars, sum_routes = TRUE){
 
   sec_per_day = 86400

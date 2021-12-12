@@ -2,6 +2,7 @@
 
 export(adc3)
 export(chanloss)
+export(consuse)
 export(forcing_adjust_map_pet_ptps)
 export(forcing_adjust_mat)
 export(interp_fa)

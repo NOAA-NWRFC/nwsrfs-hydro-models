@@ -4,11 +4,11 @@ PKG_FCFLAGS = #-mmacosx-version-min=11.1 #-Wall -pedantic #-O3 #-fno-align-commo
 all: $(SHLIB)
 
 # need to tell R the order to compile dependent modules
-sac_snow_only.o sac_snow_states.o: utilities.o
+sac_snow_only_tci.o sac_snow_states.o: utilities.o
 utilities.o: types.o stats.o sorting.o
 stats.o: types.o sorting.o
 
-# These files use obsolete features and so fail when using the default -std=f95 
+# These files use obsolete features and so fail when using the default -std=f95
 fka7.o: fka7.f
 	gfortran -c -fPIC  -O3 fka7.f
 flag7.o: flag7.f
@@ -17,3 +17,5 @@ initCommonBlocksPin.o: initCommonBlocksPin.f
 	gfortran -c -fPIC  -O3 initCommonBlocksPin.f
 pin7.o: pin7.f
 	gfortran -c -fPIC  -O3 pin7.f
+ex57.o: ex57.f
+	gfortran -c -fPIC  -O3 ex57.f
