@@ -33,7 +33,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
 
   implicit none
 
-  double precision, parameter:: pi=3.141592653589793238462643383279502884197d0
+  double precision, parameter:: pi=3.141592653589793238462643383279502884197
   double precision, parameter:: sec_day = 86400.     !seconds in a day
   double precision, parameter:: sec_hour = 3600.     !seconds in an hour
   integer, parameter:: sp = KIND(1.0)
@@ -109,7 +109,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
 
   ! snow-17 carry over variables
   double precision:: pa       ! snow-17 surface pressure
-  real(sp):: tprev    ! carry over variable
+  real(sp):: taprev, psfall    ! carry over variable
   real(sp), dimension(19):: cs       ! carry over variable array
 
     ! sac-sma state variables
@@ -121,7 +121,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   double precision, dimension(sim_length ,n_hrus), intent(out):: tci
 
   ! snow-17 output variables  
-  real(sp), dimension(sim_length, n_hrus):: raim, snowh, sneqv, snow 
+  real(sp), dimension(sim_length, n_hrus):: raim, snowh, sneqv, snow
 
   ! date variables
   integer, dimension(sim_length), intent(in):: year, month, day, hour
@@ -500,8 +500,9 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
     cs(1)    = real(init_swe(nh))
     ! set the rest to zero
     cs(2:19) = 0
-    tprev    = real(mat(1,nh))
-
+    taprev    = real(mat(1,nh))
+    
+    psfall=real(0)
   
     ! =============== START SIMULATION TIME LOOP =====================================
     do i = 1,sim_length,1
@@ -612,7 +613,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
       call exsnow19(int(dt,4),int(dt/sec_hour,4),int(day(i),4),int(month(i),4),int(year(i),4),&
           !SNOW17 INPUT AND OUTPUT VARIABLES
           real(map_step), real(ptps_step), real(mat_step), &
-          raim(i,nh), sneqv(i,nh), snow(i,nh), snowh(i,nh),&
+          raim(i,nh), sneqv(i,nh), snow(i,nh), snowh(i,nh),psfall,&
           !SNOW17 PARAMETERS
           !ALAT,SCF,MFMAX,MFMIN,UADJ,SI,NMF,TIPM,MBASE,PXTEMP,PLWHC,DAYGM,ELEV,PA,ADC
           real(latitude(nh)), real(scf(nh)), real(mfmax(nh)), real(mfmin(nh)), &
@@ -620,7 +621,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
           real(tipm(nh)), real(mbase(nh)), real(pxtemp(nh)), real(plwhc(nh)), real(daygm(nh)),&
           real(elev(nh)), real(pa), real(adc), &
           !SNOW17 CARRYOVER VARIABLES
-          cs, tprev) 
+          cs, taprev) 
 
       ! swe(i,nh) = dble(cs(1))
 
@@ -659,7 +660,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
       !write(*,*)tprev
 
       ! tprev does not get updated in place like cs does
-      tprev = real(mat_step)
+      taprev = real(mat_step)
 
       ! if(i .eq. 1)then
       !   write(*,*)
