@@ -41,10 +41,6 @@ class Model:
 
         # Extract vectors as numpy arrays for speed
         self.dates = forcings[0].index
-        ##DELETE??##
-        #self.precipitation = forcings[0]['map_mm'].values
-        #self.temperature = forcings[0]['mat_degc'].values
-        ##DELETE??##
         self.year = forcings[0]['year'].values
         self.month = forcings[0]['month'].values
         self.day = forcings[0]['day'].values
@@ -110,6 +106,12 @@ class Model:
         self.map=np.asfortranarray(self.map)
         self.mat=np.asfortranarray(self.mat)
         self.ptps=np.asfortranarray(self.ptps)
+        
+        #Create a unmodified varible of the forcing to use after you run
+        #SacSnowStates which alters the forcings
+        self.map_unmodified=self.map.copy()
+        self.mat_unmodified=self.mat.copy()
+        self.ptps_unmodified=self.ptps.copy()
         
         #Get upstream tributary flows
         self.uptribs = np.full([sim_length, max(1,n_uptribs)], np.nan)
@@ -185,9 +187,9 @@ class Model:
             n=list(range(self.n_zones))
         elif isinstance(n, int):
             n=[n]
-        
+
         p = self.p
-        
+
         m_uh = 1000  # max UH length
         n_uh = self.sim_length + m_uh
         sim_flow_inst_cfs = np.full([self.sim_length], 0)
@@ -195,8 +197,12 @@ class Model:
         for y, z in zip(range(len(tci[0])),n):
             
             shape=p['unit_shape'][z]
-            toc=(p['unit_toc'][z]*p['unit_toc_adj'][z])/24
-            scale=toc/(shape-1+np.sqrt(shape-1))
+            toc=(p['unit_toc'][z]*p['unit_toc_adj'][z])
+            b = [0.255299308548535, -0.314173822659083,
+            0.0061508368818229, 0.0809339755573929,
+            1.42743463788263e-06, -0.00111691593640601]
+            scale=b[0] + b[1]*shape + b[2]*toc + b[3]*shape**2 + b[4]*toc**2 + b[5]*shape*toc
+
             
             flow_routed = s.duamel(tci[:, y], float(shape), float(scale),
                                    float(self.dt_days), int(n_uh), int(m_uh), int(1), int(0))
@@ -210,22 +216,23 @@ class Model:
         
         next_sim = pd.DataFrame(sim_flow_inst_cfs).shift(-1).to_numpy().flatten()
         sim_flow_cfs = (sim_flow_inst_cfs + next_sim) / 2
-        sacsnow_flow_cfs = pd.Series(sim_flow_cfs, index=self.dates)
+        sim_flow_cfs = pd.Series(sim_flow_cfs, index=self.dates)
         
-        return sacsnow_flow_cfs
+        return sim_flow_cfs
 
     def sacsnow_run(self):
 
         p = self.p
 
         # simulates all zones
+
         tci = s.sacsnow(int(self.dt_seconds), self.year.astype('int'), self.month.astype('int'), self.day.astype('int'), self.hour.astype('int'),
                         # general pars
                         p['alat'].astype('double'), p['elev'].astype('double'), p['zone_area'].astype('double'),
                         # sac pars
                         self.sac_pars,
                         # pet and precp adjustments
-                        p['peadj'].astype('double'), p['pxadj'].astype('double'),self.peadj_m,
+                        p['peadj'].astype('double'), p['pxadj'].astype('double'),self.peadj_m.astype('double'),
                         # snow pars
                         self.snow_pars,
                         # forcing adjustment
@@ -241,7 +248,8 @@ class Model:
 
         # channel routing
         self.sacsnow_flow_cfs = self.uh_run(tci)
-
+        
+        
         return self.sacsnow_flow_cfs
 
     def sacsnow_states_run(self):
@@ -289,7 +297,12 @@ class Model:
         sf_df.columns=self.zones
         
         self.sacsnow_states['sf']=sf_df
-
+        
+        #Revert forcing back to unmodified state
+        self.map=self.map_unmodified.copy()
+        self.mat=self.mat_unmodified.copy()
+        self.ptps=self.ptps_unmodified.copy()
+        
         return self.sacsnow_states
         
     def run_all(self):
