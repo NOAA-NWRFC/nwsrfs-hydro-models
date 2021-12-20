@@ -11,7 +11,7 @@ CGW
       SUBROUTINE EXSNOW19(IDTS,IDT,IDA,IMN,IYR,
 C     SNOW17 INPUT AND OUTPUT VARIABLES
      &                    PCP,PCTS,TMP,RAIM,SNEQV,SNOW,SNOWH,
-     &                    PSFALL,
+     &                    PSFALL,AESC,
 C     SNOW17 PARAMETERS
      &                    ALAT,SCF,MFMAX1,MFMIN1,UADJ1,SI,NMF1,TIPM1,
      &                    MBASE,PXTEMP,PLWHC,DAYGM,ELEV1,PA,ADC,
@@ -62,7 +62,7 @@ C********************************************************************
 C.......................................
 CGW Added below by GSW
       REAL PX(48),RM(48)
-      REAL MFMAX,MFMIN,NMF,LIQW,NEGHS,MELT,LIQWMX,MFC,PSF
+      REAL MFMAX,MFMIN,NMF,LIQW,NEGHS,MELT,LIQWMX,MFC,PSF,CAESC
       REAL SMFV(12),AE(2,14)
       INTEGER JULDAY(12), IVER
 
@@ -83,7 +83,7 @@ C     PARAMETERS
  
 C     OUTPUT
       REAL, INTENT(OUT) :: RAIM, SNEQV, SNOW, SNOWH
-CGW      REAL, INTENT(OUT) :: PSFALL
+      REAL, INTENT(OUT) :: PSFALL, AESC
 CGW Added above by GSW
 
 
@@ -549,8 +549,8 @@ C
 C     MAKE UPDATE.
       CWE=TWE
       CAESC=PCOVER
-      CALL UPDT19(POWE,POSC,TWE,PCOVER,IUPWE,IUPSC,WETOL,
-     1SCTOL,SI,ADC,IVER)
+CGW      CALL UPDT19(POWE,POSC,TWE,PCOVER,IUPWE,IUPSC,WETOL,
+CGW     1SCTOL,SI,ADC,IVER)
       IF ((TWE.EQ.CWE).AND.(PCOVER.EQ.CAESC)) GO TO 119
       CHGWE=CHGWE+(TWE-CWE)
 C
@@ -1035,6 +1035,7 @@ CGW ADDED this section below to avoid using CSAV19 and to match how it was done 
 
       SNOW=SXFALL
       PSFALL=PSF
+      AESC=CAESC
       RAIM=PRM(1)
       SNEQV=TWE/1000.
       SNOWH=SNDPT/100.

@@ -109,7 +109,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
 
   ! snow-17 carry over variables
   double precision:: pa       ! snow-17 surface pressure
-  real(sp):: taprev, psfall    ! carry over variable
+  real(sp):: taprev, psfall,aesc_sp    ! carry over variable
   real(sp), dimension(19):: cs       ! carry over variable array
 
     ! sac-sma state variables
@@ -503,7 +503,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
     taprev    = real(mat(1,nh))
     
     psfall=real(0)
-  
+    aesc_sp=real(0)
     ! =============== START SIMULATION TIME LOOP =====================================
     do i = 1,sim_length,1
 
@@ -613,7 +613,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
       call exsnow19(int(dt,4),int(dt/sec_hour,4),int(day(i),4),int(month(i),4),int(year(i),4),&
           !SNOW17 INPUT AND OUTPUT VARIABLES
           real(map_step), real(ptps_step), real(mat_step), &
-          raim(i,nh), sneqv(i,nh), snow(i,nh), snowh(i,nh),psfall,&
+          raim(i,nh), sneqv(i,nh), snow(i,nh), snowh(i,nh),psfall,aesc_sp,&
           !SNOW17 PARAMETERS
           !ALAT,SCF,MFMAX,MFMIN,UADJ,SI,NMF,TIPM,MBASE,PXTEMP,PLWHC,DAYGM,ELEV,PA,ADC
           real(latitude(nh)), real(scf(nh)), real(mfmax(nh)), real(mfmin(nh)), &
@@ -699,7 +699,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
       ! end if 
 
       ! grab areal extent of snow cover from snow17 output 
-      aesc = dble(cs(7))
+      aesc = dble(aesc_sp)
       ! write(*,*)'aesc', aesc
 
       ! modify ET demand using the effective forest cover 

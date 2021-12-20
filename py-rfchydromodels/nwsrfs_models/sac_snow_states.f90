@@ -104,7 +104,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   ! single precision sac-sma and snow variables
   ! these are single precision so as to be supplied to 
   ! old NWS code models
-  real(sp):: uztwc_sp, uzfwc_sp, lztwc_sp, lzfsc_sp, lzfpc_sp, adimc_sp,psfall_sp
+  real(sp):: uztwc_sp, uzfwc_sp, lztwc_sp, lzfsc_sp, lzfpc_sp, adimc_sp,psfall_sp,aesc_sp
   ! double precision:: uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc
 
 
@@ -120,7 +120,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   double precision, dimension(sim_length ,n_hrus), intent(out):: uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc
   ! snow state variables
   double precision, dimension(sim_length ,n_hrus), intent(out):: swe, aesc, neghs, liqw, raim, taprev, tindex, &
-    accmax, sb, sbaesc, sbws, storage, aeadj, sndpt, sntmp, psfall
+    accmax, sbaesc, sb, sbws, storage, aeadj, sndpt, sntmp, psfall
   integer:: nexlag
 
 
@@ -535,7 +535,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
     taprev_sp    = real(mat(1,nh))
     
     psfall_sp=real(0)
-     
+    aesc_sp=real(0)
     ! =============== START SIMULATION TIME LOOP =====================================
     do i = 1,sim_length,1
 
@@ -651,7 +651,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       call exsnow19(int(dt,4),int(dt/sec_hour,4),int(day(i),4),int(month(i),4),int(year(i),4),&
           !SNOW17 INPUT AND OUTPUT VARIABLES
           real(map_step), real(ptps_step), real(mat_step), &
-          raim_sp(i,nh), sneqv(i,nh), snow(i,nh), snowh(i,nh),psfall_sp,&
+          raim_sp(i,nh), sneqv(i,nh), snow(i,nh), snowh(i,nh),psfall_sp,aesc_sp,&
           !SNOW17 PARAMETERS
           !ALAT,SCF,MFMAX,MFMIN,UADJ,SI,NMF,TIPM,MBASE,PXTEMP,PLWHC,DAYGM,ELEV,PA,ADC
           real(latitude(nh)), real(scf(nh)), real(mfmax(nh)), real(mfmin(nh)), &
@@ -735,7 +735,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       ! end if 
 
       ! grab areal extent of snow cover from snow17 output 
-      aesc(i,nh) = dble(cs(7))
+      aesc(i,nh) = dble(aesc_sp)
       ! if(aesc > 0.1) write(*,*)'aesc ',aesc
 
       ! modify ET demand using the effective forest cover 
