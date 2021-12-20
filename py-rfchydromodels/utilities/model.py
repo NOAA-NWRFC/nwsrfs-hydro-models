@@ -278,9 +278,8 @@ class Model:
                         self.map, self.ptps, self.mat)
 
         state_param=['map_fa','ptps_fa','mat_fa','etd','pet','tci','aet',
-                        'uztwc','uzfwc','lztwc','lzfsc','lzfpc','adimc','swe','aesc',
-                        'neghs','liqw','raim','taprev','tindex','accmax','sb','sbaesc',
-                        'sbws','storage','aeadj','sndpt','sntmp','psfall']
+                        'uztwc','uzfwc','lztwc','lzfsc','lzfpc','adimc',
+                        'swe','aesc','neghs','liqw','raim','psfall','prain']
         self.sacsnow_states={}
         for count, param in  enumerate(state_param):
             self.sacsnow_states[param]=pd.DataFrame(states[count], index=self.dates,columns=self.zones)

@@ -11,7 +11,7 @@ CGW
       SUBROUTINE EXSNOW19(IDTS,IDT,IDA,IMN,IYR,
 C     SNOW17 INPUT AND OUTPUT VARIABLES
      &                    PCP,PCTS,TMP,RAIM,SNEQV,SNOW,SNOWH,
-     &                    PSFALL,AESC,
+     &                    PSFALL,PRAIN,AESC,
 C     SNOW17 PARAMETERS
      &                    ALAT,SCF,MFMAX1,MFMIN1,UADJ1,SI,NMF1,TIPM1,
      &                    MBASE,PXTEMP,PLWHC,DAYGM,ELEV1,PA,ADC,
@@ -62,7 +62,7 @@ C********************************************************************
 C.......................................
 CGW Added below by GSW
       REAL PX(48),RM(48)
-      REAL MFMAX,MFMIN,NMF,LIQW,NEGHS,MELT,LIQWMX,MFC,PSF,CAESC
+      REAL MFMAX,MFMIN,NMF,LIQW,NEGHS,MELT,LIQWMX,MFC,PSF,PRF,CAESC
       REAL SMFV(12),AE(2,14)
       INTEGER JULDAY(12), IVER
 
@@ -83,7 +83,7 @@ C     PARAMETERS
  
 C     OUTPUT
       REAL, INTENT(OUT) :: RAIM, SNEQV, SNOW, SNOWH
-      REAL, INTENT(OUT) :: PSFALL, AESC
+      REAL, INTENT(OUT) :: PSFALL, PRAIN, AESC
 CGW Added above by GSW
 
 
@@ -856,7 +856,7 @@ C                 LAST UPDATE: 06/22/95.14:05:09 BY $WC30EA
 C     PREVIOUS TEMPERATURE
      1            TAPREV,
 C     SNOWFALL (SXFALL),SNOW DENSITY (DS)
-     1            SXFALL,DS,PSF,
+     1            SXFALL,DS,PSF,PRF,
 C     SNOW17 PARAMETERS
      &            ALAT,SCF,MFMAX,MFMIN,UADJ,SI,NMF,TIPM,MBASE,
      &            PXTEMP,PLWHC,DAYGM,ADC,
@@ -1035,6 +1035,7 @@ CGW ADDED this section below to avoid using CSAV19 and to match how it was done 
 
       SNOW=SXFALL
       PSFALL=PSF
+      PSRAIN=PRF
       AESC=CAESC
       RAIM=PRM(1)
       SNEQV=TWE/1000.

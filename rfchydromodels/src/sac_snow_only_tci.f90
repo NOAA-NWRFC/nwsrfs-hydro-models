@@ -1,4 +1,4 @@
-subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
+subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
     latitude, elev, area, &
     sac_pars, &
     peadj, pxadj, peadj_m, &
@@ -7,8 +7,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
     map_fa_limits, mat_fa_limits, pet_fa_limits, ptps_fa_limits, & 
     init, climo, & 
     map, ptps, mat, &
-    etd, pet, tci, aet, uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, &
-    swe, aesc, neghs, liqw, raim, psfall,prain)
+    tci)
 
     ! !start_month, start_hour, start_day, start_year, end_month, end_day, end_hour, end_year, &
     ! ! zone info 
@@ -34,13 +33,14 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
 
   implicit none
 
-  double precision, parameter:: pi=3.141592653589793238462643383279502884197
+  double precision, parameter:: pi=3.141592653589793238462643383279502884197d0
   double precision, parameter:: sec_day = 86400.     !seconds in a day
   double precision, parameter:: sec_hour = 3600.     !seconds in an hour
   integer, parameter:: sp = KIND(1.0)
   integer:: k
 
-  integer, intent(in):: n_hrus ! number of HRU areas in parameter files
+  ! initialization variables
+  integer, intent(in):: n_hrus ! number of zones
 
   ! sac pars matrix 
   ! uztwm, uzfwm, lztwm, lzfpm, lzfsm, adimp, uzk, lzpk, lzsk, zperc, rexp, pctim, pfree, riva, side, rserv, efc
@@ -97,7 +97,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
 
 
   ! local variables
-  integer:: nh,i,j           ! AWW index for looping through areas
+  integer:: nh,i           ! AWW index for looping through areas
   integer:: sim_length   ! length of simulation (days)
 
   ! single precision sac-sma and snow variables
@@ -112,30 +112,22 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   real(sp):: taprev_sp    ! carry over variable
   real(sp), dimension(19):: cs       ! carry over variable array
 
-  !swe calulation varibles
-  double precision::  TEX
-
-  ! sac-sma state variables
-  double precision, dimension(sim_length ,n_hrus), intent(out):: uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc
-  ! snow state variables
-  double precision, dimension(sim_length ,n_hrus), intent(out):: swe, aesc, neghs, liqw, raim, psfall,prain
-  integer:: nexlag
-
+    ! sac-sma state variables
+  ! double precision, dimension(sim_length ,n_hrus):: uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, swe
 
   ! sac-sma output variables and routed flow
   real(sp):: qs_sp, qg_sp, aet_sp, tci_sp
-  double precision, dimension(sim_length ,n_hrus), intent(out):: tci, aet, pet, etd
+  double precision, dimension(sim_length ,n_hrus), intent(out):: tci
 
   ! snow-17 output variables  
-  real(sp):: raim_sp, snowh_sp, sneqv_sp, snow_sp, psfall_sp, prain_sp,aesc_sp
+  real(sp):: raim_sp, snowh_sp, sneqv_sp, snow_sp, aesc_sp
 
   ! date variables
   integer, dimension(sim_length), intent(in):: year, month, day, hour
 
   ! atmospheric forcing variables
-  !f2py intent(in,out) map, ptps, mat
-  double precision, dimension(sim_length, n_hrus), intent(inout):: map, ptps, mat
-  double precision, dimension(sim_length, n_hrus):: pet_hs, mat_adjusted
+  double precision, dimension(sim_length, n_hrus), intent(in):: map, ptps, mat
+  double precision, dimension(sim_length, n_hrus):: pet_hs, mat_adjusted 
   double precision:: map_step, ptps_step, mat_step, pet_step
 
   ! area weighted forcings for climo calculations
@@ -145,7 +137,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
 
 
   integer, dimension(12) :: mdays, mdays_prev
-  double precision:: dayn, dayi
+  double precision :: dayn, dayi
   integer:: mo
   double precision, dimension(12):: mat_adj_prev, mat_adj_next
   double precision, dimension(12):: map_adj_prev, map_adj_next
@@ -163,22 +155,6 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
 
   ! initilize outputs 
   tci = 0
-  aet = 0 
-  etd = 0
-  pet = 0
-  uztwc = 0 
-  uzfwc = 0 
-  lztwc = 0 
-  lzfsc = 0 
-  lzfpc = 0 
-  adimc = 0 
-  swe = 0
-  aesc = 0
-  neghs = 0
-  liqw = 0
-  raim = 0
-  psfall = 0
-  prain = 0
 
   mdays =      (/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /) 
   mdays_prev = (/ 31, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30 /) 
@@ -240,7 +216,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   ! write(*,*)'Timesteps per day:',ts_per_day
 
   ! this is not used, since ptps is input, but set it just so its not empty
-  pxtemp = 0
+  pxtemp = 0 
 
   ! julian day 
   jday = julian_day(year,month,day)
@@ -251,7 +227,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   else 
     calc_climo = .false.
   end if 
-
+  
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! Compute the adjusted temperature for the entire POR 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -359,7 +335,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
         !Extraterrestrial Radiation (MJm^-2*day^-1)
         Ra = (24. * 60.) / pi * 0.0820 * dr * (omega_s * dsin(latitude(nh) * pi / 180.) * dsin(rho) + &
                          dcos(latitude(nh) * pi / 180.) * dcos(rho) * dsin(omega_s))
-
+        
         ! if(i<=1)then
         !   write(*,*)i, nh, jday(i)
         !   write(*,*)'lat',latitude(nh)
@@ -377,25 +353,26 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
         ! daily pet from Hargreaves-Semani equation, units are mm/day, so divide 
         ! by number of timesteps in a day   
         pet_ts = 0.0023 * (tave_daily + 17.8) * (tmax_daily - tmin_daily)**0.5 * Ra / 2.45
-        !write(*,*)tmax_daily, tmin_daily, tave_daily, pet_ts
+        ! if(i .eq. 1)write(*,*)tmax_daily, tmin_daily, tave_daily, pet_ts
 
         ! ignore negative values
         if(pet_ts < 0) pet_ts = 0
 
         ! apply global scaling peadj and distibute across timesteps 
-        ! write(*,*)'pet_ts',pet_ts
+        ! if(i .eq. 1)write(*,*)'pet_ts',pet_ts
         pet_ts = pet_ts * peadj(nh) / dble(ts_per_day)
-        ! if(i<10)write(*,*)'pet_ts',pet_ts
+        ! if(i .eq. 1)write(*,*)'pet_ts',pet_ts
+
       end if 
       pet_hs(i,nh) = pet_ts 
     end do 
   end do
 
-  ! write(*,*)i,sim_length
   ! write(*,*)'pet'
   ! do k=1,10
-  !   write(*,*)pet(i,:)
+  !   write(*,*)pet(k,:)
   ! end do 
+
 
   map_aw = 0 
   ptps_aw = 0 
@@ -412,7 +389,6 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   pet_aw = pet_aw / sum(area)
   ptps_aw = ptps_aw / sum(area)
 
-  ! compute 12 monthly climo values (calendar year)
   if(calc_climo)then
     ! compute 12 monthly climo values (calendar year)
     map_climo = monthly_climo_sum(map_aw, month)
@@ -425,7 +401,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       ptps_climo(i) = climo(i,4)
     end do
   end if 
-  
+
   ! write(*,*)'climo: map, mat, pet, ptps'
   ! do k=1,12
   !   write(*,*)map_climo(k), mat_climo(k), pet_climo(k), ptps_climo(k)
@@ -488,13 +464,13 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   ! print*, '--------------------------------------------------------------'
 
   do nh=1,n_hrus
+    ! print*, 'Running area',nh,'out of',n_hrus
 
     ! there are monthly crop coefficients per zone 
     peadj_m_prev(1,nh) = peadj_m(12,nh)
     peadj_m_prev(2:12,nh) = peadj_m(1:11,nh)
     peadj_m_next(12,nh) = peadj_m(1,nh)
     peadj_m_next(1:11,nh) = peadj_m(2:12,nh)
-    ! print*, 'Running area',nh,'out of',n_hrus
 
     ! set the areal depletion curve based on parameters ax^b+(1-a)x^c
     ! 0 < a < 1; b, c > 0 
@@ -521,7 +497,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   
     ! set single precision sac state variables to initial values
     
-      
+    ! we are not warm starting from a state file
     uztwc_sp = real(init_uztwc(nh))
     uzfwc_sp = real(init_uzfwc(nh))
     lztwc_sp = real(init_lztwc(nh))
@@ -532,12 +508,9 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
     cs(1) = real(init_swe(nh))
     ! set the rest to zero
     cs(2:19) = 0
-    taprev_sp= real(mat(1,nh))
-     
-    psfall_sp=real(0)
-    prain_sp=real(0)
-    aesc_sp=real(0)
-    
+    taprev_sp = real(mat(1,nh))
+
+  
     ! =============== START SIMULATION TIME LOOP =====================================
     do i = 1,sim_length,1
 
@@ -577,6 +550,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
         ptps_adj_step = ptps_adj_prev(mo) + dayi/dayn*(ptps_adj(mo)-ptps_adj_prev(mo))
         peadj_step = peadj_m_prev(mo,nh) + dayi/dayn*(peadj_m(mo,nh)-peadj_m_prev(mo,nh))
       end if 
+
 
       ! if(i < 6)then
       !   write(*,'(a,6i5,8f8.2)')'before adj',nh, i, year(i), month(i), day(i), hour(i), map(i,nh), & 
@@ -645,7 +619,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       !   write(*,'(a10,f30.17)')'cs(17)',cs(17)
       !   write(*,'(a10,f30.17)')'cs(18)',cs(18)
       !   write(*,'(a10,f30.17)')'cs(19)',cs(19)
-      !   write(*,'(a10,f30.17)')'taprev',taprev
+      !   write(*,'(a10,f30.17)')'taprev_sp',taprev_sp
       ! end if 
 
 
@@ -653,7 +627,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       call exsnow19(int(dt,4),int(dt/sec_hour,4),int(day(i),4),int(month(i),4),int(year(i),4),&
           !SNOW17 INPUT AND OUTPUT VARIABLES
           real(map_step), real(ptps_step), real(mat_step), &
-          raim_sp, sneqv_sp, snow_sp, snowh_sp,psfall_sp,prain_sp,aesc_sp,&
+          raim_sp, sneqv_sp, snow_sp, snowh_sp,&
           !SNOW17 PARAMETERS
           !ALAT,SCF,MFMAX,MFMIN,UADJ,SI,NMF,TIPM,MBASE,PXTEMP,PLWHC,DAYGM,ELEV,PA,ADC
           real(latitude(nh)), real(scf(nh)), real(mfmax(nh)), real(mfmin(nh)), &
@@ -737,13 +711,14 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       ! end if 
 
       ! grab areal extent of snow cover from snow17 output 
-      ! if(aesc > 0.1) write(*,*)'aesc ',aesc_sp
+      aesc_sp = cs(7)
+      ! write(*,*)'aesc', aesc_sp
 
       ! modify ET demand using the effective forest cover 
       ! Anderson calb manual pdf page 232
-      ! if(aesc > 0.1) write(*,*) 'pet before efc', pet_step
+      ! if(aesc_sp > 0.1) write(*,*) 'pet before efc', pet_step
       pet_step = efc(nh)*pet_step+(1d0-efc(nh))*(1d0-dble(aesc_sp))*pet_step
-      ! if(aesc > 0.1) write(*,*) 'pet after efc', pet_step
+      ! if(aesc_sp > 0.1) write(*,*) 'pet before efc', pet_step
   
       call exsac(1, real(dt), raim_sp, real(mat_step), real(pet_step), &
           !SAC PARAMETERS
@@ -755,7 +730,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
           real(rexp(nh)), real(lztwm(nh)), real(lzfsm(nh)), real(lzfpm(nh)), &
           real(lzsk(nh)), real(lzpk(nh)), real(pfree(nh)),&
           real(side(nh)), real(rserv(nh)), &
-          !SAC State variables (in and out)
+          !SAC State variables
           uztwc_sp, uzfwc_sp, lztwc_sp, lzfsc_sp, lzfpc_sp, adimc_sp, &
           !SAC OUTPUTS
           qs_sp, qg_sp, tci_sp, aet_sp)
@@ -776,62 +751,18 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       !   write(*,*)'***************************************************************'
       ! end if 
     
-      ! place state variables in output arrays
-      uztwc(i,nh) = dble(uztwc_sp)
-      uzfwc(i,nh) = dble(uzfwc_sp)
-      lztwc(i,nh) = dble(lztwc_sp)
-      lzfsc(i,nh) = dble(lzfsc_sp)
-      lzfpc(i,nh) = dble(lzfpc_sp)
-      adimc(i,nh) = dble(adimc_sp)
+      ! only output is tci in this version, for speed
       tci(i,nh) = dble(tci_sp)
-      aet(i,nh) = dble(aet_sp)
-      etd(i,nh) = pet_step
-      pet(i,nh) = pet_hs(i,nh) * pet_adj_step
-
-      map(i,nh) = map_step
-      mat(i,nh) = mat_step
-      ptps(i,nh) = ptps_step 
-
-      raim(i,nh) = dble(raim_sp)
-      psfall(i,nh)=dble(psfall_sp)
-      prain(i,nh)=dble(prain_sp)
-      neghs(i,nh) = dble(cs(2))
-      liqw(i,nh) = dble(cs(3))
-      aesc(i,nh) = dble(aesc_sp)
-
-      nexlag = 5/int(dt/sec_hour) + 2
-
-      TEX = 0.0
-      DO j=1,nexlag,1
-        TEX=TEX+dble(cs(10+j))
-      END DO
-
-      swe(i,nh) = dble(cs(1))+dble(cs(3))+dble(cs(9))+TEX
-
-      
-      ! PQNET
-      ! PRAIN
-      ! PROBG
-      ! PSNWRO
-      ! SNSG
-      ! TINDEX
-      ! SWE
-
-      ! SNOW=SXFALL
-      ! RAIM=RM(1)
-      ! SNEQV=TWE/1000.
-      ! SNOWH=SNDPT/100.
-
 
       !write(*,'(5i5,4f8.2)')nh, year(i), month(i), day(i), hour(i), map(i,nh), mat(i,nh), ptps(i,nh), pet_hs(i,nh), 
       !write(*,'(4i5,7f8.3)')year(i), month(i), day(i), hour(i), uztwc_sp, uzfwc_sp, lztwc_sp, &
       !                       lzfsc_sp, lzfpc_sp, adimc_sp, tci_sp(i,nh)
+      
 
     end do  
     ! ============ end simulation time loop ====================
 
   end do   ! ========== END of simulation areas loop   ====================
-
 
   ! ====== print combined simulation output ============
   ! print*, 'Sim_length (days) =',sim_length/(86400/dt)
