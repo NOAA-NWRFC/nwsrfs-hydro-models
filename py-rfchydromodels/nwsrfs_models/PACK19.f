@@ -530,6 +530,10 @@ C
       TWE=WE+LIQW+TEX+STORGE
 C
 CEA  NEW SNOW DEPTH COMPUTATIONAL SEQUENCE
+CGW Skipping snow depth computation for run time efficiency.
+CGW Delete following line to reimplement
+      GO TO 211
+
 C
 CEA      IF (TWE.EQ.0.0) GO TO 215
       IF (TWE.EQ.0.0) GO TO 211
