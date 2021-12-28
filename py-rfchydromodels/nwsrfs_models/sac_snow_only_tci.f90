@@ -109,27 +109,26 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
 
   ! snow-17 carry over variables
   double precision:: pa       ! snow-17 surface pressure
-  real(sp):: tprev    ! carry over variable
+  real(sp):: taprev_sp    ! carry over variable
   real(sp), dimension(19):: cs       ! carry over variable array
 
     ! sac-sma state variables
   ! double precision, dimension(sim_length ,n_hrus):: uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, swe
 
   ! sac-sma output variables and routed flow
-  !real(sp), dimension(sim_length):: qs_sp, qg_sp, aet_sp, tci_sp
-  real(sp), dimension(sim_length, n_hrus):: qs, qg, aet, tci_sp
+  real(sp):: qs_sp, qg_sp, aet_sp, tci_sp
   double precision, dimension(sim_length ,n_hrus), intent(out):: tci
 
   ! snow-17 output variables  
-  real(sp), dimension(sim_length, n_hrus):: raim, snowh, sneqv, snow 
+  real(sp):: raim_sp, snowh_sp, sneqv_sp, snow_sp, aesc_sp,psfall_sp,prain_sp
 
   ! date variables
   integer, dimension(sim_length), intent(in):: year, month, day, hour
 
   ! atmospheric forcing variables
   double precision, dimension(sim_length, n_hrus), intent(in):: map, ptps, mat
-  double precision, dimension(sim_length, n_hrus):: pet, mat_adjusted 
-  double precision:: map_step, ptps_step, mat_step, pet_step, aesc
+  double precision, dimension(sim_length, n_hrus):: pet_hs, mat_adjusted 
+  double precision:: map_step, ptps_step, mat_step, pet_step
 
   ! area weighted forcings for climo calculations
   double precision, dimension(sim_length):: map_aw, ptps_aw, mat_aw, pet_aw
@@ -139,12 +138,12 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
 
   integer, dimension(12) :: mdays, mdays_prev
   double precision :: dayn, dayi
-  integer :: mo
-  double precision, dimension(12) :: mat_adj_prev, mat_adj_next
-  double precision, dimension(12) :: map_adj_prev, map_adj_next
-  double precision, dimension(12) :: pet_adj_prev, pet_adj_next
-  double precision, dimension(12) :: ptps_adj_prev, ptps_adj_next
-  double precision, dimension(12,n_hrus) :: peadj_m_prev, peadj_m_next
+  integer:: mo
+  double precision, dimension(12):: mat_adj_prev, mat_adj_next
+  double precision, dimension(12):: map_adj_prev, map_adj_next
+  double precision, dimension(12):: pet_adj_prev, pet_adj_next
+  double precision, dimension(12):: ptps_adj_prev, ptps_adj_next
+  double precision, dimension(12,n_hrus):: peadj_m_prev, peadj_m_next
 
   double precision:: mat_adj_step, map_adj_step, pet_adj_step, ptps_adj_step, peadj_step
 
@@ -260,6 +259,11 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   ! compute monthly adjustments using GW's method
   mat_adj = forcing_adjust_mat(mat_climo, mat_fa_pars, mat_fa_limits(:,1), mat_fa_limits(:,2))
 
+  ! write(*,*)'mat_adj'
+  ! do i = 1,12
+  !   write(*,*)mat_adj(i)
+  ! end do
+
   ! put the forcing adjustments in easy to use vectors
   mat_adj_prev(1) = mat_adj(12)
   mat_adj_prev(2:12) = mat_adj(1:11)
@@ -307,7 +311,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   ! compute HS PET for the entire run up front 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   pet_ts = 0d0
-  pet = 0d0
+  pet_hs = 0d0
 
   do nh = 1, n_hrus
     do i = 1, sim_length
@@ -360,7 +364,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
         ! if(i .eq. 1)write(*,*)'pet_ts',pet_ts
 
       end if 
-      pet(i,nh) = pet_ts 
+      pet_hs(i,nh) = pet_ts 
     end do 
   end do
 
@@ -377,7 +381,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   ! area weighted forcings 
   do nh=1,n_hrus
     map_aw = map_aw + map(:,nh) * area(nh)
-    pet_aw = pet_aw + pet(:,nh) * area(nh)
+    pet_aw = pet_aw + pet_hs(:,nh) * area(nh)
     ptps_aw = ptps_aw + ptps(:,nh) * area(nh)
   end do 
 
@@ -422,10 +426,14 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   map_adj = forcing_adjust_map_pet_ptps(map_climo, map_fa_pars, map_fa_limits(:,1), map_fa_limits(:,2))
   pet_adj = forcing_adjust_map_pet_ptps(pet_climo, pet_fa_pars, pet_fa_limits(:,1), pet_fa_limits(:,2))
   ptps_adj = forcing_adjust_map_pet_ptps(ptps_climo, ptps_fa_pars, ptps_fa_limits(:,1), ptps_fa_limits(:,2))
-
   ! write(*,*)'FA pars: ', mat_fa_pars
   ! do k=1,12
   !  write(*,*)map_adj(k),mat_adj(k),pet_adj(k),ptps_adj(k)
+  ! end do 
+
+  ! write(*,*)'PET FA pars: ', pet_fa_pars
+  ! do k=1,12
+  !  write(*,*)pet_climo(k),pet_fa_limits(k,1), pet_fa_limits(k,2)
   ! end do 
 
   ! put the forcing adjustments in easy to use vectors
@@ -497,12 +505,14 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
     lzfpc_sp = real(init_lzfpc(nh))
     adimc_sp = real(init_adimc(nh))
     ! AWW: just initialize first/main component of SWE (model 'WE')
-    cs(1)    = real(init_swe(nh))
+    cs(1) = real(init_swe(nh))
     ! set the rest to zero
     cs(2:19) = 0
-    tprev    = real(mat(1,nh))
+    taprev_sp = real(mat(1,nh))
 
-  
+    psfall_sp=real(0)
+    prain_sp=real(0)
+    aesc_sp=real(0)
     ! =============== START SIMULATION TIME LOOP =====================================
     do i = 1,sim_length,1
 
@@ -544,19 +554,26 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
       end if 
 
 
-      ! write(*,'(a,5i5,8f8.2)')'before adj',nh, year(i), month(i), day(i), hour(i), map(i,nh), mat(i,nh), ptps(i,nh), pet(i,nh), &
-      !                                    mat_adj_step, map_adj_step, pet_adj_step, ptps_adj_step
+      ! if(i < 6)then
+      !   write(*,'(a,6i5,8f8.2)')'before adj',nh, i, year(i), month(i), day(i), hour(i), map(i,nh), & 
+      !                                    mat(i,nh), ptps(i,nh), pet(i,nh), &
+      !                                    map_adj_step, mat_adj_step, ptps_adj_step, pet_adj_step
+      ! end if
 
       mat_step = mat_adjusted(i,nh)
       ! apply PXADJ (scaling the input values)
       map_step = map(i,nh) * pxadj(nh) * map_adj_step
-      ! pet(i,nh) is the pet from HS, 
+      ! pet_hs(i,nh) is the pet from HS, 
       ! peadj_step is the conversion to etdemand (crop factor)
       ! pet_adj_step is the forcing adjustment
-      pet_step = pet(i,nh) * peadj_step * pet_adj_step
+      pet_step = pet_hs(i,nh) * peadj_step * pet_adj_step
       ptps_step = min(ptps(i,nh) * ptps_adj_step, 1d0)
-      ! write(*,'(a,5i5,8f8.2)')' after adj',nh, year(i), month(i), day(i), hour(i), map(i,nh), mat(i,nh), ptps(i,nh), pet(i,nh), &
-      !                                    mat_adj_step, map_adj_step, pet_adj_step, ptps_adj_step
+      ! if(i < 6)then
+      !   write(*,'(a,6i5,8f8.2)')' after adj',nh, i, year(i), month(i), day(i), hour(i), & 
+      !                                    map_step, mat_step, ptps_step, pet_step, &
+      !                                    map_adj_step, mat_adj_step, ptps_adj_step, pet_adj_step
+      !   write(*,*)'pet: ',pet_step, pet_hs(i,nh), peadj_step,  pet_adj_step
+      ! end if
 
       ! if(i .eq. 1)then
       !   write(*,*)
@@ -569,7 +586,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
       !   write(*,'(a10,f30.17)')'map',real(map(i,nh))
       !   write(*,'(a10,f30.17)')'mat',real(mat(i,nh))
       !   write(*,'(a10,f30.17)')'ptps',real(ptps(i,nh))
-      !   write(*,'(a10,f30.17)')'raim',raim(i,nh)
+      !   write(*,'(a10,f30.17)')'raim',raim_sp
       !   write(*,'(a10,f30.17)')'alat',real(latitude(nh))
       !   write(*,'(a10,f30.17)')'scf',real(scf(nh))
       !   write(*,'(a10,f30.17)')'mfmax',real(mfmax(nh)) 
@@ -604,7 +621,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
       !   write(*,'(a10,f30.17)')'cs(17)',cs(17)
       !   write(*,'(a10,f30.17)')'cs(18)',cs(18)
       !   write(*,'(a10,f30.17)')'cs(19)',cs(19)
-      !   write(*,'(a10,f30.17)')'tprev',tprev
+      !   write(*,'(a10,f30.17)')'taprev_sp',taprev_sp
       ! end if 
 
 
@@ -612,7 +629,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
       call exsnow19(int(dt,4),int(dt/sec_hour,4),int(day(i),4),int(month(i),4),int(year(i),4),&
           !SNOW17 INPUT AND OUTPUT VARIABLES
           real(map_step), real(ptps_step), real(mat_step), &
-          raim(i,nh), sneqv(i,nh), snow(i,nh), snowh(i,nh),&
+          raim_sp, sneqv_sp, snow_sp, snowh_sp,psfall_sp,prain_sp,aesc_sp,&
           !SNOW17 PARAMETERS
           !ALAT,SCF,MFMAX,MFMIN,UADJ,SI,NMF,TIPM,MBASE,PXTEMP,PLWHC,DAYGM,ELEV,PA,ADC
           real(latitude(nh)), real(scf(nh)), real(mfmax(nh)), real(mfmin(nh)), &
@@ -620,17 +637,15 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
           real(tipm(nh)), real(mbase(nh)), real(pxtemp(nh)), real(plwhc(nh)), real(daygm(nh)),&
           real(elev(nh)), real(pa), real(adc), &
           !SNOW17 CARRYOVER VARIABLES
-          cs, tprev) 
-
-      ! swe(i,nh) = dble(cs(1))
+          cs, taprev_sp) 
 
       ! if(i .eq. 1)then
       !   write(*,*)
       !   write(*,*)'Snow outputs:'
-      !   write(*,'(a10,f30.17)')'raim',raim(i,nh)
-      !   write(*,'(a10,f30.17)')'sneqv',sneqv(i,nh)
-      !   write(*,'(a10,f30.17)')'snow',snow(i,nh)
-      !   write(*,'(a10,f30.17)')'snowh',snowh(i,nh)
+      !   write(*,'(a10,f30.17)')'raim',raim_sp
+      !   write(*,'(a10,f30.17)')'sneqv',sneqv_sp
+      !   write(*,'(a10,f30.17)')'snow',snow_sp
+      !   write(*,'(a10,f30.17)')'snowh',snowh_sp
       !   write(*,'(a10,f30.17)')'swe',cs(1)
       !   write(*,'(a10,f30.17)')'cs(2)',cs(2)
       !   write(*,'(a10,f30.17)')'cs(3)',cs(3)
@@ -650,24 +665,24 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
       !   write(*,'(a10,f30.17)')'cs(17)',cs(17)
       !   write(*,'(a10,f30.17)')'cs(18)',cs(18)
       !   write(*,'(a10,f30.17)')'cs(19)',cs(19)
-      !   write(*,'(a10,f30.17)')'tprev',tprev
+      !   write(*,'(a10,f30.17)')'taprev_sp',taprev_sp
       ! end if 
 
       !cs_states(:,i,nh)  = cs
-      !tprev_states(i,nh) = tprev
+      !taprev_states(i,nh) = taprev_sp
 
-      !write(*,*)tprev
+      !write(*,*)taprev_sp
 
-      ! tprev does not get updated in place like cs does
-      tprev = real(mat_step)
+      ! taprev does not get updated in place like cs does
+      taprev_sp = real(mat_step)
 
       ! if(i .eq. 1)then
       !   write(*,*)
       !   write(*,*)'Sac inputs:'
       !   write(*,'(a10,f30.17)')'dt',real(dt)
-      !   write(*,'(a10,f30.17)')'raim',raim(i,nh)
+      !   write(*,'(a10,f30.17)')'raim',raim_sp
       !   write(*,'(a10,f30.17)')'mat',real(mat(i,nh))
-      !   write(*,'(a10,f30.17)')'pet',real(pet(i,nh))
+      !   write(*,'(a10,f30.17)')'pet',real(pet_hs(i,nh))
       !   write(*,'(a10,f30.17)')'uztwm',real(uztwm(nh))
       !   write(*,'(a10,f30.17)')'uzfwm',real(uzfwm(nh))
       !   write(*,'(a10,f30.17)')'uzk',real(uzk(nh))
@@ -697,17 +712,15 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
       !   write(*,'(a10,f30.17)')'adimc',adimc_sp
       ! end if 
 
-      ! grab areal extent of snow cover from snow17 output 
-      aesc = dble(cs(7))
-      ! write(*,*)'aesc', aesc
+      ! write(*,*)'aesc', aesc_sp
 
       ! modify ET demand using the effective forest cover 
       ! Anderson calb manual pdf page 232
-      ! write(*,*) 'pet before efc', pet_step
-      pet_step = efc(nh)*pet_step+(1d0-efc(nh))*(1d0-aesc)*pet_step
-      ! write(*,*) ' pet after efc', pet_step
+      ! if(aesc_sp > 0.1) write(*,*) 'pet before efc', pet_step
+      pet_step = efc(nh)*pet_step+(1d0-efc(nh))*(1d0-dble(aesc_sp))*pet_step
+      ! if(aesc_sp > 0.1) write(*,*) 'pet before efc', pet_step
   
-      call exsac(1, real(dt), raim(i,nh), real(mat_step), real(pet_step), &
+      call exsac(1, real(dt), raim_sp, real(mat_step), real(pet_step), &
           !SAC PARAMETERS
           !UZTWM,UZFWM,UZK,PCTIM,ADIMP,RIVA,ZPERC, &
           !REXP,LZTWM,LZFSM,LZFPM,LZSK,LZPK,PFREE, &
@@ -720,7 +733,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
           !SAC State variables
           uztwc_sp, uzfwc_sp, lztwc_sp, lzfsc_sp, lzfpc_sp, adimc_sp, &
           !SAC OUTPUTS
-          qs(i,nh), qg(i,nh), tci_sp(i,nh), aet(i,nh))
+          qs_sp, qg_sp, tci_sp, aet_sp)
 
       ! if(i .eq. 1)then
       !   write(*,*)
@@ -731,24 +744,17 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
       !   write(*,'(a10,f30.17)')'lzfsc',lzfsc_sp
       !   write(*,'(a10,f30.17)')'lzfpc',lzfpc_sp
       !   write(*,'(a10,f30.17)')'adimc',adimc_sp
-      !   write(*,'(a10,f30.17)')'qs',qs(i,nh)
-      !   write(*,'(a10,f30.17)')'qg',qg(i,nh)
-      !   write(*,'(a10,f30.17)')'q',tci_sp(i,nh)
-      !   write(*,'(a10,f30.17)')'aet',aet(i,nh)
+      !   write(*,'(a10,f30.17)')'qs',qs_sp
+      !   write(*,'(a10,f30.17)')'qg',qg_sp
+      !   write(*,'(a10,f30.17)')'q',tci_sp
+      !   write(*,'(a10,f30.17)')'aet',aet_sp
       !   write(*,*)'***************************************************************'
       ! end if 
     
-      ! place state variables in output arrays
-      ! uztwc(i,nh) = dble(uztwc_sp)
-      ! uzfwc(i,nh) = dble(uzfwc_sp)
-      ! lztwc(i,nh) = dble(lztwc_sp)
-      ! lzfsc(i,nh) = dble(lzfsc_sp)
-      ! lzfpc(i,nh) = dble(lzfpc_sp)
-      ! adimc(i,nh) = dble(adimc_sp)
-      tci(i,nh) = dble(tci_sp(i,nh))
-      ! aet(i,nh) = dble(aet_sp(i,nh))
+      ! only output is tci in this version, for speed
+      tci(i,nh) = dble(tci_sp)
 
-      !write(*,'(5i5,4f8.2)')nh, year(i), month(i), day(i), hour(i), map(i,nh), mat(i,nh), ptps(i,nh), pet(i,nh), 
+      !write(*,'(5i5,4f8.2)')nh, year(i), month(i), day(i), hour(i), map(i,nh), mat(i,nh), ptps(i,nh), pet_hs(i,nh), 
       !write(*,'(4i5,7f8.3)')year(i), month(i), day(i), hour(i), uztwc_sp, uzfwc_sp, lztwc_sp, &
       !                       lzfsc_sp, lzfpc_sp, adimc_sp, tci_sp(i,nh)
       
