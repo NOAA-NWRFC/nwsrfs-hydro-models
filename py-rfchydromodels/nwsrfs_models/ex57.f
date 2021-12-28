@@ -603,7 +603,7 @@ CGW     +           20X,'QRFOUT  - Return Flow Out (cmsd)',/,
 CGW     +           20X,'QOL     - Other Losses (cmsd)',/,
 CGW     +           20X,'RFSTOR  - Return Flow Storage (mm)',/)
       END IF
-      write(*,*) 'Out of IF Statement'
+C      write(*,*) 'Out of IF Statement'
 C        1         2         3         4         5         6         7
 C23456789012345678901234567890123456789012345678901234567890123456789012
 

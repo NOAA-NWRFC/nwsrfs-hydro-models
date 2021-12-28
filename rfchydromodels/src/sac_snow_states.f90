@@ -7,7 +7,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
     map_fa_limits, mat_fa_limits, pet_fa_limits, ptps_fa_limits, & 
     init, climo, & 
     map, ptps, mat, &
-    etd, pet, tci, aet, uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, &
+    etd, etd_cu, pet, tci, aet, uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, &
     swe, aesc, neghs, liqw, raim, taprev, tindex, accmax, sb, & 
     sbws, storage, aeadj, sndpt, sntmp)
 
@@ -118,7 +118,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   double precision, dimension(sim_length ,n_hrus), intent(out):: uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc
   ! snow state variables
   double precision, dimension(sim_length ,n_hrus), intent(out):: swe, aesc, neghs, liqw, raim, taprev, tindex, &
-    accmax, sb, sbws, storage, aeadj, sndpt, sntmp
+    accmax, sb, sbws, storage, aeadj, sndpt, sntmp, etd_cu
   integer:: nexlag
 
 
@@ -136,7 +136,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   !f2py intent(in,out) map, ptps, mat
   double precision, dimension(sim_length, n_hrus), intent(inout):: map, ptps, mat
   double precision, dimension(sim_length, n_hrus):: pet_hs, mat_adjusted
-  double precision:: map_step, ptps_step, mat_step, pet_step
+  double precision:: map_step, ptps_step, mat_step, pet_step, etd_cu_step
 
   ! area weighted forcings for climo calculations
   double precision, dimension(sim_length):: map_aw, ptps_aw, mat_aw, pet_aw
@@ -165,6 +165,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   tci = 0
   aet = 0 
   etd = 0
+  etd_cu = 0
   pet = 0
   uztwc = 0 
   uzfwc = 0 
@@ -737,6 +738,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       ! modify ET demand using the effective forest cover 
       ! Anderson calb manual pdf page 232
       ! if(aesc > 0.1) write(*,*) 'pet before efc', pet_step
+      etd_cu_step = pet_step
       pet_step = efc(nh)*pet_step+(1d0-efc(nh))*(1d0-dble(aesc_sp))*pet_step
       ! if(aesc > 0.1) write(*,*) 'pet after efc', pet_step
   
@@ -781,6 +783,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       tci(i,nh) = dble(tci_sp)
       aet(i,nh) = dble(aet_sp)
       etd(i,nh) = pet_step
+      etd_cu(i,nh) = etd_cu_step
       pet(i,nh) = pet_hs(i,nh) * pet_adj_step
 
       map(i,nh) = map_step

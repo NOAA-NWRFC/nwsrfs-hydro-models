@@ -390,6 +390,7 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=
                mat = do.call('cbind',lapply(forcing,'[[','mat_degc')),
                # output
                etd = output_matrix,
+               etd_cu = output_matrix,
                pet = output_matrix,
                tci = output_matrix,
                aet = output_matrix,
@@ -419,7 +420,7 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=
                     'uztwc','uzfwc','lztwc','lzfsc','lzfpc','adimc',
                     'swe','aesc','neghs','liqw','raim','taprev', 'tindex', 'accmax',
                     'sb', 'sbws', 'storage', 'aeadj', 'sndpt', 'sntmp',
-                    'map','mat','ptps','etd','pet')])
+                    'map','mat','ptps','etd','etd_cu','pet')])
 }
 
 
@@ -636,7 +637,7 @@ chanloss <- function(flow, pars){
 consuse <- function(flow, etd, pars){
   zones = unique(pars$zone)
   cu_zones = grep('_CU',zones,value = T)
-  cu_pars = pars[type=='consuse']
+  cu_pars = pars[pars$type=='consuse',]
   for(cu_zone in cu_zones){
 
     # consuse(NDT_in,AREA_in,EFF_in,MFLOW_in, &
@@ -648,12 +649,12 @@ consuse <- function(flow, etd, pars){
     x = .Fortran('consuse',
                  # inputs
                  NDT_in = ndt,
-                 AREA_in = cu_pars[pars$zone==cu_zone & pars$name=='area_km2'],
-                 EFF_in = cu_pars[pars$zone==cu_zone & pars$name=='irr_eff'],
-                 MFLOW_in = cu_pars[pars$zone==cu_zone & pars$name=='min_flow_cmsd'],
-                 IRFSTOR_in = cu_pars[pars$zone==cu_zone & pars$name=='init_rf_storage'],
-                 ACCUM_in = cu_pars[pars$zone==cu_zone & pars$name=='rf_accum_rate'],
-                 DECAY_in = cu_pars[pars$zone==cu_zone & pars$name=='rf_decay_rate'],
+                 AREA_in = cu_pars[cu_pars$zone==cu_zone & cu_pars$name=='area_km2',]$value,
+                 EFF_in = cu_pars[cu_pars$zone==cu_zone & cu_pars$name=='irr_eff',]$value,
+                 MFLOW_in = cu_pars[cu_pars$zone==cu_zone & cu_pars$name=='min_flow_cmsd',]$value,
+                 IRFSTOR_in = cu_pars[cu_pars$zone==cu_zone & cu_pars$name=='init_rf_storage',]$value,
+                 ACCUM_in = cu_pars[cu_pars$zone==cu_zone & cu_pars$name=='rf_accum_rate',]$value,
+                 DECAY_in = cu_pars[cu_pars$zone==cu_zone & cu_pars$name=='rf_decay_rate',]$value,
                  ETD_in = etd,
                  QNAT_in = flow,
                  # outputs

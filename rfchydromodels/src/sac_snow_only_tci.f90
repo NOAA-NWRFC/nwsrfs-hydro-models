@@ -153,6 +153,10 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   integer:: ts_per_day
   double precision:: interp_day, decimal_day
 
+  real:: tstart, tstart_sacsnow, tfinish
+
+  call cpu_time(tstart)
+
   ! initilize outputs 
   tci = 0
 
@@ -511,6 +515,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
     taprev_sp = real(mat(1,nh))
 
   
+    call cpu_time(tstart_sacsnow)
     ! =============== START SIMULATION TIME LOOP =====================================
     do i = 1,sim_length,1
 
@@ -764,8 +769,8 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
 
   end do   ! ========== END of simulation areas loop   ====================
 
-  ! ====== print combined simulation output ============
-  ! print*, 'Sim_length (days) =',sim_length/(86400/dt)
-  ! print*, '--------------------------------------------------------------'
+  call cpu_time(tfinish)
+  !print '("SacSnow time = ",f6.3," seconds.")',tfinish-tstart_sacsnow
+  !print '("Total time = ",f6.3," seconds.")',tfinish-tstart
 
 end subroutine

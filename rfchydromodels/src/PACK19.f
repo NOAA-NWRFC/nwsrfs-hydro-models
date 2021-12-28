@@ -35,14 +35,14 @@ C     COMMON BLOCKS
      1   DQNET,DRSL,NDRSP
       COMMON/SNUP19/MFC,SFALLX,WINDC,SCTOL,WETOL,SNOF,UADJC
 
-C VK   CALCULATE AIR TEMPERATURE CHANGE, DTA
+CVK   CALCULATE AIR TEMPERATURE CHANGE, DTA
       DTA = TA - TPREV
       IF (SNDPT .LE. 0.0) THEN
          DS = 0.1
       ELSE
          DS = 0.1*WE/SNDPT
       ENDIF 
-C VK-----------------------------------------------------
+CVK-----------------------------------------------------
 
 C     CONSTANTS
 C     IF SNOWFALL EXCEEDS SNEW/HR--TINDEX=TPX
@@ -68,7 +68,7 @@ C     INITIAL VALUES
       PSNWRO=0.0
       PROBG=0.0
 
-C VK ----     V.I.K.  04/10/00  --------- 
+CVK ----     V.I.K.  04/10/00  --------- 
       SXFALL=0.0
       SXMELT=0.0
       SXGSLOS=0.0
@@ -236,11 +236,11 @@ C     COMPUTE SUM AND CHECK CNHS.
   135 SROBG=SROBG+ROBG
       IF((CNHS+NEGHS).LT.0.0) CNHS=-1.0*NEGHS
 
-C VK  CUMULATE FOR TIME PERIOD
+CVK  CUMULATE FOR TIME PERIOD
       SXFALL=SXFALL+SFALL
       SXMELT=SXMELT+MELT
       SXGSLOS=SXGSLOS+GMSLOS
-C VK -------------------------
+CVK -------------------------
 
 C.......................................
 C     ADJUST WE FOR SURFACE AND GROUND MELT
@@ -289,7 +289,7 @@ C     WATER EXCEEDS NEGHS - LIQUID WATER CONTENT IS INCREASED.
       LIQW=LIQW+WATER-NEGHS
       WE=WE+NEGHS
 
-C VK  CUMULATE REFROZEN WATER
+CVK  CUMULATE REFROZEN WATER
       SXRFRZ=SXRFRZ+NEGHS
       
       NEGHS=0.0
@@ -301,7 +301,7 @@ C     ALL WATER IS REFROZEN IN THE SNOW COVER.
       NEGHS=NEGHS-WATER
       EXCESS=0.0
 
-C VK  CUMULATE REFROZEN WATER
+CVK  CUMULATE REFROZEN WATER
       SXRFRZ=SXRFRZ+WATER
       
 C     IF NO NEGATIVE HEAT - TINDEX MUST BE 0.0.
@@ -343,8 +343,8 @@ C     SET SIMULATED AESC AND TOTAL WATER-EQUIVALENT.
       DO 210 N=1,NEXLAG
   210 TEX=TEX+EXLAG(N)
 
-C VK --  V.KOREN  04/05/00   ---------------------------------
-C VK   CALL SNDEPTH SUBROUTINE TO CALCULATE SNOW DEPTH
+CVK --  V.KOREN  04/05/00   ---------------------------------
+CVK   CALL SNDEPTH SUBROUTINE TO CALCULATE SNOW DEPTH
       IF(WE .GT. 0.) THEN
        SLIQ=LIQW+TEX+STORGE
        SXFALL=SXFALL-SXMELT
@@ -356,7 +356,7 @@ C VK   CALL SNDEPTH SUBROUTINE TO CALCULATE SNOW DEPTH
        SNTMP=0.
        DS=0.1
       ENDIF
-C VK ---------------------------------------------------------      
+CVK ---------------------------------------------------------      
 C      print *,"endofpack",melt,packro
       TWE=WE+LIQW+TEX+STORGE
       IF (TWE.EQ.0.0) GO TO 215
