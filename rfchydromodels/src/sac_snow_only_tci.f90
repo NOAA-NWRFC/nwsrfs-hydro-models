@@ -120,7 +120,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   double precision, dimension(sim_length ,n_hrus), intent(out):: tci
 
   ! snow-17 output variables  
-  real(sp):: raim_sp, snowh_sp, sneqv_sp, snow_sp, aesc_sp
+  real(sp):: raim_sp, snowh_sp, sneqv_sp, snow_sp, aesc_sp, psfall_sp, prain_sp
 
   ! date variables
   integer, dimension(sim_length), intent(in):: year, month, day, hour
@@ -153,13 +153,6 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   integer:: ts_per_day
   double precision:: interp_day, decimal_day
 
-<<<<<<< HEAD
-  real:: tstart, tstart_sacsnow, tfinish
-
-  call cpu_time(tstart)
-
-=======
->>>>>>> 6ae8ad0b7d33864879badb8e54013398cc633aca
   ! initilize outputs 
   tci = 0
 
@@ -517,11 +510,10 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
     cs(2:19) = 0
     taprev_sp = real(mat(1,nh))
 
-  
-<<<<<<< HEAD
-    call cpu_time(tstart_sacsnow)
-=======
->>>>>>> 6ae8ad0b7d33864879badb8e54013398cc633aca
+    psfall_sp = real(0)
+    prain_sp = real(0)
+    aesc_sp = real(0)
+    
     ! =============== START SIMULATION TIME LOOP =====================================
     do i = 1,sim_length,1
 
@@ -638,7 +630,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
       call exsnow19(int(dt,4),int(dt/sec_hour,4),int(day(i),4),int(month(i),4),int(year(i),4),&
           !SNOW17 INPUT AND OUTPUT VARIABLES
           real(map_step), real(ptps_step), real(mat_step), &
-          raim_sp, sneqv_sp, snow_sp, snowh_sp,&
+          raim_sp, sneqv_sp, snow_sp, snowh_sp, psfall_sp, prain_sp, aesc_sp,&
           !SNOW17 PARAMETERS
           !ALAT,SCF,MFMAX,MFMIN,UADJ,SI,NMF,TIPM,MBASE,PXTEMP,PLWHC,DAYGM,ELEV,PA,ADC
           real(latitude(nh)), real(scf(nh)), real(mfmax(nh)), real(mfmin(nh)), &
@@ -721,8 +713,6 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
       !   write(*,'(a10,f30.17)')'adimc',adimc_sp
       ! end if 
 
-      ! grab areal extent of snow cover from snow17 output 
-      aesc_sp = cs(7)
       ! write(*,*)'aesc', aesc_sp
 
       ! modify ET demand using the effective forest cover 
@@ -775,14 +765,8 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
 
   end do   ! ========== END of simulation areas loop   ====================
 
-<<<<<<< HEAD
-  call cpu_time(tfinish)
-  !print '("SacSnow time = ",f6.3," seconds.")',tfinish-tstart_sacsnow
-  !print '("Total time = ",f6.3," seconds.")',tfinish-tstart
-=======
   ! ====== print combined simulation output ============
   ! print*, 'Sim_length (days) =',sim_length/(86400/dt)
   ! print*, '--------------------------------------------------------------'
->>>>>>> 6ae8ad0b7d33864879badb8e54013398cc633aca
 
 end subroutine

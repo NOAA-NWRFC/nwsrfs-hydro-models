@@ -390,7 +390,6 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=
                mat = do.call('cbind',lapply(forcing,'[[','mat_degc')),
                # output
                etd = output_matrix,
-               etd_cu = output_matrix,
                pet = output_matrix,
                tci = output_matrix,
                aet = output_matrix,
@@ -405,22 +404,14 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=
                neghs = output_matrix,
                liqw = output_matrix,
                raim = output_matrix,
-               taprev = output_matrix,
-               tindex = output_matrix,
-               accmax = output_matrix,
-               sb = output_matrix,
-               sbws = output_matrix,
-               storage = output_matrix,
-               aeadj = output_matrix,
-               sndpt = output_matrix,
-               sntmp = output_matrix)
+               psfall = output_matrix,
+               prain = output_matrix)
   #print(head(x))
 
-  format_states(x[c('year','month','day','hour','tci','aet',
+  format_states(x[c('year','month','day','hour',
+                    'map','mat','ptps','etd','pet','tci','aet',
                     'uztwc','uzfwc','lztwc','lzfsc','lzfpc','adimc',
-                    'swe','aesc','neghs','liqw','raim','taprev', 'tindex', 'accmax',
-                    'sb', 'sbws', 'storage', 'aeadj', 'sndpt', 'sntmp',
-                    'map','mat','ptps','etd','etd_cu','pet')])
+                    'swe','aesc','neghs','liqw','raim','psfall', 'prain')])
 }
 
 

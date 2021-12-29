@@ -7,9 +7,8 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
     map_fa_limits, mat_fa_limits, pet_fa_limits, ptps_fa_limits, & 
     init, climo, & 
     map, ptps, mat, &
-    etd, etd_cu, pet, tci, aet, uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, &
-    swe, aesc, neghs, liqw, raim, taprev, tindex, accmax, sb, & 
-    sbws, storage, aeadj, sndpt, sntmp)
+    etd, pet, tci, aet, uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, &
+    swe, aesc, neghs, liqw, raim, psfall, prain)
 
     ! !start_month, start_hour, start_day, start_year, end_month, end_day, end_hour, end_year, &
     ! ! zone info 
@@ -98,7 +97,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
 
 
   ! local variables
-  integer:: nh,i           ! AWW index for looping through areas
+  integer:: nh,i,j           ! AWW index for looping through areas
   integer:: sim_length   ! length of simulation (days)
 
   ! single precision sac-sma and snow variables
@@ -113,12 +112,13 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   real(sp):: taprev_sp    ! carry over variable
   real(sp), dimension(19):: cs       ! carry over variable array
 
+  !swe calulation varibles
+  double precision::  TEX
 
   ! sac-sma state variables
   double precision, dimension(sim_length ,n_hrus), intent(out):: uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc
   ! snow state variables
-  double precision, dimension(sim_length ,n_hrus), intent(out):: swe, aesc, neghs, liqw, raim, taprev, tindex, &
-    accmax, sb, sbws, storage, aeadj, sndpt, sntmp, etd_cu
+  double precision, dimension(sim_length ,n_hrus), intent(out):: swe, aesc, neghs, liqw, raim, psfall,prain
   integer:: nexlag
 
 
@@ -127,7 +127,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   double precision, dimension(sim_length ,n_hrus), intent(out):: tci, aet, pet, etd
 
   ! snow-17 output variables  
-  real(sp):: raim_sp, snowh_sp, sneqv_sp, snow_sp, aesc_sp
+  real(sp):: raim_sp, snowh_sp, sneqv_sp, snow_sp, psfall_sp, prain_sp, aesc_sp
 
   ! date variables
   integer, dimension(sim_length), intent(in):: year, month, day, hour
@@ -136,7 +136,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   !f2py intent(in,out) map, ptps, mat
   double precision, dimension(sim_length, n_hrus), intent(inout):: map, ptps, mat
   double precision, dimension(sim_length, n_hrus):: pet_hs, mat_adjusted
-  double precision:: map_step, ptps_step, mat_step, pet_step, etd_cu_step
+  double precision:: map_step, ptps_step, mat_step, pet_step
 
   ! area weighted forcings for climo calculations
   double precision, dimension(sim_length):: map_aw, ptps_aw, mat_aw, pet_aw
@@ -165,7 +165,6 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   tci = 0
   aet = 0 
   etd = 0
-  etd_cu = 0
   pet = 0
   uztwc = 0 
   uzfwc = 0 
@@ -178,6 +177,8 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   neghs = 0
   liqw = 0
   raim = 0
+  psfall = 0
+  prain = 0
 
   mdays =      (/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /) 
   mdays_prev = (/ 31, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30 /) 
@@ -533,6 +534,10 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
     cs(2:19) = 0
     taprev_sp= real(mat(1,nh))
      
+    psfall_sp=real(0)
+    prain_sp=real(0)
+    aesc_sp=real(0)
+    
     ! =============== START SIMULATION TIME LOOP =====================================
     do i = 1,sim_length,1
 
@@ -648,7 +653,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       call exsnow19(int(dt,4),int(dt/sec_hour,4),int(day(i),4),int(month(i),4),int(year(i),4),&
           !SNOW17 INPUT AND OUTPUT VARIABLES
           real(map_step), real(ptps_step), real(mat_step), &
-          raim_sp, sneqv_sp, snow_sp, snowh_sp,&
+          raim_sp, sneqv_sp, snow_sp, snowh_sp, psfall_sp, prain_sp, aesc_sp,&
           !SNOW17 PARAMETERS
           !ALAT,SCF,MFMAX,MFMIN,UADJ,SI,NMF,TIPM,MBASE,PXTEMP,PLWHC,DAYGM,ELEV,PA,ADC
           real(latitude(nh)), real(scf(nh)), real(mfmax(nh)), real(mfmin(nh)), &
@@ -732,13 +737,11 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       ! end if 
 
       ! grab areal extent of snow cover from snow17 output 
-      aesc_sp = cs(7)
       ! if(aesc > 0.1) write(*,*)'aesc ',aesc_sp
 
       ! modify ET demand using the effective forest cover 
       ! Anderson calb manual pdf page 232
       ! if(aesc > 0.1) write(*,*) 'pet before efc', pet_step
-      etd_cu_step = pet_step
       pet_step = efc(nh)*pet_step+(1d0-efc(nh))*(1d0-dble(aesc_sp))*pet_step
       ! if(aesc > 0.1) write(*,*) 'pet after efc', pet_step
   
@@ -783,7 +786,6 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       tci(i,nh) = dble(tci_sp)
       aet(i,nh) = dble(aet_sp)
       etd(i,nh) = pet_step
-      etd_cu(i,nh) = etd_cu_step
       pet(i,nh) = pet_hs(i,nh) * pet_adj_step
 
       map(i,nh) = map_step
@@ -791,25 +793,20 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       ptps(i,nh) = ptps_step 
 
       raim(i,nh) = dble(raim_sp)
-      swe(i,nh) = dble(cs(1))
-      !swe(i,nh) = dble(sneqv(i,nh))
+      psfall(i,nh)=dble(psfall_sp)
+      prain(i,nh)=dble(prain_sp)
       neghs(i,nh) = dble(cs(2))
       liqw(i,nh) = dble(cs(3))
-
-      taprev(i,nh) = dble(taprev_sp)
-      tindex(i,nh) = dble(cs(4))
-
-      accmax(i,nh) = dble(cs(5))
-      sb(i,nh) = dble(cs(6))
-      aesc(i,nh) = dble(cs(7))
-      sbws(i,nh) = dble(cs(8))
-      storage(i,nh) = dble(cs(9))
-      aeadj(i,nh) = dble(cs(10))
+      aesc(i,nh) = dble(aesc_sp)
 
       nexlag = 5/int(dt/sec_hour) + 2
 
-      sndpt(i,nh) = dble(cs(11+nexlag))
-      sntmp(i,nh) = dble(cs(12+nexlag))
+      TEX = 0.0
+      DO j=1,nexlag,1
+        TEX=TEX+dble(cs(10+j))
+      END DO
+
+      swe(i,nh) = dble(cs(1))+dble(cs(3))+dble(cs(9))+TEX
 
       
       ! PQNET

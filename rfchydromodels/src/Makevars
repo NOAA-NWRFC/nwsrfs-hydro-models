@@ -19,3 +19,7 @@ pin7.o: pin7.f
 	gfortran -c -fPIC  -O3 pin7.f
 ex57.o: ex57.f
 	gfortran -c -fPIC  -O3 ex57.f
+SNDEPTH.o: SNDEPTH.f
+	gfortran -c -fPIC  -O3 SNDEPTH.f
+exsnow19.o: exsnow19.f
+	gfortran -c -fPIC  -O3 exsnow19.f
