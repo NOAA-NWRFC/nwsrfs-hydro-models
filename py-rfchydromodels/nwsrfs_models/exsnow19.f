@@ -1035,7 +1035,7 @@ CGW ADDED this section below to avoid using CSAV19 and to match how it was done 
 
       SNOW=SXFALL
       PSFALL=PSF
-      PSRAIN=PRF
+      PRAIN=PRF
       AESC=CAESC
       RAIM=PRM(1)
       SNEQV=TWE/1000.
