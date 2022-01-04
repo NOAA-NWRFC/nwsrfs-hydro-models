@@ -128,7 +128,8 @@ sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=NULL){
     map_fa_pars = mat_fa_pars = pet_fa_pars = ptps_fa_pars = c(1,0,10,0)
   }
 
-  peadj_m = reshape(pars[grepl('peadj_',pars$name),c('name','zone','value')],
+  peadj_m = reshape(pars[grepl('peadj_',pars$name) & pars$type=='sac',
+                         c('name','zone','value')],
                     timevar='zone',idvar='name',direction='wide')[,-1]
 
   init = rbind(pars[pars$name == 'init_swe',]$value,
@@ -303,7 +304,8 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=
     map_fa_pars = mat_fa_pars = pet_fa_pars = ptps_fa_pars = c(1,0,10,0)
   }
 
-  peadj_m = reshape(pars[grepl('peadj_',pars$name),c('name','zone','value')],
+  peadj_m = reshape(pars[grepl('peadj_',pars$name) & pars$type=='sac',
+                         c('name','zone','value')],
                     timevar='zone',idvar='name',direction='wide')[,-1]
 
   output_matrix = matrix(0,nrow=sim_length,ncol=n_zones)
@@ -615,51 +617,65 @@ chanloss <- function(flow, pars){
   flow
 }
 
-#' Title
+#' Daily consuse model
 #'
-#' @param flow
-#' @param pars
+#' @param input A data frame (or matrix with col names), must have columns: flow, pet (units of mm), year, month, day
+#' @param peadj_m
+#' @param pars model parameters in the same format as the sac and snow models, with type=='consuse'
+#' @param cfs if TRUE, then flow units of cfs are expected, if FALSE then cms are expected.
 #'
 #' @return
 #' @export
 #'
 #' @examples
 #' @useDynLib rfchydromodels sacsnow_
-consuse <- function(flow, etd, pars){
+consuse <- function(input, peadj_m, pars, cfs=TRUE){
+
+  input = as.data.frame(input)
   zones = unique(pars$zone)
   cu_zones = grep('_CU',zones,value = T)
   cu_pars = pars[pars$type=='consuse',]
+  sim_length = as.integer(nrow(input))
+
+  cu_out = list()
   for(cu_zone in cu_zones){
 
-    # consuse(NDT_in,AREA_in,EFF_in,MFLOW_in, &
-    #           IRFSTOR_in,ACCUM_in,DECAY_in, &
-    #           ETD_in,QNAT_in, &
+    # consuse(sim_length, year, month, day, &
+    #           AREA_in,EFF_in,MFLOW_in, &
+    #           IRFSTOR_in,ACCUM_in,DECAY_in, peadj_m, &
+    #           PET_in,QNAT_in, &
     #           QADJ_out,QDIV_out,QRFIN_out,QRFOUT_out, &
     #           QOL_out,QCD_out,CE_out)
-    ndt = as.integer(length(flow))
     x = .Fortran('consuse',
                  # inputs
-                 NDT_in = ndt,
+                 sim_length = sim_length,
+                 year = as.integer(input$year),
+                 month = as.integer(input$month),
+                 day = as.integer(input$day),
                  AREA_in = cu_pars[cu_pars$zone==cu_zone & cu_pars$name=='area_km2',]$value,
                  EFF_in = cu_pars[cu_pars$zone==cu_zone & cu_pars$name=='irr_eff',]$value,
                  MFLOW_in = cu_pars[cu_pars$zone==cu_zone & cu_pars$name=='min_flow_cmsd',]$value,
                  IRFSTOR_in = cu_pars[cu_pars$zone==cu_zone & cu_pars$name=='init_rf_storage',]$value,
                  ACCUM_in = cu_pars[cu_pars$zone==cu_zone & cu_pars$name=='rf_accum_rate',]$value,
                  DECAY_in = cu_pars[cu_pars$zone==cu_zone & cu_pars$name=='rf_decay_rate',]$value,
-                 ETD_in = etd,
-                 QNAT_in = flow,
+                 peadj_m = as.numeric(peadj_m),
+                 PET_in = as.numeric(input$pet),
+                 # consuse code expects cfs so convert if necessary
+                 QNAT_in = as.numeric(input$flow * ifelse(cfs,1,0.028316847)),
                  # outputs
-                 QADJ_out = numeric(ndt),
-                 QDIV_out = numeric(ndt),
-                 QRFIN_out = numeric(ndt),
-                 QRFOUT_out = numeric(ndt),
-                 QOL_out = numeric(ndt),
-                 QCD_out = numeric(ndt),
-                 CE_out = numeric(ndt)
+                 QADJ_out = numeric(sim_length),
+                 QDIV_out = numeric(sim_length),
+                 QRFIN_out = numeric(sim_length),
+                 QRFOUT_out = numeric(sim_length),
+                 QOL_out = numeric(sim_length),
+                 QCD_out = numeric(sim_length),
+                 CE_out = numeric(sim_length)
                  )
-    flow = x$QADJ_out
+    cu_out[[cu_zone]] = data.frame(year = x$year,month = x$month,day = x$day,
+      qadj = x$QADJ_out, qdiv = x$QDIV_out, qrfin = x$QRFIN_out, qrfout = x$QRFOUT_out,
+      qol = x$QOL_out, qcd = x$QCD_out, ce = x$CE_out)
   }
-  flow
+  if(length(cu_zones)==1) return(cu_out[[1]]) else return(cu_out)
 }
 
 

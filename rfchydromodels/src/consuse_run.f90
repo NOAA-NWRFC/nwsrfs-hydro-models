@@ -1,6 +1,7 @@
-subroutine consuse(NDT_in,AREA_in,EFF_in,MFLOW_in, &
-    IRFSTOR_in,ACCUM_in,DECAY_in, &
-    ETD_in,QNAT_in, &
+subroutine consuse(sim_length, year, month, day, &
+    AREA_in,EFF_in,MFLOW_in, &
+    IRFSTOR_in,ACCUM_in,DECAY_in, peadj_m, &
+    PET_in,QNAT_in, &
     QADJ_out,QDIV_out,QRFIN_out,QRFOUT_out, &
     QOL_out,QCD_out,CE_out)
 
@@ -57,7 +58,7 @@ subroutine consuse(NDT_in,AREA_in,EFF_in,MFLOW_in, &
 
 ! !     OPTION    - ET ESTIMATION OPTION: TEMPERATURE OR POTENTIAL ET (ALWAYS 1)
 
-! !     ETD(*)     - ET DEMAND TIME SERIES (MM)
+! !     PET(*)     - PET TIME SERIES (MM)
 ! !     QNAT(*)   - NATURAL FLOW TIME SERIES (CFSD)
 ! !     QADJ(*)   - ADJUSTED FLOW TIMER SERIES (CFSD)
 ! !     QDIV(*)   - DIVERSION FLOW TIME SERIES (CFSD)
@@ -67,6 +68,7 @@ subroutine consuse(NDT_in,AREA_in,EFF_in,MFLOW_in, &
 ! !     QCD(*)    - CROP DEMAND TIME SERIES (CFSD)
 ! !     CE(*)     - CROP EVAPOTRANSPIRATION (MM)
 
+! !     ETD(*)     - ET DEMAND TIME SERIES (MM)
 ! !     A         - CONVERSION FACTOR FROM (MM*KM^2/DAY) TO CMSD
 ! !     AREA      - IRRIGATED AREA (KM^2)
 ! !     EFF       - IRRIGATION EFFICIENCY (NONDIMENSIONAL)
@@ -76,28 +78,40 @@ subroutine consuse(NDT_in,AREA_in,EFF_in,MFLOW_in, &
 ! !     QADD      - SUM OF DIVERSION FLOW AND MINIMUM STREAMFLOW
 ! !     MFLOW     - MINIMUM FLOW (CFSD)
 ! !     RFSTOR    - RETURN FLOW STORAGE
+! !     peadj_m   - Monthly PEadj table
 
   ! ! inputs
-  integer, intent(in):: NDT_in
+  integer, intent(in):: sim_length
+  integer, dimension(sim_length), intent(in):: year, month, day
   double precision, intent(in):: AREA_in,EFF_in,MFLOW_in
   double precision, intent(in):: IRFSTOR_in,ACCUM_in,DECAY_in
-  double precision, dimension(NDT_in), intent(in):: ETD_in,QNAT_in  
-  
+  double precision, dimension(sim_length), intent(in):: PET_in,QNAT_in  
+  double precision, dimension(12), intent(in):: peadj_m
+    
   ! ! local varible
-  integer:: NDT
+  integer:: NDT, mo, i
   real:: AREA,EFF,MFLOW
   real:: IRFSTOR,ACCUM,DECAY
-  real, dimension(NDT_in):: ETD,QNAT
-  real, dimension(NDT_in):: QADJ,QDIV,QRFIN,QRFOUT
-  real, dimension(NDT_in):: QOL,QCD,CE
+  double precision:: interp_day, dayn, dayi, d,peadj_step
+  integer, dimension(12) :: mdays, mdays_prev
+  real, dimension(sim_length):: ETD,QNAT
+  real, dimension(sim_length):: QADJ,QDIV,QRFIN,QRFOUT
+  real, dimension(sim_length):: QOL,QCD,CE
+  double precision, dimension(12):: peadj_m_prev, peadj_m_next
   
   ! ! output 
-  double precision, dimension(NDT_in), intent(out):: QADJ_out,QDIV_out
-  double precision, dimension(NDT_in), intent(out):: QRFIN_out,QRFOUT_out
-  double precision, dimension(NDT_in), intent(out):: QOL_out,QCD_out,CE_out
+  double precision, dimension(sim_length), intent(out):: QADJ_out,QDIV_out
+  double precision, dimension(sim_length), intent(out):: QRFIN_out,QRFOUT_out
+  double precision, dimension(sim_length), intent(out):: QOL_out,QCD_out,CE_out
+  ! ! temp
+! !  double precision, dimension(sim_length), intent(out):: ETD_out
+  
+  ! ! Lookup Tables
+  mdays =      (/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /) 
+  mdays_prev = (/ 31, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30 /) 
   
   ! ! Convert double precision to single precision 
-  NDT=int(NDT_in)
+  NDT=int(sim_length)
   AREA=real(AREA_in)
   EFF=real(EFF_in) 
   MFLOW=real(MFLOW_in)*0.0283168
@@ -105,9 +119,48 @@ subroutine consuse(NDT_in,AREA_in,EFF_in,MFLOW_in, &
   ACCUM=real(ACCUM_in)
   DECAY=real(DECAY_in)
   
-  ETD=real(ETD_in)
   QNAT=real(QNAT_in)*0.0283168
   
+  ! ! Calculate daily PE_adj from monthly values
+  peadj_m_prev(1) = peadj_m(12)
+  peadj_m_prev(2:12) = peadj_m(1:11)
+  peadj_m_next(12) = peadj_m(1)
+  peadj_m_next(1:11) = peadj_m(2:12)
+  
+  interp_day = 16
+  
+  do i = 1,sim_length,1
+      
+      ! adjust days in february if the year is a leap year
+      if(mod(year(i),100) .ne. 0 .and. mod(year(i),4) .eq. 0) then
+        mdays(2) = 29 ! leap year
+      else if(mod(year(i),400).eq.0) then
+        mdays(2) = 29 ! leap year
+      else
+        mdays(2) = 28 ! not leap year
+      endif
+
+      interp_day = 16.
+      ! current day and month
+      d = dble(day(i))
+      mo = month(i)
+      !write(*,*)mdays, mdays(mo), day(i), hour(i)
+      if(d >= interp_day)then
+        dayn = dble(mdays(mo))
+        dayi = d - interp_day 
+        peadj_step = peadj_m(mo) + dayi/dayn*(peadj_m_next(mo)-peadj_m(mo))
+        
+      else 
+        dayn = dble(mdays_prev(mo))
+        dayi = d - interp_day + mdays_prev(mo) 
+        peadj_step = peadj_m_prev(mo) + dayi/dayn*(peadj_m(mo)-peadj_m_prev(mo))
+      end if 
+
+      ETD(i)=real(PET_in(i)*peadj_step)
+      
+  end do
+  ! write(*,*)'After ETD calc'
+
   ! ! Run Conuse subroutine
   call EX57 (NDT,AREA,EFF,MFLOW,IRFSTOR,ACCUM,DECAY, &
      ETD,QNAT,QADJ,QDIV,QRFIN,QRFOUT,QOL,QCD,CE)
@@ -119,5 +172,5 @@ subroutine consuse(NDT_in,AREA_in,EFF_in,MFLOW_in, &
   QRFOUT_out=dble(QRFOUT)*35.3147
   QOL_out=dble(QOL)*35.3147
   QCD_out=dble(QCD)*35.3147
-  CE_out=dble(CE)*35.3147
+  CE_out=dble(CE)
 end subroutine
