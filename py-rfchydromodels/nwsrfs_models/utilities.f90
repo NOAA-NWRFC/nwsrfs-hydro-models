@@ -89,7 +89,7 @@ module utilities
       do i=1,12
         if(climo_adj(i) > ul(i)) climo_adj(i) = ul(i)
         if(climo_adj(i) < ll(i)) climo_adj(i) = ll(i)
-        if(abs(climo(i)) < 0.1d-5)then
+        if(abs(climo(i)) < 1d-5)then
           forcing_adjust_map_pet_ptps(i) = 1
         else
           forcing_adjust_map_pet_ptps(i) = climo_adj(i)/climo(i)

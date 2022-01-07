@@ -8,7 +8,8 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
     init, climo, & 
     map, ptps, mat, &
     etd, pet, tci, aet, uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, &
-    swe, aesc, neghs, liqw, raim, psfall, prain)
+    swe, aesc, neghs, liqw, raim, psfall, prain, &
+    mat_adj, map_adj, ptps_adj, pet_adj)
 
     ! !start_month, start_hour, start_day, start_year, end_month, end_day, end_hour, end_year, &
     ! ! zone info 
@@ -93,7 +94,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   double precision, dimension(12, n_hrus), intent(in):: peadj_m
 
   ! monthly forcing adjustment parameters for map, mat, pet, ptps will be computed
-  double precision, dimension(12):: map_adj, mat_adj, pet_adj, ptps_adj
+  double precision, dimension(12), intent(out):: map_adj, mat_adj, pet_adj, ptps_adj
 
 
   ! local variables
@@ -273,11 +274,19 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       mat_climo(i) = climo(i,2)
     end do
   end if 
-  
+
   ! expand forcing adjustment limits in case the limits are not set properly 
+  do k=1,12
+    if(mat_fa_limits(k,1) == -999. .and. mat_climo(k) >= 0.) mat_fa_limits(k,1) = mat_climo(k) * 0.9
+    if(mat_fa_limits(k,1) == -999. .and. mat_climo(k) <  0.) mat_fa_limits(k,1) = mat_climo(k) * 1.1
+    if(mat_fa_limits(k,2) == -999. .and. mat_climo(k) >= 0.) mat_fa_limits(k,2) = mat_climo(k) * 1.1
+    if(mat_fa_limits(k,2) == -999. .and. mat_climo(k) <  0.) mat_fa_limits(k,2) = mat_climo(k) * 0.9
+  end do 
+
+  ! write(*,*)'FA pars: ', mat_fa_pars
+  ! write(*,*)'mat: lower, climo, upper'
   ! do k=1,12
-  !   if(mat_climo(k) < mat_fa_limits(k,1)) mat_fa_limits(k,1) = mat_climo(k) * 0.9
-  !   if(mat_climo(k) > mat_fa_limits(k,2)) mat_fa_limits(k,2) = mat_climo(k) * 1.1
+  !   write(*,*)mat_fa_limits(k,1), mat_climo(k), mat_fa_limits(k,2)
   ! end do 
 
   ! compute monthly adjustments using GW's method
@@ -428,7 +437,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   
   ! write(*,*)'climo: map, mat, pet, ptps'
   ! do k=1,12
-  !   write(*,*)map_climo(k), mat_climo(k), pet_climo(k), ptps_climo(k)
+  !   write(*,"(4f8.2)")map_climo(k), mat_climo(k), pet_climo(k), ptps_climo(k)
   ! end do 
   ! write(*,*)'climo: lower, map, upper'
   ! do k=1,12
@@ -437,22 +446,23 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   ! return
 
   ! expand forcing adjustment limits in case the limits are not set properly 
-  ! do k=1,12
-  !   if(map_climo(k) < map_fa_limits(k,1)) map_fa_limits(k,1) = map_climo(k) * 0.9
-  !   if(map_climo(k) > map_fa_limits(k,2)) map_fa_limits(k,2) = map_climo(k) * 1.1
-  !   if(pet_climo(k) < pet_fa_limits(k,1)) pet_fa_limits(k,1) = pet_climo(k) * 0.9
-  !   if(pet_climo(k) > pet_fa_limits(k,2)) pet_fa_limits(k,2) = pet_climo(k) * 1.1
-  !   if(ptps_climo(k) < ptps_fa_limits(k,1)) ptps_fa_limits(k,1) = ptps_climo(k) * 0.75
-  !   if(ptps_climo(k) > ptps_fa_limits(k,2)) ptps_fa_limits(k,2) = ptps_climo(k) * 1.25
-  ! end do 
+  do k=1,12
+    if(map_fa_limits(k,1) == -999.) map_fa_limits(k,1) = map_climo(k) * 0.9
+    if(map_fa_limits(k,2) == -999.) map_fa_limits(k,2) = map_climo(k) * 1.1
+    if(pet_fa_limits(k,1) == -999.) pet_fa_limits(k,1) = pet_climo(k) * 0.9
+    if(pet_fa_limits(k,2) == -999.) pet_fa_limits(k,2) = pet_climo(k) * 1.1
+    if(ptps_fa_limits(k,1) == -999.) ptps_fa_limits(k,1) = ptps_climo(k) * 0.75
+    if(ptps_fa_limits(k,2) == -999.) ptps_fa_limits(k,2) = ptps_climo(k) * 1.25
+  end do 
 
   ! compute monthly adjustments using GW's method
   map_adj = forcing_adjust_map_pet_ptps(map_climo, map_fa_pars, map_fa_limits(:,1), map_fa_limits(:,2))
   pet_adj = forcing_adjust_map_pet_ptps(pet_climo, pet_fa_pars, pet_fa_limits(:,1), pet_fa_limits(:,2))
   ptps_adj = forcing_adjust_map_pet_ptps(ptps_climo, ptps_fa_pars, ptps_fa_limits(:,1), ptps_fa_limits(:,2))
-  ! write(*,*)'FA pars: ', mat_fa_pars
+  ! write(*,*)'FA pars: ', map_fa_pars
+  ! write(*,*)'adjments: map, mat, pet, ptps'
   ! do k=1,12
-  !  write(*,*)map_adj(k),mat_adj(k),pet_adj(k),ptps_adj(k)
+  !  write(*,"(4f8.2)")map_adj(k),mat_adj(k),pet_adj(k),ptps_adj(k)
   ! end do 
 
   ! write(*,*)'PET FA pars: ', pet_fa_pars
@@ -475,12 +485,6 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   ptps_adj_prev(2:12) = ptps_adj(1:11)
   ptps_adj_next(12) = ptps_adj(1)
   ptps_adj_next(1:11) = ptps_adj(2:12)
-
-  !write(*,"(12f8.2)")map_adj(:,1)
-  !write(*,"(12f8.2)")mat_adj(:,1)
-  !write(*,"(12f8.2)")ptps_adj(:,1)
-  !write(*,"(12f8.2)")pet_adj(:,1)
-  !write(*,"(12f8.2)")peadj_m(:,1)
 
   ! ========================= HRU AREA LOOP ========================================================
   !   loop through the simulation areas, running the lump model code and averaging the output

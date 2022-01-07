@@ -237,7 +237,7 @@ sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=NULL){
 #' states = sac_snow_states(dt_hours, forcing, pars)
 #' @useDynLib rfchydromodels sacsnowstates_
 #' @importFrom stats reshape
-sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=NULL){
+sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=NULL, return_adj=FALSE){
 
   pars = as.data.frame(pars)
 
@@ -300,7 +300,7 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=
                      pars[pars$name == 'ptps_shift',]$value[1])
 
   }else{
-    map_limits = mat_limits = pet_limits = ptps_limits = matrix(1,12,2)
+    map_limits = mat_limits = pet_limits = ptps_limits = matrix(-999,12,2)
     map_fa_pars = mat_fa_pars = pet_fa_pars = ptps_fa_pars = c(1,0,10,0)
   }
 
@@ -407,13 +407,21 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=
                liqw = output_matrix,
                raim = output_matrix,
                psfall = output_matrix,
-               prain = output_matrix)
+               prain = output_matrix,
+               mat_adj = numeric(12),
+               map_adj = numeric(12),
+               ptps_adj = numeric(12),
+               pet_adj = numeric(12))
   #print(head(x))
 
-  format_states(x[c('year','month','day','hour',
-                    'map','mat','ptps','etd','pet','tci','aet',
-                    'uztwc','uzfwc','lztwc','lzfsc','lzfpc','adimc',
-                    'swe','aesc','neghs','liqw','raim','psfall', 'prain')])
+  if(return_adj){
+    return(as.data.frame(x[c('mat_adj','map_adj','ptps_adj','pet_adj')]))
+  }else{
+    return(format_states(x[c('year','month','day','hour',
+                      'map','mat','ptps','etd','pet','tci','aet',
+                      'uztwc','uzfwc','lztwc','lzfsc','lzfpc','adimc',
+                      'swe','aesc','neghs','liqw','raim','psfall', 'prain')]))
+  }
 }
 
 
@@ -619,7 +627,8 @@ chanloss <- function(flow, pars){
 
 #' Daily consuse model
 #'
-#' @param input A data frame (or matrix with col names), must have columns: flow, pet (units of mm), year, month, day
+#' @param input A data frame (or matrix with col names), must have
+#' columns: flow, pet (units of mm), year, month, day
 #' @param peadj_m
 #' @param pars model parameters in the same format as the sac and snow models, with type=='consuse'
 #' @param cfs if TRUE, then flow units of cfs are expected, if FALSE then cms are expected.
@@ -629,7 +638,7 @@ chanloss <- function(flow, pars){
 #'
 #' @examples
 #' @useDynLib rfchydromodels sacsnow_
-consuse <- function(input, peadj_m, pars, cfs=TRUE){
+consuse <- function(input, pars, cfs=TRUE){
 
   input = as.data.frame(input)
   zones = unique(pars$zone)
@@ -639,6 +648,8 @@ consuse <- function(input, peadj_m, pars, cfs=TRUE){
 
   cu_out = list()
   for(cu_zone in cu_zones){
+
+    peadj_m = cu_pars[cu_pars$zone==cu_zone & substr(cu_pars$name,1,5)=='peadj',]$value
 
     # consuse(sim_length, year, month, day, &
     #           AREA_in,EFF_in,MFLOW_in, &
@@ -654,7 +665,7 @@ consuse <- function(input, peadj_m, pars, cfs=TRUE){
                  day = as.integer(input$day),
                  AREA_in = cu_pars[cu_pars$zone==cu_zone & cu_pars$name=='area_km2',]$value,
                  EFF_in = cu_pars[cu_pars$zone==cu_zone & cu_pars$name=='irr_eff',]$value,
-                 MFLOW_in = cu_pars[cu_pars$zone==cu_zone & cu_pars$name=='min_flow_cmsd',]$value,
+                 MFLOW_in = cu_pars[cu_pars$zone==cu_zone & cu_pars$name=='min_flow_cmsd',]$value * 0.028316847,
                  IRFSTOR_in = cu_pars[cu_pars$zone==cu_zone & cu_pars$name=='init_rf_storage',]$value,
                  ACCUM_in = cu_pars[cu_pars$zone==cu_zone & cu_pars$name=='rf_accum_rate',]$value,
                  DECAY_in = cu_pars[cu_pars$zone==cu_zone & cu_pars$name=='rf_decay_rate',]$value,
@@ -965,7 +976,8 @@ forcing_adjust_map_pet_ptps <- function(climo, pars, ll=0.9*climo, ul=1.1*climo,
 #' climo = rep(2,12)
 #' pars = c(.5,0,10,0)
 #' forcing_adjust_mat(climo,pars)
-forcing_adjust_mat <- function (climo, pars, ll=0.9*climo, ul=1.1*climo, return_climo = FALSE){
+forcing_adjust_mat <- function (climo, pars, ll=climo*ifelse(climo>0,0.9,1.1),
+                                ul=climo*ifelse(climo>0,1.1,0.9), return_climo = FALSE){
 
   scale = pars[1]
   p_redist = pars[2]
