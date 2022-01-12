@@ -204,7 +204,7 @@ class Model:
         
         return self.lagk_flow_cfs
 
-    def uh_run(self,tci,n=None):
+    def uh_run(self,tci,n=None,inst=False):
         
         if n is None:
             n=list(range(self.n_zones))
@@ -237,14 +237,17 @@ class Model:
             sim_flow_inst_cfs = sim_flow_inst_cfs + flow_routed[0:self.sim_length] * 1000 * 3.28084 ** 3 / \
                                 self.dt_seconds * p['zone_area'][z]
         
-        next_sim = pd.DataFrame(sim_flow_inst_cfs).shift(-1).to_numpy().flatten()
-        sim_flow_cfs = (sim_flow_inst_cfs + next_sim) / 2
-        sim_flow_cfs = pd.Series(sim_flow_cfs, index=self.dates)
-        #sim_flow_cfs = pd.Series(sim_flow_inst_cfs, index=self.dates)
-
+        #return instantaneous or period avg depending on chosen option
+        if inst:
+            sim_flow_cfs = pd.Series(sim_flow_inst_cfs, index=self.dates)
+        else:
+            next_sim = pd.DataFrame(sim_flow_inst_cfs).shift(-1).to_numpy().flatten()
+            sim_flow_pavg_cfs = (sim_flow_inst_cfs + next_sim) / 2
+            sim_flow_cfs = pd.Series(sim_flow_pavg_cfs, index=self.dates)
+        
         return sim_flow_cfs
 
-    def sacsnow_run(self):
+    def sacsnow_run(self,inst=False):
 
         p = {**self.p['sac'],**(self.p['snow']),**(self.p['uh'])}
 
@@ -271,12 +274,12 @@ class Model:
                         self.map, self.ptps, self.mat)
 
         # channel routing
-        self.sacsnow_flow_cfs = self.uh_run(tci)
+        self.sacsnow_flow_cfs = self.uh_run(tci,inst=inst)
         
         
         return self.sacsnow_flow_cfs
 
-    def sacsnow_states_run(self):
+    def sacsnow_states_run(self,inst=False):
 
         p = {**self.p['sac'],**(self.p['snow']),**(self.p['uh'])}
 
@@ -314,7 +317,7 @@ class Model:
             tci_zone=self.sacsnow_states['tci'][zone].astype('double').to_numpy()
             tci_zone=np.expand_dims(tci_zone,axis=1)
             tci_zone=np.asfortranarray(tci_zone)
-            sf_zones=self.uh_run(tci_zone,count).rename(zone)
+            sf_zones=self.uh_run(tci_zone,count,inst=inst).rename(zone)
             sf_df=pd.concat([sf_df,sf_zones],axis=1,ignore_index=True)
         sf_df.index=self.dates
         sf_df.columns=self.zones
@@ -334,44 +337,67 @@ class Model:
         cms_2_cfs=35.3147
         
         #Get natural flow
+        #Create blank simulation series
+        qnat=pd.Series(0,index=self.dates)
+        
+        #If there are sac/snow zone, calculate runoff
+        if self.n_zones > 0:
+            qnat = qnat+self.sacsnow_run(inst=True)
+        
+        #If there are upstream reaches to route, add them to the total flow
         if self.n_uptribs > 0:
-            qnat = self.lagk_run() + self.sacsnow_run()
-        else:
-            qnat = self.sacsnow_run()
-        qnat_daily=qnat.resample('1D').mean().astype('double').to_numpy()
-        qnat_daily=np.asfortranarray(qnat_daily)
+            qnat = self.lagk_run() + qnat
+            
+        #Convert to daily using the weighting scheme that CHPS uses of utilizing 5 points (edges assigned .5)
+        qnat_daily=(qnat.rolling(5,center=True).sum()+qnat.rolling(3,center=True).sum())/8
+        qnat_daily=qnat_daily.loc[qnat_daily.index.hour==12]
+        qnat_daily=qnat_daily.resample('1D').sum()
         
         #Get PET
         pet=self.sacsnow_states_run()['pet']
         
         #Create a blank state dataframe
-        state_param=['QADJ','QDIV','QRF_in','QRF_out','QOL','QCD','CE']
-        daily_index=pd.to_datetime({'year':self.year[::4], 'month':self.month[::4], 'day':self.day[::4]})
+        state_param=['QADJ','QDIV','QRF_in','QRF_out','QOL','QCD','CE','RFSTOR']
         self.consuse_states={}
         for count, param in  enumerate(state_param):
-            self.consuse_states[param]=pd.DataFrame(index=daily_index)
+            self.consuse_states[param]=pd.DataFrame()
         
         #Run consuse for each zone individualys
         for n, cu_name in zip(range(self.n_consuse), self.consuse_name):
             
-            #Get PET from equivalent SAC zone
-            pet_daily=pet[cu_name].resample('1D').sum().astype('double').to_numpy()
-            pet_daily=np.asfortranarray(pet_daily)
+            #Get PET from equivalent SAC zone.  
+            #NOTE:  To match CHPS results have to be shifted back 1 hr so 00:00 timestep
+            #       is included in previous day
+            pet_daily=pet[cu_name].shift(periods=-1, freq='H').resample('1D').sum()
+
+            consuse_ts_input=pd.concat([pet_daily,qnat_daily],axis=1)
+            consuse_ts_input.columns=['pet','qnat']
+            consuse_ts_input[~consuse_ts_input.isna().any(axis=1)]
             
+            dates_input=consuse_ts_input.index
             
-            states=s.consuse(self.year[::4].astype('int'), self.month[::4].astype('int'), self.day[::4].astype('int'),
+            consuse_ts_input=consuse_ts_input.astype('double').to_numpy()
+            consuse_ts_input=np.asfortranarray(consuse_ts_input)
+            
+            #pet_iput=consuse_ts_input.pet.astype('double').to_numpy()
+            #pet_input=np.asfortranarray(pet_input)
+            
+            #qnat_iput=consuse_ts_input.qnat.astype('double').to_numpy()
+            #qnat_input=np.asfortranarray(qnat_input)
+            
+            states=s.consuse(dates_input.year.astype('int'), dates_input.month.astype('int'), dates_input.day.astype('int'),
                          p['area_km2'][n].astype('double'),p['irr_eff'][n].astype('double'),
                          np.double(p['min_flow_cmsd'][n]*cms_2_cfs),p['init_rf_storage'][n].astype('double'),
                          p['rf_accum_rate'][n].astype('double'),p['rf_decay_rate'][n].astype('double'),
-                         self.peadj_cu[:,n],pet_daily,qnat_daily)
+                         self.peadj_cu[:,n],consuse_ts_input[:,0],consuse_ts_input[:,1])
             
             #Concat state value for CU zone to dictionary. IF QADJ 
             for count, param in  enumerate(state_param):
                 if param=='QADJ':
-                    self.consuse_states[param]=pd.DataFrame(states[count], index=daily_index,columns=[param])
+                    self.consuse_states[param]=pd.DataFrame(states[count], index=dates_input,columns=[param])
                 else:
                     self.consuse_states[param]=pd.concat([self.consuse_states[param],
-                            pd.DataFrame(states[count], index=daily_index,columns=[cu_name])],axis=1)
+                            pd.DataFrame(states[count], index=dates_input,columns=[cu_name])],axis=1)
             #Update the qnat to reflect the adjusted flow (needed for basins w/multiple CU zones)
             qnat_daily=self.consuse_states['QADJ'].astype('double').squeeze().to_numpy()
             qnat_daily=np.asfortranarray(qnat_daily)
@@ -380,8 +406,12 @@ class Model:
 
     def run_all(self):
         
-        #Run SAC/SNOW
-        self.sim = self.sacsnow_run()
+        #Create blank simulation series
+        self.sim=pd.Series(0,index=self.dates)
+        
+        #If there are sac/snow zone, calculate runoff
+        if self.n_zones > 0:
+            self.sim = self.sim+self.sacsnow_run()
         
         #If there are upstream reaches to route, add them to the total flow
         if self.n_uptribs > 0:
