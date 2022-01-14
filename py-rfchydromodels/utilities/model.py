@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-# import sacsnowuh.main as s
 import nwsrfs_models.main as s
 
 
@@ -12,16 +11,31 @@ class Model:
                  route: list=None,
                  obs: pd.DataFrame=None):
 
+        #This step may become unnessary, but right now the R preprocessor is ver verbose with
+        #CU zone name.  If that changes, this line can be removed
+        pars.loc[pars.zone.str.contains('CU'),['zone']]=pars.loc[pars.zone.str.contains('CU')].zone.str.split('-').str[-1]
+
         self.pars = pars.sort_values(['name', 'zone'])
         self.obs = obs
         
-        zones = pars.loc[pars['zone'].str.contains('-')].zone.unique()
+        zones = self.pars.loc[(self.pars['zone'].str.contains('-'))|(self.pars['zone'].str.contains('_'))].zone.unique()
+
         n_zones = len(zones)
         sim_length = forcings[0].shape[0]
         self.zones = zones
         self.n_zones = n_zones
         self.sim_length = sim_length
 
+        #Catalog CONSUSE info if present
+        if self.pars.zone.str.contains('_CU').any():
+            consuse_name=pd.Series(self.pars.loc[self.pars.type=='consuse'].zone.unique()).str.split('-').str[-1].values
+            n_consuse=len(consuse_name)
+        else:
+            consuse_name=['None']
+            n_consuse=0
+        self.consuse_name=consuse_name
+        self.n_consuse=n_consuse
+        
         #Dummy place holder for upstream flow at headwater basins
         if not route:
            route=[pd.DataFrame({'flow_cfs':np.zeros(len(forcings[0].index))},index=forcings[0].index,)]
@@ -70,6 +84,7 @@ class Model:
         
         # monthly forcing adjustments
         self.peadj_m = np.full([12, n_zones], np.nan)
+        self.peadj_cu = np.full([12, n_consuse], np.nan)
         self.map_fa_limits = np.full([12, 2], np.nan)
         self.mat_fa_limits = np.full([12, 2], np.nan)
         self.ptps_fa_limits = np.full([12, 2], np.nan)
@@ -86,14 +101,20 @@ class Model:
             self.pet_fa_limits[i, 0] = pars[(pars['name'] == 'pet_lower_' + f'{m:02}')]['value'].astype('double').to_numpy()[0]
             self.pet_fa_limits[i, 1] = pars[(pars['name'] == 'pet_upper_' + f'{m:02}')]['value'].astype('double').to_numpy()[0]
             for j, z in zip(range(n_zones), zones):
-                self.peadj_m[i, j] = pars[(pars['name'] == 'peadj_' + f'{m:02}') & (pars['zone'] == z)]['value']
+                self.peadj_m[i, j] = pars[(pars['name'] == 'peadj_' + f'{m:02}') & (pars['zone'] == z) &
+                        (pars['type']== 'sac')]['value'].astype('double').to_numpy()[0]
+            for j, z in zip(range(n_consuse), consuse_name):
+                self.peadj_cu[i, j] = pars[(pars['name'] == 'peadj_' + f'{m:02}') & (pars['zone'] == z) &
+                        (pars['type']== 'consuse')]['value'].astype('double').to_numpy()[0]
         
         self.map_fa_limits=np.asfortranarray(self.map_fa_limits)
         self.mat_fa_limits=np.asfortranarray(self.mat_fa_limits)
         self.ptps_fa_limits=np.asfortranarray(self.ptps_fa_limits)
         self.pet_fa_limits=np.asfortranarray(self.pet_fa_limits)
         self.peadj_m=np.asfortranarray(self.peadj_m)
+        self.peadj_cu=np.asfortranarray(self.peadj_cu)
         
+        # Create forcing arrays
         self.map = np.full([sim_length, n_zones], np.nan)
         self.mat = np.full([sim_length, n_zones], np.nan)
         self.ptps = np.full([sim_length, n_zones], np.nan)
@@ -122,29 +143,34 @@ class Model:
         
         #Get parameter values
         self.p = {}
-        for par in self.pars['name'].unique():
-            self.p[par] = self.pars[self.pars['name'] == par].sort_values(by='zone')['value'].to_numpy()
+        for par_type in self.pars['type'].unique():
+            self.p[par_type]={}
+            for par in self.pars.loc[self.pars.type==par_type].name.unique():
+                self.p[par_type][par] = self.pars.loc[(self.pars.type==par_type)&
+                    (self.pars['name'] == par)].sort_values(by='zone')['value'].to_numpy()
+
         #Create numpy collection of sac, snow, inital conditions
-        self.init = np.concatenate([[self.p['init_swe']], [self.p['init_uztwc']], [self.p['init_uzfwc']],
-                                    [self.p['init_lztwc']],[self.p['init_lzfsc']], [self.p['init_lzfpc']],
-                                    [self.p['init_adimc']]
+        self.init = np.concatenate([[self.p['snow']['init_swe']], [self.p['sac']['init_uztwc']],
+                                    [self.p['sac']['init_uzfwc']],[self.p['sac']['init_lztwc']],
+                                    [self.p['sac']['init_lzfsc']],[self.p['sac']['init_lzfpc']],
+                                    [self.p['sac']['init_adimc']]
                                     ],axis=0).astype('double')
         self.init=np.asfortranarray(self.init)
         
-        self.sac_pars = np.concatenate([[self.p['uztwm']], [self.p['uzfwm']], [self.p['lztwm']],
-                                    [self.p['lzfpm']],[self.p['lzfsm']], [self.p['adimp']],
-                                    [self.p['uzk']],[self.p['lzpk']], [self.p['lzsk']],
-                                    [self.p['zperc']],[self.p['rexp']], [self.p['pctim']],
-                                    [self.p['pfree']],[self.p['riva']], [self.p['side']],
-                                    [self.p['rserv']],[self.p['efc']]
+        self.sac_pars = np.concatenate([[self.p['sac']['uztwm']], [self.p['sac']['uzfwm']], [self.p['sac']['lztwm']],
+                                    [self.p['sac']['lzfpm']],[self.p['sac']['lzfsm']], [self.p['sac']['adimp']],
+                                    [self.p['sac']['uzk']],[self.p['sac']['lzpk']], [self.p['sac']['lzsk']],
+                                    [self.p['sac']['zperc']],[self.p['sac']['rexp']], [self.p['sac']['pctim']],
+                                    [self.p['sac']['pfree']],[self.p['sac']['riva']], [self.p['sac']['side']],
+                                    [self.p['sac']['rserv']],[self.p['sac']['efc']]
                                     ],axis=0).astype('double')
         self.sac_pars=np.asfortranarray(self.sac_pars)
         
-        self.snow_pars = np.concatenate([[self.p['scf']], [self.p['mfmax']], [self.p['mfmin']],
-                            [self.p['uadj']],[self.p['si']], [self.p['nmf']],
-                            [self.p['tipm']],[self.p['mbase']], [self.p['plwhc']],
-                            [self.p['daygm']],[self.p['adc_a']], [self.p['adc_b']],
-                            [self.p['adc_c']]
+        self.snow_pars = np.concatenate([[self.p['snow']['scf']], [self.p['snow']['mfmax']], [self.p['snow']['mfmin']],
+                            [self.p['snow']['uadj']],[self.p['snow']['si']], [self.p['snow']['nmf']],
+                            [self.p['snow']['tipm']],[self.p['snow']['mbase']], [self.p['snow']['plwhc']],
+                            [self.p['snow']['daygm']],[self.p['snow']['adc_a']], [self.p['snow']['adc_b']],
+                            [self.p['snow']['adc_c']]
                             ],axis=0).astype('double')
         self.snow_pars=np.asfortranarray(self.snow_pars)
 
@@ -162,33 +188,30 @@ class Model:
         elif isinstance(n, int):
             n=[n]
             
-        par = self.p
-
-        cms_to_cfs = 35.3147
-        cfs_to_cms = 1/cms_to_cfs
+        p = self.p['lagk']
                 
         lagk_route=s.lagk(int(self.dt_hours),int(self.dt_hours),
-                    par['lagtbl_a'][n], par['lagtbl_b'][n], par['lagtbl_c'][n], par['lagtbl_d'][n],
-                    par['ktbl_a'][n], par['ktbl_b'][n], par['ktbl_c'][n], par['ktbl_d'][n],
-                    par['lagk_lagmax'][n], par['lagk_kmax'][n], par['lagk_qmax'][n],
-                    par['lagk_lagmin'][n], par['lagk_kmin'][n], par['lagk_qmin'][n],
-                    par['init_co'][n], par['init_if'][n], par['init_of'][n], par['init_stor'][n],
-                    self.uptribs[:,n]*cfs_to_cms)
+                    p['lagtbl_a'][n], p['lagtbl_b'][n], p['lagtbl_c'][n], p['lagtbl_d'][n],
+                    p['ktbl_a'][n], p['ktbl_b'][n], p['ktbl_c'][n], p['ktbl_d'][n],
+                    p['lagk_lagmax'][n], p['lagk_kmax'][n], p['lagk_qmax'][n],
+                    p['lagk_lagmin'][n], p['lagk_kmin'][n], p['lagk_qmin'][n],
+                    p['init_co'][n], p['init_if'][n], p['init_of'][n], p['init_stor'][n],
+                    self.uptribs[:,n])
 
-        sim_flow_cfs = np.sum(lagk_route,axis=1)*cms_to_cfs
+        sim_flow_cfs = np.sum(lagk_route,axis=1)
         
         self.lagk_flow_cfs = pd.Series(sim_flow_cfs, index=self.dates)
         
         return self.lagk_flow_cfs
 
-    def uh_run(self,tci,n=None):
+    def uh_run(self,tci,n=None,inst=False):
         
         if n is None:
             n=list(range(self.n_zones))
         elif isinstance(n, int):
             n=[n]
 
-        p = self.p
+        p = self.p['uh']
 
         m_uh = 1000  # max UH length
         n_uh = self.sim_length + m_uh
@@ -214,15 +237,19 @@ class Model:
             sim_flow_inst_cfs = sim_flow_inst_cfs + flow_routed[0:self.sim_length] * 1000 * 3.28084 ** 3 / \
                                 self.dt_seconds * p['zone_area'][z]
         
-        next_sim = pd.DataFrame(sim_flow_inst_cfs).shift(-1).to_numpy().flatten()
-        sim_flow_cfs = (sim_flow_inst_cfs + next_sim) / 2
-        sim_flow_cfs = pd.Series(sim_flow_cfs, index=self.dates)
+        #return instantaneous or period avg depending on chosen option
+        if inst:
+            sim_flow_cfs = pd.Series(sim_flow_inst_cfs, index=self.dates)
+        else:
+            next_sim = pd.DataFrame(sim_flow_inst_cfs).shift(-1).to_numpy().flatten()
+            sim_flow_pavg_cfs = (sim_flow_inst_cfs + next_sim) / 2
+            sim_flow_cfs = pd.Series(sim_flow_pavg_cfs, index=self.dates)
         
         return sim_flow_cfs
 
-    def sacsnow_run(self):
+    def sacsnow_run(self,inst=False):
 
-        p = self.p
+        p = {**self.p['sac'],**(self.p['snow']),**(self.p['uh'])}
 
         # simulates all zones
 
@@ -232,7 +259,7 @@ class Model:
                         # sac pars
                         self.sac_pars,
                         # pet and precp adjustments
-                        p['peadj'].astype('double'), p['pxadj'].astype('double'),self.peadj_m.astype('double'),
+                        p['peadj'].astype('double'), p['pxadj'].astype('double'),self.peadj_m,
                         # snow pars
                         self.snow_pars,
                         # forcing adjustment
@@ -247,14 +274,14 @@ class Model:
                         self.map, self.ptps, self.mat)
 
         # channel routing
-        self.sacsnow_flow_cfs = self.uh_run(tci)
+        self.sacsnow_flow_cfs = self.uh_run(tci,inst=inst)
         
         
         return self.sacsnow_flow_cfs
 
-    def sacsnow_states_run(self):
+    def sacsnow_states_run(self,inst=False):
 
-        p = self.p
+        p = {**self.p['sac'],**(self.p['snow']),**(self.p['uh'])}
 
         # simulates all zones
         states = s.sacsnowstates(int(self.dt_seconds), self.year.astype('int'), self.month.astype('int'), self.day.astype('int'), self.hour.astype('int'),
@@ -290,7 +317,7 @@ class Model:
             tci_zone=self.sacsnow_states['tci'][zone].astype('double').to_numpy()
             tci_zone=np.expand_dims(tci_zone,axis=1)
             tci_zone=np.asfortranarray(tci_zone)
-            sf_zones=self.uh_run(tci_zone,count).rename(zone)
+            sf_zones=self.uh_run(tci_zone,count,inst=inst).rename(zone)
             sf_df=pd.concat([sf_df,sf_zones],axis=1,ignore_index=True)
         sf_df.index=self.dates
         sf_df.columns=self.zones
@@ -303,17 +330,101 @@ class Model:
         self.ptps=self.ptps_unmodified.copy()
         
         return self.sacsnow_states
+    
+    def consuse_run(self):
+
+        p = self.p['consuse']
+        cms_2_cfs=35.3147
         
-    def run_all(self):
-
+        #Get natural flow
+        #Create blank simulation series
+        qnat=pd.Series(0,index=self.dates)
+        
+        #If there are sac/snow zone, calculate runoff
+        if self.n_zones > 0:
+            qnat = qnat+self.sacsnow_run(inst=True)
+        
+        #If there are upstream reaches to route, add them to the total flow
         if self.n_uptribs > 0:
-            self.sim = self.lagk_run() + self.sacsnow_run()
-        else:
-            self.sim = self.sacsnow_run()
-
-        return self.sim
+            qnat = self.lagk_run() + qnat
             
+        #Convert to daily using the weighting scheme that CHPS uses of utilizing 5 points (edges assigned .5)
+        qnat_daily=(qnat.rolling(5,center=True).sum()+qnat.rolling(3,center=True).sum())/8
+        qnat_daily=qnat_daily.loc[qnat_daily.index.hour==12]
+        qnat_daily=qnat_daily.resample('1D').sum()
+        
+        #Get PET
+        pet=self.sacsnow_states_run()['pet']
+        
+        #Create a blank state dataframe
+        state_param=['QADJ','QDIV','QRF_in','QRF_out','QOL','QCD','CE','RFSTOR']
+        self.consuse_states={}
+        for count, param in  enumerate(state_param):
+            self.consuse_states[param]=pd.DataFrame()
+        
+        #Run consuse for each zone individualys
+        for n, cu_name in zip(range(self.n_consuse), self.consuse_name):
+            
+            #Get PET from equivalent SAC zone.  
+            #NOTE:  To match CHPS results have to be shifted back 1 hr so 00:00 timestep
+            #       is included in previous day
+            pet_daily=pet[cu_name].shift(periods=-1, freq='H').resample('1D').sum()
 
+            consuse_ts_input=pd.concat([pet_daily,qnat_daily],axis=1)
+            consuse_ts_input.columns=['pet','qnat']
+            consuse_ts_input[~consuse_ts_input.isna().any(axis=1)]
+            
+            dates_input=consuse_ts_input.index
+            
+            consuse_ts_input=consuse_ts_input.astype('double').to_numpy()
+            consuse_ts_input=np.asfortranarray(consuse_ts_input)
+            
+            #pet_iput=consuse_ts_input.pet.astype('double').to_numpy()
+            #pet_input=np.asfortranarray(pet_input)
+            
+            #qnat_iput=consuse_ts_input.qnat.astype('double').to_numpy()
+            #qnat_input=np.asfortranarray(qnat_input)
+            
+            states=s.consuse(dates_input.year.astype('int'), dates_input.month.astype('int'), dates_input.day.astype('int'),
+                         p['area_km2'][n].astype('double'),p['irr_eff'][n].astype('double'),
+                         np.double(p['min_flow_cmsd'][n]*cms_2_cfs),p['init_rf_storage'][n].astype('double'),
+                         p['rf_accum_rate'][n].astype('double'),p['rf_decay_rate'][n].astype('double'),
+                         self.peadj_cu[:,n],consuse_ts_input[:,0],consuse_ts_input[:,1])
+            
+            #Concat state value for CU zone to dictionary. IF QADJ 
+            for count, param in  enumerate(state_param):
+                if param=='QADJ':
+                    self.consuse_states[param]=pd.DataFrame(states[count], index=dates_input,columns=[param])
+                else:
+                    self.consuse_states[param]=pd.concat([self.consuse_states[param],
+                            pd.DataFrame(states[count], index=dates_input,columns=[cu_name])],axis=1)
+            #Update the qnat to reflect the adjusted flow (needed for basins w/multiple CU zones)
+            qnat_daily=self.consuse_states['QADJ'].astype('double').squeeze().to_numpy()
+            qnat_daily=np.asfortranarray(qnat_daily)
+        
+        return self.consuse_states
 
+    def run_all(self):
+        
+        #Create blank simulation series
+        self.sim=pd.Series(0,index=self.dates)
+        
+        #If there are sac/snow zone, calculate runoff
+        if self.n_zones > 0:
+            self.sim = self.sim+self.sacsnow_run()
+        
+        #If there are upstream reaches to route, add them to the total flow
+        if self.n_uptribs > 0:
+            self.sim = self.lagk_run() + self.sim
 
-
+        #If there area CONSUSE areas, adjust the flow
+        if self.n_consuse > 0:
+            self.consuse_run()
+            qnat_cu_adj=self.consuse_states['QDIV'].sum(axis=1)-self.consuse_states['QRF_out'].sum(axis=1)
+            qnat_cu_adj=qnat_cu_adj.reindex(self.sim.index,method='pad')
+            self.sim = self.sim - qnat_cu_adj
+        
+        #Chanloss Adjustment
+        self.sim=self.sim*self.p['chanloss']['fixp']
+        
+        return self.sim

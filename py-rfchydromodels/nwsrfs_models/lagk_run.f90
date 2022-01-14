@@ -90,6 +90,10 @@ subroutine lagk(n_hrus, ita, itb, &
     ! !            ntd: Optional variable, total number to time steps to process.
     ! !                  if less than full qa array is desired 
 
+    ! !            UNITS CONVERSION
+    ! !             1 CFS to 0.0283168 CMS
+    ! !             1 CMS to 35.3147 CFS
+
   implicit none
 
   ! ! inputs
@@ -137,12 +141,12 @@ subroutine lagk(n_hrus, ita, itb, &
   ktbl_d=real(ktbl_d_in)
   lagk_kmax=real(lagk_kmax_in)
   lagk_lagmax=real(lagk_lagmax_in)
-  lagk_qmax=real(lagk_qmax_in)
+  lagk_qmax=real(lagk_qmax_in)*0.0283168e0
   lagk_kmin=real(lagk_kmin_in)
   lagk_lagmin=real(lagk_lagmin_in) 
-  lagk_qmin=real(lagk_qmin_in)
+  lagk_qmin=real(lagk_qmin_in)*0.0283168e0
   
-  qa=real(qa_in)
+  qa=real(qa_in)*0.0283168
 
   ! write(*,*)'qa_in'
   ! do i=1,100
@@ -182,7 +186,7 @@ subroutine lagk(n_hrus, ita, itb, &
   
   ! ! Populate Lag and K tables  
   do nh=1,n_hrus  
-   ndq=0   
+   ndq=0
    do i=1,11
 
     lagtbl(i*2,nh)=ndq*(lagk_qmax(nh)-lagk_qmin(nh))+lagk_qmin(nh)
@@ -263,6 +267,6 @@ subroutine lagk(n_hrus, ita, itb, &
     
   end do
   
-  lagk_out=dble(qc) 
+  lagk_out=dble(qc)*35.3147d0
   
 end subroutine
