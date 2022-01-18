@@ -3,7 +3,7 @@ subroutine consuse(sim_length, year, month, day, &
     IRFSTOR_in,ACCUM_in,DECAY_in, peadj_m, &
     PET_in,QNAT_in, &
     QADJ_out,QDIV_out,QRFIN_out,QRFOUT_out, &
-    QOL_out,QCD_out,CE_out)
+    QOL_out,QCD_out,CE_out,RFSTOR_out)
 
 ! !     CONSUMPTIVE USE OPERATION FLOWCHART
 ! !     -----------------------------------
@@ -67,6 +67,7 @@ subroutine consuse(sim_length, year, month, day, &
 ! !     QOL(*)    - OTHER LOSSES TIME SERIES (CFSD)
 ! !     QCD(*)    - CROP DEMAND TIME SERIES (CFSD)
 ! !     CE(*)     - CROP EVAPOTRANSPIRATION (MM)
+! !     RFSTOR(*) - RETURN FLOW STORAGE ARRAY
 
 ! !     ETD(*)     - ET DEMAND TIME SERIES (MM)
 ! !     A         - CONVERSION FACTOR FROM (MM*KM^2/DAY) TO CMSD
@@ -77,7 +78,7 @@ subroutine consuse(sim_length, year, month, day, &
 ! !     QSUM      - SUM OF NATURAL FLOW AND RETURN FLOW OUT
 ! !     QADD      - SUM OF DIVERSION FLOW AND MINIMUM STREAMFLOW
 ! !     MFLOW     - MINIMUM FLOW (CFSD)
-! !     RFSTOR    - RETURN FLOW STORAGE
+
 ! !     peadj_m   - Monthly PEadj table
 
   ! ! inputs
@@ -96,13 +97,14 @@ subroutine consuse(sim_length, year, month, day, &
   integer, dimension(12) :: mdays, mdays_prev
   real, dimension(sim_length):: ETD,QNAT
   real, dimension(sim_length):: QADJ,QDIV,QRFIN,QRFOUT
-  real, dimension(sim_length):: QOL,QCD,CE
+  real, dimension(sim_length):: QOL,QCD,CE,RFSTOR
   double precision, dimension(12):: peadj_m_prev, peadj_m_next
   
   ! ! output 
   double precision, dimension(sim_length), intent(out):: QADJ_out,QDIV_out
   double precision, dimension(sim_length), intent(out):: QRFIN_out,QRFOUT_out
   double precision, dimension(sim_length), intent(out):: QOL_out,QCD_out,CE_out
+  double precision, dimension(sim_length), intent(out):: RFSTOR_out
   ! ! temp
 ! !  double precision, dimension(sim_length), intent(out):: ETD_out
   
@@ -159,11 +161,10 @@ subroutine consuse(sim_length, year, month, day, &
       ETD(i)=real(PET_in(i)*peadj_step)
       
   end do
-  ! write(*,*)'After ETD calc'
 
   ! ! Run Conuse subroutine
   call EX57 (NDT,AREA,EFF,MFLOW,IRFSTOR,ACCUM,DECAY, &
-     ETD,QNAT,QADJ,QDIV,QRFIN,QRFOUT,QOL,QCD,CE)
+     ETD,QNAT,QADJ,QDIV,QRFIN,QRFOUT,QOL,QCD,CE,RFSTOR)
      
   ! ! Convert Output to double precision
   QADJ_out=dble(QADJ)*35.3147
@@ -173,4 +174,6 @@ subroutine consuse(sim_length, year, month, day, &
   QOL_out=dble(QOL)*35.3147
   QCD_out=dble(QCD)*35.3147
   CE_out=dble(CE)
+  RFSTOR_out=dble(RFSTOR)
+  
 end subroutine

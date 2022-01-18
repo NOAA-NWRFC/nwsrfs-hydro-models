@@ -656,7 +656,7 @@ consuse <- function(input, pars, cfs=TRUE){
     #           IRFSTOR_in,ACCUM_in,DECAY_in, peadj_m, &
     #           PET_in,QNAT_in, &
     #           QADJ_out,QDIV_out,QRFIN_out,QRFOUT_out, &
-    #           QOL_out,QCD_out,CE_out)
+    #           QOL_out,QCD_out,CE_out,RFSTOR_out)
     x = .Fortran('consuse',
                  # inputs
                  sim_length = sim_length,
@@ -680,11 +680,12 @@ consuse <- function(input, pars, cfs=TRUE){
                  QRFOUT_out = numeric(sim_length),
                  QOL_out = numeric(sim_length),
                  QCD_out = numeric(sim_length),
-                 CE_out = numeric(sim_length)
+                 CE_out = numeric(sim_length),
+                 RFSTOR_out = numeric(sim_length)
                  )
     cu_out[[cu_zone]] = data.frame(year = x$year,month = x$month,day = x$day,
       qadj = x$QADJ_out, qdiv = x$QDIV_out, qrfin = x$QRFIN_out, qrfout = x$QRFOUT_out,
-      qol = x$QOL_out, qcd = x$QCD_out, ce = x$CE_out)
+      qol = x$QOL_out, qcd = x$QCD_out, ce = x$CE_out, rfstor = x$RFSTOR_out)
   }
   if(length(cu_zones)==1) return(cu_out[[1]]) else return(cu_out)
 }
