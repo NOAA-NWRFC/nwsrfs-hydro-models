@@ -2,7 +2,7 @@
 % Please edit documentation in R/sac-snow-uh.R
 \name{chanloss}
 \alias{chanloss}
-\title{Two parameter unit hydrograph routing for one or more basin zones}
+\title{Simple proportional chanloss}
 \usage{
 chanloss(flow, pars)
 }
@@ -15,5 +15,5 @@ chanloss(flow, pars)
 Vector of flow scaled by the fixp parameter (if it exists)
 }
 \description{
-Two parameter unit hydrograph routing for one or more basin zones
+Simple proportional chanloss
 }

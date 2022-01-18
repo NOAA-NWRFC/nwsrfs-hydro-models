@@ -128,7 +128,8 @@ sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=NULL){
     map_fa_pars = mat_fa_pars = pet_fa_pars = ptps_fa_pars = c(1,0,10,0)
   }
 
-  peadj_m = reshape(pars[grepl('peadj_',pars$name),c('name','zone','value')],
+  peadj_m = reshape(pars[grepl('peadj_',pars$name) & pars$type=='sac',
+                         c('name','zone','value')],
                     timevar='zone',idvar='name',direction='wide')[,-1]
 
   init = rbind(pars[pars$name == 'init_swe',]$value,
@@ -236,7 +237,7 @@ sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=NULL){
 #' states = sac_snow_states(dt_hours, forcing, pars)
 #' @useDynLib rfchydromodels sacsnowstates_
 #' @importFrom stats reshape
-sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=NULL){
+sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=NULL, return_adj=FALSE){
 
   pars = as.data.frame(pars)
 
@@ -299,11 +300,12 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=
                      pars[pars$name == 'ptps_shift',]$value[1])
 
   }else{
-    map_limits = mat_limits = pet_limits = ptps_limits = matrix(1,12,2)
+    map_limits = mat_limits = pet_limits = ptps_limits = matrix(-999,12,2)
     map_fa_pars = mat_fa_pars = pet_fa_pars = ptps_fa_pars = c(1,0,10,0)
   }
 
-  peadj_m = reshape(pars[grepl('peadj_',pars$name),c('name','zone','value')],
+  peadj_m = reshape(pars[grepl('peadj_',pars$name) & pars$type=='sac',
+                         c('name','zone','value')],
                     timevar='zone',idvar='name',direction='wide')[,-1]
 
   output_matrix = matrix(0,nrow=sim_length,ncol=n_zones)
@@ -404,22 +406,22 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=
                neghs = output_matrix,
                liqw = output_matrix,
                raim = output_matrix,
-               taprev = output_matrix,
-               tindex = output_matrix,
-               accmax = output_matrix,
-               sb = output_matrix,
-               sbws = output_matrix,
-               storage = output_matrix,
-               aeadj = output_matrix,
-               sndpt = output_matrix,
-               sntmp = output_matrix)
+               psfall = output_matrix,
+               prain = output_matrix,
+               mat_adj = numeric(12),
+               map_adj = numeric(12),
+               ptps_adj = numeric(12),
+               pet_adj = numeric(12))
   #print(head(x))
 
-  format_states(x[c('year','month','day','hour','tci','aet',
-                    'uztwc','uzfwc','lztwc','lzfsc','lzfpc','adimc',
-                    'swe','aesc','neghs','liqw','raim','taprev', 'tindex', 'accmax',
-                    'sb', 'sbws', 'storage', 'aeadj', 'sndpt', 'sntmp',
-                    'map','mat','ptps','etd','pet')])
+  if(return_adj){
+    return(as.data.frame(x[c('mat_adj','map_adj','ptps_adj','pet_adj')]))
+  }else{
+    return(format_states(x[c('year','month','day','hour',
+                      'map','mat','ptps','etd','pet','tci','aet',
+                      'uztwc','uzfwc','lztwc','lzfsc','lzfpc','adimc',
+                      'swe','aesc','neghs','liqw','raim','psfall', 'prain')]))
+  }
 }
 
 
@@ -531,6 +533,7 @@ uh2p_cfs_in <- function(shape, scale, timestep, area){
 #' @examples
 #' uh2p_get_scale(2,50)
 uh2p_get_scale <- function(shape,toc){
+  # fitted regression parameters to shape vs. toc relationship
   b = c(`(Intercept)` = 0.255299308548535, shape = -0.314173822659083,
         toc = 0.0061508368818229, `I(shape^2)` = 0.0809339755573929,
         `I(toc^2)` = 1.42743463788263e-06, `I(shape * toc)` = -0.00111691593640601)
@@ -579,11 +582,7 @@ uh <- function(dt_hours, tci, pars){
       scale = pars[pars$name == 'unit_scale',]$value[i]
     }else{
       toc = toc_gis * toc_adj
-      # fitted regression parameters to shape vs. toc relationship
-      b = c(`(Intercept)` = 0.255299308548535, shape = -0.314173822659083,
-            toc = 0.0061508368818229, `I(shape^2)` = 0.0809339755573929,
-            `I(toc^2)` = 1.42743463788263e-06, `I(shape * toc)` = -0.00111691593640601)
-      scale = b[1] + b[2]*shape + b[3]*toc + b[4]*shape^2 + b[5]*toc^2 + b[6]*shape*toc
+      scale = uh2p_get_scale(shape,toc)
     }
 
     routed = .Fortran('duamel',
@@ -606,7 +605,7 @@ uh <- function(dt_hours, tci, pars){
   flow_cfs
 }
 
-#' Two parameter unit hydrograph routing for one or more basin zones
+#' Simple proportional chanloss
 #'
 #' @param flow_cfs streamflow vector
 #' @param pars parameters
@@ -626,6 +625,72 @@ chanloss <- function(flow, pars){
   flow
 }
 
+#' Daily consuse model
+#'
+#' @param input A data frame (or matrix with col names), must have
+#' columns: flow, pet (units of mm), year, month, day
+#' @param peadj_m
+#' @param pars model parameters in the same format as the sac and snow models, with type=='consuse'
+#' @param cfs if TRUE, then flow units of cfs are expected, if FALSE then cms are expected.
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#' @useDynLib rfchydromodels sacsnow_
+consuse <- function(input, pars, cfs=TRUE){
+
+  input = as.data.frame(input)
+  zones = unique(pars$zone)
+  cu_zones = grep('_CU',zones,value = T)
+  cu_pars = pars[pars$type=='consuse',]
+  sim_length = as.integer(nrow(input))
+
+  cu_out = list()
+  for(cu_zone in cu_zones){
+
+    peadj_m = cu_pars[cu_pars$zone==cu_zone & substr(cu_pars$name,1,5)=='peadj',]$value
+
+    # consuse(sim_length, year, month, day, &
+    #           AREA_in,EFF_in,MFLOW_in, &
+    #           IRFSTOR_in,ACCUM_in,DECAY_in, peadj_m, &
+    #           PET_in,QNAT_in, &
+    #           QADJ_out,QDIV_out,QRFIN_out,QRFOUT_out, &
+    #           QOL_out,QCD_out,CE_out,RFSTOR_out)
+    x = .Fortran('consuse',
+                 # inputs
+                 sim_length = sim_length,
+                 year = as.integer(input$year),
+                 month = as.integer(input$month),
+                 day = as.integer(input$day),
+                 AREA_in = cu_pars[cu_pars$zone==cu_zone & cu_pars$name=='area_km2',]$value,
+                 EFF_in = cu_pars[cu_pars$zone==cu_zone & cu_pars$name=='irr_eff',]$value,
+                 MFLOW_in = cu_pars[cu_pars$zone==cu_zone & cu_pars$name=='min_flow_cmsd',]$value * 0.028316847,
+                 IRFSTOR_in = cu_pars[cu_pars$zone==cu_zone & cu_pars$name=='init_rf_storage',]$value,
+                 ACCUM_in = cu_pars[cu_pars$zone==cu_zone & cu_pars$name=='rf_accum_rate',]$value,
+                 DECAY_in = cu_pars[cu_pars$zone==cu_zone & cu_pars$name=='rf_decay_rate',]$value,
+                 peadj_m = as.numeric(peadj_m),
+                 PET_in = as.numeric(input$pet),
+                 # consuse code expects cfs so convert if necessary
+                 QNAT_in = as.numeric(input$flow * ifelse(cfs,1,0.028316847)),
+                 # outputs
+                 QADJ_out = numeric(sim_length),
+                 QDIV_out = numeric(sim_length),
+                 QRFIN_out = numeric(sim_length),
+                 QRFOUT_out = numeric(sim_length),
+                 QOL_out = numeric(sim_length),
+                 QCD_out = numeric(sim_length),
+                 CE_out = numeric(sim_length),
+                 RFSTOR_out = numeric(sim_length)
+                 )
+    cu_out[[cu_zone]] = data.frame(year = x$year,month = x$month,day = x$day,
+      qadj = x$QADJ_out, qdiv = x$QDIV_out, qrfin = x$QRFIN_out, qrfout = x$QRFOUT_out,
+      qol = x$QOL_out, qcd = x$QCD_out, ce = x$CE_out, rfstor = x$RFSTOR_out)
+  }
+  if(length(cu_zones)==1) return(cu_out[[1]]) else return(cu_out)
+}
+
+
 #' Lag-K Routing for any number of upstream points
 #'
 #' @param dt_hours timestep in hours
@@ -636,6 +701,7 @@ chanloss <- function(flow, pars){
 #' @export
 #'
 #' @examples NULL
+#' @useDynLib rfchydromodels sacsnow_
 lagk <- function(dt_hours, uptribs, pars, sum_routes = TRUE){
 
   sec_per_day = 86400
@@ -911,7 +977,8 @@ forcing_adjust_map_pet_ptps <- function(climo, pars, ll=0.9*climo, ul=1.1*climo,
 #' climo = rep(2,12)
 #' pars = c(.5,0,10,0)
 #' forcing_adjust_mat(climo,pars)
-forcing_adjust_mat <- function (climo, pars, ll=0.9*climo, ul=1.1*climo, return_climo = FALSE){
+forcing_adjust_mat <- function (climo, pars, ll=climo*ifelse(climo>0,0.9,1.1),
+                                ul=climo*ifelse(climo>0,1.1,0.9), return_climo = FALSE){
 
   scale = pars[1]
   p_redist = pars[2]

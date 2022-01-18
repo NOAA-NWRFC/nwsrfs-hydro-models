@@ -8,8 +8,8 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
     init, climo, & 
     map, ptps, mat, &
     etd, pet, tci, aet, uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, &
-    swe, aesc, neghs, liqw, raim, taprev, tindex, accmax, sb, & 
-    sbws, storage, aeadj, sndpt, sntmp)
+    swe, aesc, neghs, liqw, raim, psfall, prain, &
+    mat_adj, map_adj, ptps_adj, pet_adj)
 
     ! !start_month, start_hour, start_day, start_year, end_month, end_day, end_hour, end_year, &
     ! ! zone info 
@@ -94,11 +94,11 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   double precision, dimension(12, n_hrus), intent(in):: peadj_m
 
   ! monthly forcing adjustment parameters for map, mat, pet, ptps will be computed
-  double precision, dimension(12):: map_adj, mat_adj, pet_adj, ptps_adj
+  double precision, dimension(12), intent(out):: map_adj, mat_adj, pet_adj, ptps_adj
 
 
   ! local variables
-  integer:: nh,i           ! AWW index for looping through areas
+  integer:: nh,i,j           ! AWW index for looping through areas
   integer:: sim_length   ! length of simulation (days)
 
   ! single precision sac-sma and snow variables
@@ -113,12 +113,13 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   real(sp):: taprev_sp    ! carry over variable
   real(sp), dimension(19):: cs       ! carry over variable array
 
+  !swe calulation varibles
+  double precision::  TEX
 
   ! sac-sma state variables
   double precision, dimension(sim_length ,n_hrus), intent(out):: uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc
   ! snow state variables
-  double precision, dimension(sim_length ,n_hrus), intent(out):: swe, aesc, neghs, liqw, raim, taprev, tindex, &
-    accmax, sb, sbws, storage, aeadj, sndpt, sntmp
+  double precision, dimension(sim_length ,n_hrus), intent(out):: swe, aesc, neghs, liqw, raim, psfall,prain
   integer:: nexlag
 
 
@@ -127,7 +128,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   double precision, dimension(sim_length ,n_hrus), intent(out):: tci, aet, pet, etd
 
   ! snow-17 output variables  
-  real(sp):: raim_sp, snowh_sp, sneqv_sp, snow_sp, aesc_sp
+  real(sp):: raim_sp, snowh_sp, sneqv_sp, snow_sp, psfall_sp, prain_sp, aesc_sp
 
   ! date variables
   integer, dimension(sim_length), intent(in):: year, month, day, hour
@@ -177,6 +178,8 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   neghs = 0
   liqw = 0
   raim = 0
+  psfall = 0
+  prain = 0
 
   mdays =      (/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /) 
   mdays_prev = (/ 31, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30 /) 
@@ -271,11 +274,19 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       mat_climo(i) = climo(i,2)
     end do
   end if 
-  
+
   ! expand forcing adjustment limits in case the limits are not set properly 
+  do k=1,12
+    if(mat_fa_limits(k,1) == -999. .and. mat_climo(k) >= 0.) mat_fa_limits(k,1) = mat_climo(k) * 0.9
+    if(mat_fa_limits(k,1) == -999. .and. mat_climo(k) <  0.) mat_fa_limits(k,1) = mat_climo(k) * 1.1
+    if(mat_fa_limits(k,2) == -999. .and. mat_climo(k) >= 0.) mat_fa_limits(k,2) = mat_climo(k) * 1.1
+    if(mat_fa_limits(k,2) == -999. .and. mat_climo(k) <  0.) mat_fa_limits(k,2) = mat_climo(k) * 0.9
+  end do 
+
+  ! write(*,*)'FA pars: ', mat_fa_pars
+  ! write(*,*)'mat: lower, climo, upper'
   ! do k=1,12
-  !   if(mat_climo(k) < mat_fa_limits(k,1)) mat_fa_limits(k,1) = mat_climo(k) * 0.9
-  !   if(mat_climo(k) > mat_fa_limits(k,2)) mat_fa_limits(k,2) = mat_climo(k) * 1.1
+  !   write(*,*)mat_fa_limits(k,1), mat_climo(k), mat_fa_limits(k,2)
   ! end do 
 
   ! compute monthly adjustments using GW's method
@@ -426,7 +437,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   
   ! write(*,*)'climo: map, mat, pet, ptps'
   ! do k=1,12
-  !   write(*,*)map_climo(k), mat_climo(k), pet_climo(k), ptps_climo(k)
+  !   write(*,"(4f8.2)")map_climo(k), mat_climo(k), pet_climo(k), ptps_climo(k)
   ! end do 
   ! write(*,*)'climo: lower, map, upper'
   ! do k=1,12
@@ -435,22 +446,23 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   ! return
 
   ! expand forcing adjustment limits in case the limits are not set properly 
-  ! do k=1,12
-  !   if(map_climo(k) < map_fa_limits(k,1)) map_fa_limits(k,1) = map_climo(k) * 0.9
-  !   if(map_climo(k) > map_fa_limits(k,2)) map_fa_limits(k,2) = map_climo(k) * 1.1
-  !   if(pet_climo(k) < pet_fa_limits(k,1)) pet_fa_limits(k,1) = pet_climo(k) * 0.9
-  !   if(pet_climo(k) > pet_fa_limits(k,2)) pet_fa_limits(k,2) = pet_climo(k) * 1.1
-  !   if(ptps_climo(k) < ptps_fa_limits(k,1)) ptps_fa_limits(k,1) = ptps_climo(k) * 0.75
-  !   if(ptps_climo(k) > ptps_fa_limits(k,2)) ptps_fa_limits(k,2) = ptps_climo(k) * 1.25
-  ! end do 
+  do k=1,12
+    if(map_fa_limits(k,1) == -999.) map_fa_limits(k,1) = map_climo(k) * 0.9
+    if(map_fa_limits(k,2) == -999.) map_fa_limits(k,2) = map_climo(k) * 1.1
+    if(pet_fa_limits(k,1) == -999.) pet_fa_limits(k,1) = pet_climo(k) * 0.9
+    if(pet_fa_limits(k,2) == -999.) pet_fa_limits(k,2) = pet_climo(k) * 1.1
+    if(ptps_fa_limits(k,1) == -999.) ptps_fa_limits(k,1) = ptps_climo(k) * 0.75
+    if(ptps_fa_limits(k,2) == -999.) ptps_fa_limits(k,2) = ptps_climo(k) * 1.25
+  end do 
 
   ! compute monthly adjustments using GW's method
   map_adj = forcing_adjust_map_pet_ptps(map_climo, map_fa_pars, map_fa_limits(:,1), map_fa_limits(:,2))
   pet_adj = forcing_adjust_map_pet_ptps(pet_climo, pet_fa_pars, pet_fa_limits(:,1), pet_fa_limits(:,2))
   ptps_adj = forcing_adjust_map_pet_ptps(ptps_climo, ptps_fa_pars, ptps_fa_limits(:,1), ptps_fa_limits(:,2))
-  ! write(*,*)'FA pars: ', mat_fa_pars
+  ! write(*,*)'FA pars: ', map_fa_pars
+  ! write(*,*)'adjments: map, mat, pet, ptps'
   ! do k=1,12
-  !  write(*,*)map_adj(k),mat_adj(k),pet_adj(k),ptps_adj(k)
+  !  write(*,"(4f8.2)")map_adj(k),mat_adj(k),pet_adj(k),ptps_adj(k)
   ! end do 
 
   ! write(*,*)'PET FA pars: ', pet_fa_pars
@@ -473,12 +485,6 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   ptps_adj_prev(2:12) = ptps_adj(1:11)
   ptps_adj_next(12) = ptps_adj(1)
   ptps_adj_next(1:11) = ptps_adj(2:12)
-
-  !write(*,"(12f8.2)")map_adj(:,1)
-  !write(*,"(12f8.2)")mat_adj(:,1)
-  !write(*,"(12f8.2)")ptps_adj(:,1)
-  !write(*,"(12f8.2)")pet_adj(:,1)
-  !write(*,"(12f8.2)")peadj_m(:,1)
 
   ! ========================= HRU AREA LOOP ========================================================
   !   loop through the simulation areas, running the lump model code and averaging the output
@@ -532,6 +538,10 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
     cs(2:19) = 0
     taprev_sp= real(mat(1,nh))
      
+    psfall_sp=real(0)
+    prain_sp=real(0)
+    aesc_sp=real(0)
+    
     ! =============== START SIMULATION TIME LOOP =====================================
     do i = 1,sim_length,1
 
@@ -647,7 +657,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       call exsnow19(int(dt,4),int(dt/sec_hour,4),int(day(i),4),int(month(i),4),int(year(i),4),&
           !SNOW17 INPUT AND OUTPUT VARIABLES
           real(map_step), real(ptps_step), real(mat_step), &
-          raim_sp, sneqv_sp, snow_sp, snowh_sp,&
+          raim_sp, sneqv_sp, snow_sp, snowh_sp, psfall_sp, prain_sp, aesc_sp,&
           !SNOW17 PARAMETERS
           !ALAT,SCF,MFMAX,MFMIN,UADJ,SI,NMF,TIPM,MBASE,PXTEMP,PLWHC,DAYGM,ELEV,PA,ADC
           real(latitude(nh)), real(scf(nh)), real(mfmax(nh)), real(mfmin(nh)), &
@@ -731,7 +741,6 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       ! end if 
 
       ! grab areal extent of snow cover from snow17 output 
-      aesc_sp = cs(7)
       ! if(aesc > 0.1) write(*,*)'aesc ',aesc_sp
 
       ! modify ET demand using the effective forest cover 
@@ -788,25 +797,20 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       ptps(i,nh) = ptps_step 
 
       raim(i,nh) = dble(raim_sp)
-      swe(i,nh) = dble(cs(1))
-      !swe(i,nh) = dble(sneqv(i,nh))
+      psfall(i,nh)=dble(psfall_sp)
+      prain(i,nh)=dble(prain_sp)
       neghs(i,nh) = dble(cs(2))
       liqw(i,nh) = dble(cs(3))
-
-      taprev(i,nh) = dble(taprev_sp)
-      tindex(i,nh) = dble(cs(4))
-
-      accmax(i,nh) = dble(cs(5))
-      sb(i,nh) = dble(cs(6))
-      aesc(i,nh) = dble(cs(7))
-      sbws(i,nh) = dble(cs(8))
-      storage(i,nh) = dble(cs(9))
-      aeadj(i,nh) = dble(cs(10))
+      aesc(i,nh) = dble(aesc_sp)
 
       nexlag = 5/int(dt/sec_hour) + 2
 
-      sndpt(i,nh) = dble(cs(11+nexlag))
-      sntmp(i,nh) = dble(cs(12+nexlag))
+      TEX = 0.0
+      DO j=1,nexlag,1
+        TEX=TEX+dble(cs(10+j))
+      END DO
+
+      swe(i,nh) = dble(cs(1))+dble(cs(3))+dble(cs(9))+TEX
 
       
       ! PQNET
