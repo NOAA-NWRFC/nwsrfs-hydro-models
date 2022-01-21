@@ -247,7 +247,7 @@ class Model:
         
         return sim_flow_cfs
 
-    def sacsnow_run(self,inst=False):
+    def sacsnow_run(self,inst=True):
 
         p = {**self.p['sac'],**(self.p['snow']),**(self.p['uh'])}
 
@@ -279,7 +279,7 @@ class Model:
         
         return self.sacsnow_flow_cfs
 
-    def sacsnow_states_run(self,inst=False):
+    def sacsnow_states_run(self,inst=True):
 
         p = {**self.p['sac'],**(self.p['snow']),**(self.p['uh'])}
 
@@ -399,19 +399,18 @@ class Model:
                     self.consuse_states[param]=pd.concat([self.consuse_states[param],
                             pd.DataFrame(states[count], index=dates_input,columns=[cu_name])],axis=1)
             #Update the qnat to reflect the adjusted flow (needed for basins w/multiple CU zones)
-            qnat_daily=self.consuse_states['QADJ'].astype('double').squeeze().to_numpy()
-            qnat_daily=np.asfortranarray(qnat_daily)
+            qnat_daily=self.consuse_states['QADJ']
         
         return self.consuse_states
 
-    def run_all(self):
+    def run_all(self,inst=True):
         
         #Create blank simulation series
         self.sim=pd.Series(0,index=self.dates)
         
         #If there are sac/snow zone, calculate runoff
         if self.n_zones > 0:
-            self.sim = self.sim+self.sacsnow_run()
+            self.sim = self.sim+self.sacsnow_run(inst=inst)
         
         #If there are upstream reaches to route, add them to the total flow
         if self.n_uptribs > 0:
@@ -421,7 +420,8 @@ class Model:
         if self.n_consuse > 0:
             self.consuse_run()
             qnat_cu_adj=self.consuse_states['QDIV'].sum(axis=1)-self.consuse_states['QRF_out'].sum(axis=1)
-            qnat_cu_adj=qnat_cu_adj.reindex(self.sim.index,method='pad')
+           #Backfill to fill all values after 00:00 and forward fill to correct missing values at end of timeseries
+            qnat_cu_adj=qnat_cu_adj.reindex(self.sim.index).backfill().ffill()
             self.sim = self.sim - qnat_cu_adj
         
         #Chanloss Adjustment

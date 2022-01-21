@@ -7,7 +7,7 @@ C.......................................
 C     INITIALLY WRITTEN BY...
 C        ERIC ANDERSON - HRL   MAY 1980
 C.......................................
-      REAL MELT,MFMAX,MFMIN,MBASE,NMF,MF,NMRATE
+      REAL MELT,MFMAX,MFMIN,MBASE,NMF,MF,NMRATE,SV
       DIMENSION SMFV(12),MMD(12)
       DATA MMD/301,332,361,26,56,87,117,148,179,209,240,270/
 C.......................................
@@ -55,7 +55,10 @@ C     MELT FACTOR VARIATION FOR ALASKA.
       GO TO 125
 C.......................................
 C     MELT FACTOR VARIATION FOR THE LOWER 48.
-  120 MF=(SIN(DAYN*2.0*3.1416/366.0)*DIFF*0.5)+(MFMAX+MFMIN)*0.5
+CGW  120 MF=(SIN(DAYN*2.0*3.1416/366.0)*DIFF*0.5)+(MFMAX+MFMIN)*0.5
+CGW Updating Melt Factor equation to match ANDERSON SNOW17 DOC (2006)
+  120 SV=0.5*SIN(DAYN*2.0*3.1416/366.0)+0.5
+      MF=SV*(MFMAX-MFMIN)+MFMIN
   125 RATIO=MF/MFMAX
 C.......................................
 C     COMPUTE MELT AND NEGATIVE HEAT EXCHANGE INDEX TEMPERATURES.

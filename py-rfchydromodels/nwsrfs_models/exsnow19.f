@@ -162,8 +162,6 @@ C     DEFINE CONSTANT
 C     IF SNOWFALL IS LESS THAN HSNOF/HR -- DO NOT
 C        LEAVE CURRENT DEPLETION CURVE.
 
-CGW Debugging print out.  ERASE BEOFORE SHARING
-CGW      write(*,*) 'TO LINE 161'
 
    90 HSNOF=0.2
 
@@ -454,9 +452,6 @@ C     CARRYOVER VALUES.
       DO 116 I=1,NEXLAG
       EXLAG(I)=CS(10+I)
   116 TEX=TEX+EXLAG(I)
-C
-CGW Debugging print out.  ERASE BEOFORE SHARING
-CGW      write(*,*) 'TO LINE 449'
 
 CVK  ADDED TWO MORE NEW STATES
 CEW  Use stored carryover if this is version 1.1 or greater of parameters
@@ -486,8 +481,6 @@ CGW Comment the next two lines out because TAPREV is now an input
 CGW      TAPREV=-99.
 CGW      IF (IVER.GT.3) TAPREV=CS(13+NEXLAG)
 
-CGW Debugging print out.  ERASE BEOFORE SHARING
-CGW      write(*,*) 'TO LINE 480'
 
 C
 CEA  DON'T NEED NOSNOW CHECK SINCE NOSNOW MUST BE .NE. 1 TO GET
@@ -512,8 +505,6 @@ C     INITIAL VALUES
       TWE1=TWE
       CHGWE=0.0
 
-CGW Debugging print out.  ERASE BEOFORE SHARING
-CGW      write(*,*) 'TO LINE 506'
 C
 C     CHECK IF INITIAL WATER-EQUIVALENT OR SNOW COVER ARE CHANGED
 C        BY MOD INPUT.  OPERATIONAL ONLY.     
@@ -569,8 +560,7 @@ CGW       ETWE=TWE/25.4
 CGW       WRITE(IPR,906)ECWE,ETWE,CAESC,PCOVER
 CGW  906  FORMAT(1H ,10X,12HWE(IN)  OLD=,F6.2,2X,4HNEW=,F6.2,5X,
 CGW      1  16HSNOW COVER  OLD=,F4.2,2X,4HNEW=,F4.2)
-CGW Debugging print out.  ERASE BEOFORE SHARING
-CGW      write(*,*) 'TO LINE 561'
+
   119 DSFALL=0.0
       DRAIN=0.0
       DQNET=0.0
@@ -617,9 +607,6 @@ C     COMPUTE DAY NUMBER FROM MARCH 21
       END IF
       LAST=0
 
-CGW Debugging print out.  ERASE BEOFORE SHARING
-CGW      write(*,*) 'TO LINE 587'
-
 CGW Added this to skip this section
       GO TO 310
 
@@ -639,8 +626,6 @@ CGW      IYR=L
 C.......................................
 C     GET INPUT DATA NEEDED FOR COMPUTATIONAL PERIOD.
   120 KOFF=KDA-IDADAT
-CGW Debugging print out.  ERASE BEOFORE SHARING
-CGW      write(*,*) 'TO LINE 609'
 C
 C     PRECIPITATION DATA - ALSO APPLY ADJUSTMENT
       LPX=KOFF*(24/ITPX)+KHR/ITPX
@@ -659,9 +644,6 @@ CGW      PPCTS(I)=PCTS(J)
       GO TO 122
   123 PPCTS(I)=-999.0
   122 CONTINUE
-
-CGW Debugging print out.  ERASE BEOFORE SHARING
-CGW      write(*,*) 'TO LINE 630'
 
 CGW Added this to skip this section
       GO TO 124
@@ -709,8 +691,6 @@ C
         GO TO 124
   339  UADJC=1.0
 C.......................................................
-CGW Debugging print out.  ERASE BEOFORE SHARING
-CGW      write(*,*) 'TO LINE 678'
 C
 C     AIR TEMPERATURE DATA - CORRECT FOR LAPSE RATE.
   124 L=KOFF*(24/IDT)+KHR/IDT
@@ -730,8 +710,6 @@ CEA  210 IF (LAEC.GT.0) GO TO 215
       GO TO 125
   215 PRSL=RSTS(L)
 
-CGW Debugging print out.  ERASE BEOFORE SHARING
-CGW      write(*,*) 'TO LINE 700'
 C
 C     OBSERVED WATER-EQUIVALENT AND SNOW COVER DATA.
 C        CHECK FOR RUN-TIME DATA FIRST - OPERATIONAL ONLY.
@@ -795,8 +773,7 @@ C     DETERMINE IF COMPUTATIONAL PERIOD IS IN THE FUTURE.
       IF((KDA.EQ.LDACPD).AND.(KHR.LE.LHRCPD)) GO TO 145
 CGW      IFUT=1
 
-CGW Debugging print out.  ERASE BEOFORE SHARING
-CGW      write(*,*) 'TO LINE 744'
+
 
 C.......................................
 C     PERFORM SNOW MODEL COMPUTATIONS FOR THE COMPUTATIONAL PERIOD.
@@ -809,45 +786,10 @@ CGW  145 CALL PACK19(KDA,KHR,NDT,PTA,PPX,PPCTS,PRSL,POWE,POSC,PODPT,PGM,
 CGW     1  PRM,TWE,PCOVER,CWE,CAESC,IFUT,IDT,IBUG,IDN,IMN,IYR,IOUTYP,
 CGW     2  OPNAME,IVER)
 CGW
-CGW Write out all the arguments for testing CGW
 
-CGW Write out all the arguments for testing CGW
+CGW Write out arguments for testing CGW
 CGW      write(*,*) 'START'
 CGW      write(*,*) 'NDT', NDT
-CGW      write(*,*) 'PTA', PTA
-CGW      write(*,*) 'PPX', PPX(1)
-CGW      write(*,*) 'PPCT', PPCTS(1)
-CGW      write(*,*) 'PRSL', PRSL
-CGW      write(*,*) 'POWE', POWE
-CGW      write(*,*) 'POSC', POSC
-CGW      write(*,*) 'PGM', PGM
-CGW      write(*,*) 'TWE', TWE
-CGW      write(*,*) 'IFUT', IFUT
-CGW      write(*,*) 'IDT', IDT
-CGW      write(*,*) 'IDN', IDN
-CGW      write(*,*) 'IMN', IMN
-CGW      write(*,*) 'IYR', IYR
-CGW      write(*,*) 'TAPREV', TAPREV
-CGW      write(*,*) 'ALAT', ALAT
-CGW      write(*,*) 'SCF', SCF
-CGW      write(*,*) 'MFMAX', MFMAX
-CGW      write(*,*) 'MFMIN', MFMIN
-CGW      write(*,*) 'UADJ', UADJ
-CGW      write(*,*) 'SI', SI
-CGW      write(*,*) 'NMF', NMF
-CGW      write(*,*) 'TIPM', TIPM
-CGW      write(*,*) 'MBASE', MBASE
-CGW      write(*,*) 'PXTEMP', PXTEMP
-CGW      write(*,*) 'PLWHC', PLWHC
-CGW      write(*,*) 'DAYGM', DAYGM
-CGW      write(*,*) 'ADC', ADC
-CGW      write(*,*) 'PA', PA
-CGW      write(*,*) 'LMFV', LMFV
-CGW      write(*,*) 'SMFV', SMFV(1)
-CGW      write(*,*) 'LAEC', LAEC
-CGW      write(*,*) 'NPTAE', NPTAE
-CGW      write(*,*) 'AE', AE(1,1)
-CGW      write(*,*) 'IVER', IVER
 CGW Write out all the arguments for testing CGW
 
   145 CALL PACK19(NDT,PTA,PPX,PPCTS,PRSL,POWE,POSC,PGM,PRM,TWE,
@@ -868,12 +810,6 @@ CGW
 CGW Write out all the arguments for testing CGW
 CGW      write(*,*) 'CAESC', CAESC
 CGW      write(*,*) 'CWE', CWE
-CGW      write(*,*) 'COVER', COVER
-CGW      write(*,*) 'SXFALL', SXFALL
-CGW      write(*,*) 'DS', DS
-CGW      write(*,*) 'PSF', PSF
-CGW      write(*,*) 'PRM', RM(1)
-CGW      write(*,*) 'END'
 CGW Write out all the arguments for testing CGW
 
 CGW      IF (TWE.NE.CWE) CHGWE=CHGWE+(TWE-CWE)
@@ -1058,8 +994,6 @@ C     SAVE CARRYOVER VALUES.
       CS(11+NEXLAG)=SNDPT
       CS(12+NEXLAG)=SNTMP  
 CGW ADDED this section above to avoid using CSAV19 and to match how it was done previously
-CGW Debugging print out.  ERASE BEOFORE SHARING
-CGW      write(*,*) 'TO LINE 953'
 CGW
 C.......................................
 C     PRINT DEBUG OUTPUT IF REQUESTED.
