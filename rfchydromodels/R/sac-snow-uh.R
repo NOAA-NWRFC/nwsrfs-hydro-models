@@ -16,7 +16,7 @@ sac_snow_uh <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=NULL
 
   tci = sac_snow(dt_hours, forcing, pars, forcing_adjust = forcing_adjust, climo = climo)
   flow_cfs = uh(dt_hours, tci, pars)
-  flow_cfs = chanloss(flow_cfs, pars)
+  flow_cfs = chanloss(flow_cfs, forcing, dt_hours, pars)
   flow_cfs
 }
 
@@ -40,7 +40,7 @@ sac_snow_uh_lagk <- function(dt_hours, forcing, uptribs, pars, forcing_adjust=TR
 
   tci = sac_snow(dt_hours, forcing, pars, forcing_adjust = forcing_adjust, climo = climo)
   flow_cfs = uh(dt_hours, tci, pars)
-  flow_cfs = chanloss(flow_cfs, pars)
+  flow_cfs = chanloss(flow_cfs, forcing, dt_hours, pars)
   lagk_flow_cfs = lagk(dt_hours, uptribs, pars)
   flow_cfs + lagk_flow_cfs
 }
@@ -605,24 +605,52 @@ uh <- function(dt_hours, tci, pars){
   flow_cfs
 }
 
-#' Simple proportional chanloss
+#' Seasonal chanloss
 #'
 #' @param flow_cfs streamflow vector
+#' @param dt_hours timestep in hours
 #' @param pars parameters
-#' @return Vector of flow scaled by the fixp parameter (if it exists)
+#' @return Vector of flow modified by the chanloss pattern
 #' @export
 #'
 #' @examples
 #' @useDynLib rfchydromodels sacsnow_
-chanloss <- function(flow, pars){
+chanloss <- function(flow, forcing, dt_hours, pars){
 
-  fixp_row = pars[pars$name == 'fixp',]
-  if(nrow(fixp_row)==0)
+  sim_length = nrow(forcing[[1]])
+
+  # chanloss(n_clmods, dt, sim_length, year, month, day, hour, &
+  #            factor, period, &
+  #            sim, sim_adj)
+
+  n_clmods = pars[pars$name == 'n_clmods',]$value[1]
+
+  if(is.na(n_clmods) | n_clmods <= 0){
     return(flow)
-  else
-    return(flow*fixp_row$value)
+  }else{
+    cl_factors = numeric(n_clmods)
+    cl_periods = matrix(NA, n_clmods, 2)
+    for(i in 1:n_clmods){
+      cl_periods[i,1] = pars[pars$name == sprintf('cl_period_start_%02d',i),]$value[i]
+      cl_periods[i,2] = pars[pars$name == sprintf('cl_period_end_%02d',i),]$value[i]
+      cl_factors[i] = pars[pars$name == sprintf('cl_factor_%02d',i),]$value[i]
+    }
 
-  flow
+
+      cl_flow = .Fortran('chanloss',
+                        n_clmods = as.integer(n_clmods),
+                        dt = as.integer(dt_hours),
+                        sim_length = as.integer(sim_length),
+                        year = as.integer(forcing[[1]]$year)[1:sim_length],
+                        month = as.integer(forcing[[1]]$month)[1:sim_length],
+                        day = as.integer(forcing[[1]]$day)[1:sim_length],
+                        hour = as.integer(forcing[[1]]$hour)[1:sim_length],
+                        factor = cl_factors,
+                        period = as.integer(cl_periods),
+                        sim = flow[1:sim_length],
+                        sim_adj = numeric(sim_length))
+      return(cl_flow$sim_adj)
+  }
 }
 
 #' Daily consuse model
@@ -683,7 +711,7 @@ consuse <- function(input, pars, cfs=TRUE){
                  CE_out = numeric(sim_length),
                  RFSTOR_out = numeric(sim_length)
                  )
-    cu_out[[cu_zone]] = data.frame(year = x$year,month = x$month,day = x$day,
+    cu_out[[cu_zone]] = data.frame(year = x$year,month = x$month,day = x$day, qnat = x$QNAT_in,
       qadj = x$QADJ_out, qdiv = x$QDIV_out, qrfin = x$QRFIN_out, qrfout = x$QRFOUT_out,
       qol = x$QOL_out, qcd = x$QCD_out, ce = x$CE_out, rfstor = x$RFSTOR_out)
   }
