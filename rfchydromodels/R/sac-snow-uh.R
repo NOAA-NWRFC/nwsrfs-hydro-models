@@ -132,14 +132,6 @@ sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=NULL){
                          c('name','zone','value')],
                     timevar='zone',idvar='name',direction='wide')[,-1]
 
-  init = rbind(pars[pars$name == 'init_swe',]$value,
-               pars[pars$name == 'init_uztwc',]$value,
-               pars[pars$name == 'init_uzfwc',]$value,
-               pars[pars$name == 'init_lztwc',]$value,
-               pars[pars$name == 'init_lzfsc',]$value,
-               pars[pars$name == 'init_lzfpc',]$value,
-               pars[pars$name == 'init_adimc',]$value)
-
   sac_pars = rbind(pars[pars$name == 'uztwm',]$value,
                    pars[pars$name == 'uzfwm',]$value,
                    pars[pars$name == 'lztwm',]$value,
@@ -206,7 +198,7 @@ sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=NULL){
                pet_fa_limits = pet_limits,
                ptps_fa_limits = ptps_limits,
                # initial conditions
-               init = init,
+               init_swe = pars[pars$name == 'init_swe',]$value,
                # externally specified climatology
                climo = climo,
                # forcings
@@ -310,14 +302,6 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=
 
   output_matrix = matrix(0,nrow=sim_length,ncol=n_zones)
 
-  init = rbind(pars[pars$name == 'init_swe',]$value,
-               pars[pars$name == 'init_uztwc',]$value,
-               pars[pars$name == 'init_uzfwc',]$value,
-               pars[pars$name == 'init_lztwc',]$value,
-               pars[pars$name == 'init_lzfsc',]$value,
-               pars[pars$name == 'init_lzfpc',]$value,
-               pars[pars$name == 'init_adimc',]$value)
-
   sac_pars = rbind(pars[pars$name == 'uztwm',]$value,
                    pars[pars$name == 'uzfwm',]$value,
                    pars[pars$name == 'lztwm',]$value,
@@ -383,7 +367,7 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=
                pet_fa_limits = pet_limits,
                ptps_fa_limits = ptps_limits,
                # initial conditions
-               init = init,
+               init_swe = pars[pars$name == 'init_swe',]$value,
                # externally specified climatology
                climo = climo,
                # forcings

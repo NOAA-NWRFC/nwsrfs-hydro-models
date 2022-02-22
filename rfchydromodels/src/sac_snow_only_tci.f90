@@ -5,7 +5,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
     snow_pars, & 
     map_fa_pars, mat_fa_pars, pet_fa_pars, ptps_fa_pars, & 
     map_fa_limits, mat_fa_limits, pet_fa_limits, ptps_fa_limits, & 
-    init, climo, & 
+    init_swe, climo, & 
     map, ptps, mat, &
     tci)
 
@@ -60,7 +60,8 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   ! initial states if for a cold start run
   ! used in all model HRUs
   ! model state variables not listed start at 0
-  double precision, dimension(7, n_hrus), intent(in):: init
+  double precision, dimension(6):: spin_up_start_states, spin_up_end_states
+  double precision:: pdiff
   double precision, dimension(n_hrus):: init_swe, init_uztwc, init_uzfwc, init_lztwc, init_lzfsc, &
           init_lzfpc, init_adimc
 
@@ -150,7 +151,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   double precision:: dr, rho, omega_s, Ra
   integer, dimension(sim_length):: jday
   double precision:: pet_ts, tmax_daily, tmin_daily, tave_daily
-  integer:: ts_per_day
+  integer:: ts_per_day, ts_per_year
   double precision:: interp_day, decimal_day
 
   ! initilize outputs 
@@ -158,15 +159,6 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
 
   mdays =      (/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /) 
   mdays_prev = (/ 31, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30 /) 
-
-  ! pull out the initial conditions to separate variables
-    init_swe = init(1,:)
-  init_uztwc = init(2,:)
-  init_uzfwc = init(3,:)
-  init_lztwc = init(4,:)
-  init_lzfsc = init(5,:)
-  init_lzfpc = init(6,:)
-  init_adimc = init(7,:)
 
   ! pull out sac params to separate variables
   uztwm = sac_pars(1,:)
@@ -492,21 +484,170 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
     ! print run dates
     ! write(*,*)'  start:',year(1), month(1), day(1), hour(1)
     ! write(*,*)'    end:',year(sim_length), month(sim_length), day(sim_length), hour(sim_length)
-
-    ! ================== RUN models for huc_area! ==========================================
   
     ! get sfc_pressure (pa is estimate by subroutine, needed by snow17 call)
     pa = sfc_pressure(elev(nh))
   
-    ! set single precision sac state variables to initial values
     
-    ! we are not warm starting from a state file
+    ! =============== Spin up procedure =====================================
+
+    ! start everything at 0
+    spin_up_start_states = 0 
+    spin_up_end_states = 0 
+    pdiff = 1.0
+    ts_per_year = ts_per_day * 365
+
+    do while (pdiff > 0.01)
+
+      ! put the ending states from the previous iteration as the starting states 
+      uztwc_sp = real(spin_up_end_states(1))
+      uzfwc_sp = real(spin_up_end_states(2))
+      lztwc_sp = real(spin_up_end_states(3))
+      lzfsc_sp = real(spin_up_end_states(4))
+      lzfpc_sp = real(spin_up_end_states(5))
+      adimc_sp = real(spin_up_end_states(6))
+
+      ! swe will usually be 0 as well, except for glaciers 
+      cs(1) = real(init_swe(nh))
+      ! set the rest to zero
+      cs(2:19) = 0
+      taprev_sp = real(mat(1,nh))
+
+      psfall_sp = real(0)
+      prain_sp = real(0)
+      aesc_sp = real(0)
+
+      ! run for 1 year 
+      do i = 1,ts_per_year
+
+        ! adjust days in february if the year is a leap year
+        if(mod(year(i),100) .ne. 0 .and. mod(year(i),4) .eq. 0) then
+          mdays(2) = 29 ! leap year
+        else if(mod(year(i),400).eq.0) then
+          mdays(2) = 29 ! leap year
+        else
+          mdays(2) = 28 ! not leap year
+        endif
+
+
+        ! interpolate between (x0,y0) and (x1,y1)
+        ! y = y0 + (x-x0)*(y1-y0)/(x1-x0)
+        ! interpolate between (day0,limit0)=(0,limit0) and (day1,limit1)=(dayn,limit1)
+        ! y = limit0 + dayi/dayn*(limit1-limit0)
+
+        ! decimal day to start interpolation
+        interp_day = 16. + dble(dt_hours)/24
+        ! current decimal day
+        decimal_day = dble(day(i)) + dble(dt_hours)/24.
+        mo = month(i)
+        !write(*,*)mdays, mdays(mo), day(i), hour(i)
+        if(decimal_day >= interp_day)then
+          dayn = dble(mdays(mo))
+          dayi = decimal_day - interp_day 
+          map_adj_step = map_adj(mo) + dayi/dayn*(map_adj_next(mo)-map_adj(mo))
+          pet_adj_step = pet_adj(mo) + dayi/dayn*(pet_adj_next(mo)-pet_adj(mo))
+          ptps_adj_step = ptps_adj(mo) + dayi/dayn*(ptps_adj_next(mo)-ptps_adj(mo))
+          peadj_step = peadj_m(mo,nh) + dayi/dayn*(peadj_m_next(mo,nh)-peadj_m(mo,nh))
+        else 
+          dayn = dble(mdays_prev(mo))
+          dayi = decimal_day - interp_day + mdays_prev(mo) 
+          map_adj_step = map_adj_prev(mo) + dayi/dayn*(map_adj(mo)-map_adj_prev(mo))
+          pet_adj_step = pet_adj_prev(mo) + dayi/dayn*(pet_adj(mo)-pet_adj_prev(mo))
+          ptps_adj_step = ptps_adj_prev(mo) + dayi/dayn*(ptps_adj(mo)-ptps_adj_prev(mo))
+          peadj_step = peadj_m_prev(mo,nh) + dayi/dayn*(peadj_m(mo,nh)-peadj_m_prev(mo,nh))
+        end if 
+
+
+        mat_step = mat_adjusted(i,nh)
+        ! apply PXADJ (scaling the input values)
+        map_step = map(i,nh) * pxadj(nh) * map_adj_step
+        ! pet_hs(i,nh) is the pet from HS, 
+        ! peadj_step is the conversion to etdemand (crop factor)
+        ! pet_adj_step is the forcing adjustment
+        pet_step = pet_hs(i,nh) * peadj_step * pet_adj_step
+        ptps_step = min(ptps(i,nh) * ptps_adj_step, 1d0)
+
+        call exsnow19(int(dt,4),int(dt/sec_hour,4),int(day(i),4),int(month(i),4),int(year(i),4),&
+            !SNOW17 INPUT AND OUTPUT VARIABLES
+            real(map_step), real(ptps_step), real(mat_step), &
+            raim_sp, sneqv_sp, snow_sp, snowh_sp, psfall_sp, prain_sp, aesc_sp,&
+            !SNOW17 PARAMETERS
+            !ALAT,SCF,MFMAX,MFMIN,UADJ,SI,NMF,TIPM,MBASE,PXTEMP,PLWHC,DAYGM,ELEV,PA,ADC
+            real(latitude(nh)), real(scf(nh)), real(mfmax(nh)), real(mfmin(nh)), &
+            real(uadj(nh)), real(si(nh)), real(nmf(nh)), &
+            real(tipm(nh)), real(mbase(nh)), real(pxtemp(nh)), real(plwhc(nh)), real(daygm(nh)),&
+            real(elev(nh)), real(pa), real(adc), &
+            !SNOW17 CARRYOVER VARIABLES
+            cs, taprev_sp) 
+
+        ! taprev does not get updated in place like cs does
+        taprev_sp = real(mat_step)
+
+        ! modify ET demand using the effective forest cover 
+        ! Anderson calb manual pdf page 232
+        ! if(aesc_sp > 0.1) write(*,*) 'pet before efc', pet_step
+        pet_step = efc(nh)*pet_step+(1d0-efc(nh))*(1d0-dble(aesc_sp))*pet_step
+        ! if(aesc_sp > 0.1) write(*,*) 'pet before efc', pet_step
+    
+        call exsac(1, real(dt), raim_sp, real(mat_step), real(pet_step), &
+            !SAC PARAMETERS
+            !UZTWM,UZFWM,UZK,PCTIM,ADIMP,RIVA,ZPERC, &
+            !REXP,LZTWM,LZFSM,LZFPM,LZSK,LZPK,PFREE, &
+            !SIDE,RSERV, &
+            real(uztwm(nh)), real(uzfwm(nh)), real(uzk(nh)), real(pctim(nh)), &
+            real(adimp(nh)), real(riva(nh)), real(zperc(nh)), &
+            real(rexp(nh)), real(lztwm(nh)), real(lzfsm(nh)), real(lzfpm(nh)), &
+            real(lzsk(nh)), real(lzpk(nh)), real(pfree(nh)),&
+            real(side(nh)), real(rserv(nh)), &
+            !SAC State variables
+            uztwc_sp, uzfwc_sp, lztwc_sp, lzfsc_sp, lzfpc_sp, adimc_sp, &
+            !SAC OUTPUTS
+            qs_sp, qg_sp, tci_sp, aet_sp)
+
+      end do  ! spin up 1 year loop 
+
+      spin_up_end_states(1) = dble(uztwc_sp)
+      spin_up_end_states(2) = dble(uzfwc_sp)
+      spin_up_end_states(3) = dble(lztwc_sp)
+      spin_up_end_states(4) = dble(lzfsc_sp)
+      spin_up_end_states(5) = dble(lzfpc_sp)
+      spin_up_end_states(6) = dble(adimc_sp)
+
+      ! pdiff = abs(spin_up_start_states-spin_up_end_states)/(spin_up_start_states+spin_up_end_states)
+      pdiff = 0
+      do k=1,6
+        if(spin_up_start_states(k)+spin_up_end_states(k) < 0.000001)then
+          cycle
+        else
+          pdiff = pdiff + abs(spin_up_start_states(k)-spin_up_end_states(k))/(spin_up_start_states(k)+spin_up_end_states(k))
+        end if
+      end do
+
+      spin_up_start_states = spin_up_end_states
+
+      ! write(*,'(7f10.3)')pdiff, spin_up_start_states
+
+    end do 
+    ! write(*,*)
+
+    ! Save the spun up states to use for init in the full run
+    init_uztwc(nh) = spin_up_end_states(1)
+    init_uzfwc(nh) = spin_up_end_states(2)
+    init_lztwc(nh) = spin_up_end_states(3)
+    init_lzfsc(nh) = spin_up_end_states(4)
+    init_lzfpc(nh) = spin_up_end_states(5)
+    init_adimc(nh) = spin_up_end_states(6)
+
+    ! =============== End spin up procedure =====================================
+
+    ! set single precision sac state variables to initial values
     uztwc_sp = real(init_uztwc(nh))
     uzfwc_sp = real(init_uzfwc(nh))
     lztwc_sp = real(init_lztwc(nh))
     lzfsc_sp = real(init_lzfsc(nh))
     lzfpc_sp = real(init_lzfpc(nh))
     adimc_sp = real(init_adimc(nh))
+
     ! AWW: just initialize first/main component of SWE (model 'WE')
     cs(1) = real(init_swe(nh))
     ! set the rest to zero
