@@ -11,7 +11,7 @@ class Model:
                  route: list=None,
                  obs: pd.DataFrame=None):
 
-        #This step may become unnessary, but right now the R preprocessor is ver verbose with
+        #This step may become unnessary, but right now the R preprocessor is very verbose with
         #CU zone name.  If that changes, this line can be removed
         pars.loc[pars.zone.str.contains('CU'),['zone']]=pars.loc[pars.zone.str.contains('CU')].zone.str.split('-').str[-1]
 
@@ -46,8 +46,24 @@ class Model:
            n_uptribs=len(uptribs_name)
         self.uptribs_name=uptribs_name
         self.n_uptribs=n_uptribs
-           
 
+        #Rename Zones for each CL Module
+        self.pars.loc[self.pars.type=='chanloss',['zone']]=self.pars.loc[self.pars.type=='chanloss'].zone + \
+                                '_CL'+ self.pars.loc[self.pars.type=='chanloss'].name.str.split('_').str[-1]
+
+        #n_clmods pars row now unnecessary
+        self.pars.drop(self.pars.loc[self.pars.name=='n_clmods'].index,inplace=True)
+
+        #Remove the CL module name from the name columns
+        self.pars.loc[self.pars.type=='chanloss',['name']]=self.pars.loc[self.pars.type=='chanloss'].name.str.split('_').str[:-1].str.join('_')
+        
+        #Catalog CHANLOSS info if present
+        if self.pars.zone.str.contains('_CL').any():
+            n_chanloss=len(self.pars.loc[self.pars.type=='consuse'].zone.unique())
+        else:
+            n_chanloss=0
+        self.n_chanloss=n_chanloss
+        
         # Timestep in different units
         self.dt_seconds = int((forcings[0].index[1] - forcings[0].index[0]).total_seconds())
         self.dt_days = self.dt_seconds / 86400
@@ -104,8 +120,10 @@ class Model:
                 self.peadj_m[i, j] = pars[(pars['name'] == 'peadj_' + f'{m:02}') & (pars['zone'] == z) &
                         (pars['type']== 'sac')]['value'].astype('double').to_numpy()[0]
             for j, z in zip(range(n_consuse), consuse_name):
-                self.peadj_cu[i, j] = pars[(pars['name'] == 'peadj_' + f'{m:02}') & (pars['zone'] == z) &
+                self.peadj_cu[i, j] = pars[(pars['name'] == 'peadj_cu_' + f'{m:02}') & (pars['zone'] == z) &
                         (pars['type']== 'consuse')]['value'].astype('double').to_numpy()[0]
+
+
         
         self.map_fa_limits=np.asfortranarray(self.map_fa_limits)
         self.mat_fa_limits=np.asfortranarray(self.mat_fa_limits)
@@ -347,7 +365,10 @@ class Model:
         #If there are upstream reaches to route, add them to the total flow
         if self.n_uptribs > 0:
             qnat = self.lagk_run() + qnat
-            
+
+        #Chanloss Adjustment
+        qnat=self.chanloss(qnat)
+
         #Convert to daily using the weighting scheme that CHPS uses of utilizing 5 points (edges assigned .5)
         qnat_daily=(qnat.rolling(5,center=True).sum()+qnat.rolling(3,center=True).sum())/8
         qnat_daily=qnat_daily.loc[qnat_daily.index.hour==12]
@@ -403,6 +424,21 @@ class Model:
         
         return self.consuse_states
 
+    def chanloss(self,sim_sf):
+    
+        #Check if there is a chanloss module
+        if self.n_chanloss==0:
+            sim_sf_adj=sim_sf
+        else:
+            p = self.p['chanloss']
+            
+            periods=np.array([p['cl_period_start'],p['cl_period_end']],dtype='int')
+            sim_sf_adj=s.chanloss(int(self.dt_seconds), self.year.astype('int'), self.month.astype('int'), self.day.astype('int'), self.hour.astype('int'),
+                        p['cl_factor'],periods,
+                        sim_sf.astype('double').to_numpy())
+            sim_sf_adj=pd.Series(sim_sf_adj, index=self.dates)
+        return sim_sf_adj
+
     def run_all(self,inst=True):
         
         #Create blank simulation series
@@ -410,11 +446,14 @@ class Model:
         
         #If there are sac/snow zone, calculate runoff
         if self.n_zones > 0:
-            self.sim = self.sim+self.sacsnow_run(inst=inst)
+            self.sim = self.sim+self.sacsnow_run(inst=True)
         
         #If there are upstream reaches to route, add them to the total flow
         if self.n_uptribs > 0:
             self.sim = self.lagk_run() + self.sim
+
+        #Chanloss Adjustment
+        self.sim=self.chanloss(self.sim)
 
         #If there area CONSUSE areas, adjust the flow
         if self.n_consuse > 0:
@@ -423,8 +462,5 @@ class Model:
            #Backfill to fill all values after 00:00 and forward fill to correct missing values at end of timeseries
             qnat_cu_adj=qnat_cu_adj.reindex(self.sim.index).backfill().ffill()
             self.sim = self.sim - qnat_cu_adj
-        
-        #Chanloss Adjustment
-        self.sim=self.sim*self.p['chanloss']['fixp']
-        
+
         return self.sim
