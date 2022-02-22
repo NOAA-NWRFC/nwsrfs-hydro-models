@@ -631,9 +631,9 @@ chanloss <- function(flow, forcing, dt_hours, pars){
     cl_factors = numeric(n_clmods)
     cl_periods = matrix(NA, n_clmods, 2)
     for(i in 1:n_clmods){
-      cl_periods[i,1] = pars[pars$name == sprintf('cl_period_start_%02d',i),]$value[i]
-      cl_periods[i,2] = pars[pars$name == sprintf('cl_period_end_%02d',i),]$value[i]
-      cl_factors[i] = pars[pars$name == sprintf('cl_factor_%02d',i),]$value[i]
+      cl_periods[i,1] = pars[pars$name == sprintf('cl_period_start_%02d',i),]$value
+      cl_periods[i,2] = pars[pars$name == sprintf('cl_period_end_%02d',i),]$value
+      cl_factors[i] = pars[pars$name == sprintf('cl_factor_%02d',i),]$value
     }
 
 
