@@ -403,8 +403,7 @@ class Model:
             #qnat_input=np.asfortranarray(qnat_input)
             
             states=s.consuse(dates_input.year.astype('int'), dates_input.month.astype('int'), dates_input.day.astype('int'),
-                         p['area_km2'][n].astype('double'),p['irr_eff'][n].astype('double'),
-                         np.double(p['min_flow_cmsd'][n]*cms_2_cfs),p['init_rf_storage'][n].astype('double'),
+                         p['area_km2'][n].astype('double'),p['irr_eff'][n].astype('double'),np.double(p['min_flow_cmsd'][n]*cms_2_cfs),
                          p['rf_accum_rate'][n].astype('double'),p['rf_decay_rate'][n].astype('double'),
                          self.peadj_cu[:,n],consuse_ts_input[:,0],consuse_ts_input[:,1])
             
