@@ -716,7 +716,8 @@ CGW      END IF
 CGW570   FORMAT (' ERRORS ENCOUNTERED PROCESSING LAG/K ',
 CGW     1  'INPUT - IP AND IC SET TO ZERO')
 C
-580   CLOSE(IN)
+580   X = 0 
+C      CLOSE(IN)
       RETURN
 C
 C.......................................................................
