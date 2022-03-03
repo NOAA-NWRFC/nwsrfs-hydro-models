@@ -1,6 +1,6 @@
 subroutine consuse(sim_length, year, month, day, &
     AREA_in,EFF_in,MFLOW_in, &
-    IRFSTOR_in,ACCUM_in,DECAY_in, peadj_m, &
+    ACCUM_in,DECAY_in, peadj_m, &
     PET_in,QNAT_in, &
     QADJ_out,QDIV_out,QRFIN_out,QRFOUT_out, &
     QOL_out,QCD_out,CE_out,RFSTOR_out)
@@ -85,7 +85,7 @@ subroutine consuse(sim_length, year, month, day, &
   integer, intent(in):: sim_length
   integer, dimension(sim_length), intent(in):: year, month, day
   double precision, intent(in):: AREA_in,EFF_in,MFLOW_in
-  double precision, intent(in):: IRFSTOR_in,ACCUM_in,DECAY_in
+  double precision, intent(in):: ACCUM_in,DECAY_in
   double precision, dimension(sim_length), intent(in):: PET_in,QNAT_in  
   double precision, dimension(12), intent(in):: peadj_m
     
@@ -99,6 +99,14 @@ subroutine consuse(sim_length, year, month, day, &
   real, dimension(sim_length):: QADJ,QDIV,QRFIN,QRFOUT
   real, dimension(sim_length):: QOL,QCD,CE,RFSTOR
   double precision, dimension(12):: peadj_m_prev, peadj_m_next
+
+  ! ! local spin-up varibles
+  integer, parameter:: NDT_su =365
+  double precision:: IRFSTOR_su_start, IRFSTOR_su_end, pdiff
+  real :: IRFSTOR_su
+  real, dimension(NDT_su):: ETD_su,QNAT_su
+  real, dimension(NDT_su):: QADJ_su,QDIV_su,QRFIN_su,QRFOUT_su
+  real, dimension(NDT_su):: QOL_su,QCD_su,CE_su,RFSTOR_su
   
   ! ! output 
   double precision, dimension(sim_length), intent(out):: QADJ_out,QDIV_out
@@ -117,13 +125,13 @@ subroutine consuse(sim_length, year, month, day, &
   AREA=real(AREA_in)
   EFF=real(EFF_in) 
   MFLOW=real(MFLOW_in)*0.0283168
-  IRFSTOR=real(IRFSTOR_in)
   ACCUM=real(ACCUM_in)
   DECAY=real(DECAY_in)
   
   QNAT=real(QNAT_in)*0.0283168
   
   ! ! Calculate daily PE_adj from monthly values
+
   peadj_m_prev(1) = peadj_m(12)
   peadj_m_prev(2:12) = peadj_m(1:11)
   peadj_m_next(12) = peadj_m(1)
@@ -162,6 +170,44 @@ subroutine consuse(sim_length, year, month, day, &
       
   end do
 
+  ! ! IRFSTOR spin-up proceedure
+
+    ! start everything at 0
+    IRFSTOR_su_start = dble(0) 
+    IRFSTOR_su_end = dble(0) 
+    pdiff = dble(1.0)
+    QNAT_su=QNAT(:NDT_su)
+    ETD_su=ETD(:NDT_su)
+    
+    ! ! Continue searching for IRFSTOR until starting storage is within 1% of ending storage
+    do while (pdiff > 0.01)
+
+      ! put the ending states from the previous iteration as the starting states 
+      IRFSTOR_su = real(IRFSTOR_su_end)
+
+      ! Run Consuse for the NTD_su time with the initial rfstor 
+      call EX57 (int(NDT_su),AREA,EFF,MFLOW,IRFSTOR_su,ACCUM,DECAY, &
+         ETD_su,QNAT_su,QADJ_su,QDIV_su,QRFIN_su,QRFOUT_su,QOL_su,QCD_su,CE_su,RFSTOR_su)
+
+      IRFSTOR_su_end = dble(RFSTOR_su(NDT_su))
+
+      ! ! Check the difference between starting RFSTOR and ending RFSTOR
+      pdiff = dble(0)
+      if(IRFSTOR_su_start+IRFSTOR_su_end < 0.000001)then
+        ! ! if iteration is approaching a optimum state of 0, this is end the loop
+        cycle
+      else
+        pdiff = pdiff + abs(IRFSTOR_su_start-IRFSTOR_su_end)/(IRFSTOR_su_start)
+      end if
+      
+      IRFSTOR_su_start = IRFSTOR_su_end
+    ! ! write(*,'(7f10.3)')pdiff, IRFSTOR_su_start
+    
+    end do
+    
+  ! ! set the initial rfstate to the final spin up values
+  IRFSTOR = real(IRFSTOR_su_end)
+  
   ! ! Run Conuse subroutine
   call EX57 (NDT,AREA,EFF,MFLOW,IRFSTOR,ACCUM,DECAY, &
      ETD,QNAT,QADJ,QDIV,QRFIN,QRFOUT,QOL,QCD,CE,RFSTOR)
