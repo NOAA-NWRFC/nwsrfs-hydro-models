@@ -24,7 +24,7 @@ forcing_adjust_map_pet_ptps(
 \item{return_climo}{blah}
 }
 \value{
-
+stuff
 }
 \description{
 description

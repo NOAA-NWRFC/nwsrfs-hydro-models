@@ -23,6 +23,8 @@ sac_snow_uh_lagk(
 \item{pars}{sac parameters}
 
 \item{forcing_adjust}{does the parameter set include forcing adjustments}
+
+\item{climo}{pre computed climotology}
 }
 \value{
 Vector of routed flow in cfs
@@ -31,9 +33,11 @@ Vector of routed flow in cfs
 Execute SAC-SMA, SNOW17, UH and LAG-K with given parameters
 }
 \examples{
+\dontrun{
 data(forcing)
 data(pars)
 data(upflows)
 dt_hours = 6
 flow_cfs = sac_snow_uh_lagk(dt_hours, forcing, uptribs, pars)
+}
 }

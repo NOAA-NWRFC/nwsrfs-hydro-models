@@ -12,6 +12,8 @@ lagk(dt_hours, uptribs, pars, sum_routes = TRUE)
 \item{uptribs}{a matrix where each column contains flow data (in cfs) for an upstream point}
 
 \item{pars}{parameters}
+
+\item{sum_routes}{add all routed values together or leave separate}
 }
 \value{
 vector of routed flows

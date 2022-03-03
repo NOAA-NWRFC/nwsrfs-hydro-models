@@ -1,5 +1,5 @@
-PKG_FFLAGS = -flto #-Wall -pedantic #-O3 #-fno-align-commons -ffixed-line-length-none #-std=f95
-PKG_FCFLAGS = -flto #-mmacosx-version-min=11.1 #-Wall -pedantic #-O3 #-fno-align-commons -ffixed-line-length-none #-std=f95
+PKG_FFLAGS = #-Wall -pedantic #-O3 #-fno-align-commons -ffixed-line-length-none #-std=f95
+PKG_FCFLAGS = #-mmacosx-version-min=11.1 #-Wall -pedantic #-O3 #-fno-align-commons -ffixed-line-length-none #-std=f95
 
 all: $(SHLIB)
 

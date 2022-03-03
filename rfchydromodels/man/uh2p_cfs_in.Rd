@@ -16,7 +16,7 @@ uh2p_cfs_in(shape, scale, timestep, area)
 \item{area}{basin area in square miles}
 }
 \value{
-
+stuff
 }
 \description{
 Create a 2 parameter gamma unit hydrograph with units cfs/in
@@ -25,7 +25,7 @@ Create a 2 parameter gamma unit hydrograph with units cfs/in
 dt = 6
 shape = 2
 scale = 1
-y = uh2p_cfs_in(2,1,6)
+y = uh2p_cfs_in(2,1,6,1000)
 x = seq(dt,dt*length(y),by=dt)
 plot(x,y,t='l')
 }

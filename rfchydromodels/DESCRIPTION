@@ -1,8 +1,7 @@
 Package: rfchydromodels
 Title: NWS hydrology models, SAC-SMA, SNOW17, UH
 Version: 0.1.0
-Authors@R: 
-    person(given = "Cameron",
+Authors@R: person(given = "Cameron",
            family = "Bracken",
            role = c("aut", "cre"),
            email = "cameron.bracken@noaa.gov",

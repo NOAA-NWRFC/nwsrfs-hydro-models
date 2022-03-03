@@ -16,7 +16,7 @@ uh2p(shape, scale, timestep, max_len = 1000)
 \item{max_len}{max length of the uh}
 }
 \value{
-
+stuff
 }
 \description{
 Returns ordinates for a 2 parameter (shape,scale) gamma unit hydrograph. The ordinates are

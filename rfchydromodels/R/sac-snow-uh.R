@@ -4,6 +4,7 @@
 #' @param forcing data frame with columns for forcing inputs
 #' @param pars sac parameters
 #' @param forcing_adjust does the parameter set include forcing adjustments
+#' @param climo pre computed climotology
 #' @return Vector of routed flow in cfs
 #' @export
 #'
@@ -27,15 +28,18 @@ sac_snow_uh <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=NULL
 #' @param uptribs data frame with columns for upstream flow data
 #' @param pars sac parameters
 #' @param forcing_adjust does the parameter set include forcing adjustments
+#' @param climo pre computed climotology
 #' @return Vector of routed flow in cfs
 #' @export
 #'
 #' @examples
+#' \dontrun{
 #' data(forcing)
 #' data(pars)
 #' data(upflows)
 #' dt_hours = 6
 #' flow_cfs = sac_snow_uh_lagk(dt_hours, forcing, uptribs, pars)
+#' }
 sac_snow_uh_lagk <- function(dt_hours, forcing, uptribs, pars, forcing_adjust=TRUE, climo=NULL){
 
   tci = sac_snow(dt_hours, forcing, pars, forcing_adjust = forcing_adjust, climo = climo)
@@ -51,7 +55,7 @@ sac_snow_uh_lagk <- function(dt_hours, forcing, uptribs, pars, forcing_adjust=TR
 #' @param forcing data frame with with columns for forcing inputs
 #' @param pars sac parameters
 #' @param forcing_adjust does the parameter set include forcing adjustments
-#' @param climo
+#' @param climo climotology matrix
 #' @return Matrix (1 column per zone) of unrouted channel inflow
 #' @export
 #'
@@ -217,6 +221,8 @@ sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=NULL){
 #' @param forcing data frame with with columns for forcing inputs
 #' @param pars sac parameters
 #' @param forcing_adjust does the parameter set include forcing adjustments
+#' @param climo pre-computed climotology to use
+#' @param return_adj return monthly adjustments
 #' @return data.frame (1 column per zone) of unrouted channel inflow (tci), sac states
 #' uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, and snow water equivalent (swe),
 #' and adjusted forcing data.
@@ -438,7 +444,7 @@ format_states <- function(x) {
 #' @param timestep timestep in hours
 #' @param max_len max length of the uh
 #'
-#' @return
+#' @return stuff
 #' @export
 #'
 #' @examples
@@ -488,14 +494,14 @@ uh2p <- function(shape, scale, timestep, max_len = 1000){
 #' @param timestep timestep in hours
 #' @param area basin area in square miles
 #'
-#' @return
+#' @return stuff
 #' @export
 #'
 #' @examples
 #' dt = 6
 #' shape = 2
 #' scale = 1
-#' y = uh2p_cfs_in(2,1,6)
+#' y = uh2p_cfs_in(2,1,6,1000)
 #' x = seq(dt,dt*length(y),by=dt)
 #' plot(x,y,t='l')
 uh2p_cfs_in <- function(shape, scale, timestep, area){
@@ -511,7 +517,7 @@ uh2p_cfs_in <- function(shape, scale, timestep, area){
 #' @param shape gamma shape parameter
 #' @param toc time of concentration (hours)
 #'
-#' @return
+#' @return stuff
 #' @export
 #'
 #' @examples
@@ -591,13 +597,13 @@ uh <- function(dt_hours, tci, pars){
 
 #' Seasonal chanloss
 #'
-#' @param flow_cfs streamflow vector
+#' @param flow streamflow vector
+#' @param forcing forcing data
 #' @param dt_hours timestep in hours
 #' @param pars parameters
 #' @return Vector of flow modified by the chanloss pattern
 #' @export
 #'
-#' @examples
 #' @useDynLib rfchydromodels sacsnow_
 chanloss <- function(flow, forcing, dt_hours, pars){
 
@@ -641,14 +647,12 @@ chanloss <- function(flow, forcing, dt_hours, pars){
 #'
 #' @param input A data frame (or matrix with col names), must have
 #' columns: flow, pet (units of mm), year, month, day
-#' @param peadj_m
 #' @param pars model parameters in the same format as the sac and snow models, with type=='consuse'
 #' @param cfs if TRUE, then flow units of cfs are expected, if FALSE then cms are expected.
 #'
-#' @return
+#' @return data frame with consuse variables
 #' @export
 #'
-#' @examples
 #' @useDynLib rfchydromodels sacsnow_
 consuse <- function(input, pars, cfs=TRUE){
 
@@ -708,6 +712,7 @@ consuse <- function(input, pars, cfs=TRUE){
 #' @param dt_hours timestep in hours
 #' @param uptribs a matrix where each column contains flow data (in cfs) for an upstream point
 #' @param pars parameters
+#' @param sum_routes add all routed values together or leave separate
 #'
 #' @return vector of routed flows
 #' @export
@@ -901,13 +906,14 @@ interp_fa <- function(factors,month,day,hour){
 #' @param ul blah
 #' @param return_climo blah
 #'
-#' @return
+#' @return stuff
 #' @export
 #'
 #' @examples
 #' climo = rep(2,12)
 #' pars = c(.5,0,10,0)
 #' forcing_adjust_map_pet_ptps(climo,pars)
+#' @importFrom stats dnorm median
 forcing_adjust_map_pet_ptps <- function(climo, pars, ll=0.9*climo, ul=1.1*climo, return_climo = FALSE){
 
 
@@ -982,13 +988,14 @@ forcing_adjust_map_pet_ptps <- function(climo, pars, ll=0.9*climo, ul=1.1*climo,
 #' @param ul blah
 #' @param return_climo blah
 #'
-#' @return
+#' @return stuff
 #' @export
 #'
 #' @examples
 #' climo = rep(2,12)
 #' pars = c(.5,0,10,0)
 #' forcing_adjust_mat(climo,pars)
+#' @importFrom stats dnorm median
 forcing_adjust_mat <- function (climo, pars, ll=climo*ifelse(climo>0,0.9,1.1),
                                 ul=climo*ifelse(climo>0,1.1,0.9), return_climo = FALSE){
 

@@ -7,8 +7,8 @@
 forcing_adjust_mat(
   climo,
   pars,
-  ll = 0.9 * climo,
-  ul = 1.1 * climo,
+  ll = climo * ifelse(climo > 0, 0.9, 1.1),
+  ul = climo * ifelse(climo > 0, 1.1, 0.9),
   return_climo = FALSE
 )
 }
@@ -24,7 +24,7 @@ forcing_adjust_mat(
 \item{return_climo}{blah}
 }
 \value{
-
+stuff
 }
 \description{
 description

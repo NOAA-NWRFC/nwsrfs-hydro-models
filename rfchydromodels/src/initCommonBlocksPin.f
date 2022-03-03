@@ -12,7 +12,7 @@
        IPR = 0
        IPU = 0
      
-       open(IN,file=TRIM(FILENAME),status='old')
+C        open(IN,file=TRIM(FILENAME),status='old')
       
      
        RETURN

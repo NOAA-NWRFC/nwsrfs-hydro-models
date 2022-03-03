@@ -2,16 +2,21 @@
 % Please edit documentation in R/sac-snow-uh.R
 \name{consuse}
 \alias{consuse}
-\title{Title}
+\title{Daily consuse model}
 \usage{
-consuse(flow, etd, pars)
+consuse(input, pars, cfs = TRUE)
 }
 \arguments{
-\item{pars}{}
+\item{input}{A data frame (or matrix with col names), must have
+columns: flow, pet (units of mm), year, month, day}
+
+\item{pars}{model parameters in the same format as the sac and snow models, with type=='consuse'}
+
+\item{cfs}{if TRUE, then flow units of cfs are expected, if FALSE then cms are expected.}
 }
 \value{
-
+data frame with consuse variables
 }
 \description{
-Title
+Daily consuse model
 }

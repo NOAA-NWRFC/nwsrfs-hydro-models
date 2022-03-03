@@ -2,18 +2,22 @@
 % Please edit documentation in R/sac-snow-uh.R
 \name{chanloss}
 \alias{chanloss}
-\title{Simple proportional chanloss}
+\title{Seasonal chanloss}
 \usage{
-chanloss(flow, pars)
+chanloss(flow, forcing, dt_hours, pars)
 }
 \arguments{
-\item{pars}{parameters}
+\item{flow}{streamflow vector}
 
-\item{flow_cfs}{streamflow vector}
+\item{forcing}{forcing data}
+
+\item{dt_hours}{timestep in hours}
+
+\item{pars}{parameters}
 }
 \value{
-Vector of flow scaled by the fixp parameter (if it exists)
+Vector of flow modified by the chanloss pattern
 }
 \description{
-Simple proportional chanloss
+Seasonal chanloss
 }

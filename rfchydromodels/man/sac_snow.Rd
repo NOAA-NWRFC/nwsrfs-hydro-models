@@ -14,6 +14,8 @@ sac_snow(dt_hours, forcing, pars, forcing_adjust = TRUE, climo = NULL)
 \item{pars}{sac parameters}
 
 \item{forcing_adjust}{does the parameter set include forcing adjustments}
+
+\item{climo}{climotology matrix}
 }
 \value{
 Matrix (1 column per zone) of unrouted channel inflow

@@ -14,6 +14,8 @@ sac_snow_uh(dt_hours, forcing, pars, forcing_adjust = TRUE, climo = NULL)
 \item{pars}{sac parameters}
 
 \item{forcing_adjust}{does the parameter set include forcing adjustments}
+
+\item{climo}{pre computed climotology}
 }
 \value{
 Vector of routed flow in cfs

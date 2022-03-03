@@ -13,7 +13,7 @@ uh2p_get_scale(shape, toc)
 \item{toc}{time of concentration (hours)}
 }
 \value{
-
+stuff
 }
 \description{
 Get the scale parameter from a 2 parameter gamma unit hydrograph given
