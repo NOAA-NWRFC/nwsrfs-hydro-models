@@ -166,14 +166,6 @@ class Model:
             for par in self.pars.loc[self.pars.type==par_type].name.unique():
                 self.p[par_type][par] = self.pars.loc[(self.pars.type==par_type)&
                     (self.pars['name'] == par)].sort_values(by='zone')['value'].to_numpy()
-
-        #Create numpy collection of sac, snow, inital conditions
-        self.init = np.concatenate([[self.p['snow']['init_swe']], [self.p['sac']['init_uztwc']],
-                                    [self.p['sac']['init_uzfwc']],[self.p['sac']['init_lztwc']],
-                                    [self.p['sac']['init_lzfsc']],[self.p['sac']['init_lzfpc']],
-                                    [self.p['sac']['init_adimc']]
-                                    ],axis=0).astype('double')
-        self.init=np.asfortranarray(self.init)
         
         self.sac_pars = np.concatenate([[self.p['sac']['uztwm']], [self.p['sac']['uzfwm']], [self.p['sac']['lztwm']],
                                     [self.p['sac']['lzfpm']],[self.p['sac']['lzfsm']], [self.p['sac']['adimp']],
@@ -284,8 +276,8 @@ class Model:
                         self.map_fa_pars, self.mat_fa_pars, self.pet_fa_pars, self.ptps_fa_pars,
                         # forcing adjust limits
                         self.map_fa_limits, self.mat_fa_limits, self.pet_fa_limits, self.ptps_fa_limits,
-                        # initial conditions
-                        self.init,
+                        # initial swe
+                        p['init_swe'].astype('double'),
                         # climo
                         self.climo,
                         # forcings
@@ -315,8 +307,8 @@ class Model:
                         self.map_fa_pars, self.mat_fa_pars, self.pet_fa_pars, self.ptps_fa_pars,
                         # forcing adjust limits
                         self.map_fa_limits, self.mat_fa_limits, self.pet_fa_limits, self.ptps_fa_limits,
-                        # initial conditions
-                        self.init,
+                        # initial swe
+                        p['init_swe'].astype('double'),
                         # climo
                         self.climo,
                         # forcings
@@ -324,10 +316,14 @@ class Model:
 
         state_param=['map_fa','ptps_fa','mat_fa','etd','pet','tci','aet',
                         'uztwc','uzfwc','lztwc','lzfsc','lzfpc','adimc',
-                        'swe','aesc','neghs','liqw','raim','psfall','prain']
+                        'swe','aesc','neghs','liqw','raim','psfall','prain',
+                        'mat_adj', 'map_adj', 'ptps_adj', 'pet_adj']
         self.sacsnow_states={}
         for count, param in  enumerate(state_param):
-            self.sacsnow_states[param]=pd.DataFrame(states[count], index=self.dates,columns=self.zones)
+            if "_adj" not in param:
+                self.sacsnow_states[param]=pd.DataFrame(states[count], index=self.dates,columns=self.zones)
+            else:
+                self.sacsnow_states[param]=pd.DataFrame(states[count],index=range(1,13),columns=[param])
 
         #Calculate streamflow for each zone
         sf_df=pd.DataFrame()
@@ -446,7 +442,7 @@ class Model:
         
         #If there are sac/snow zone, calculate runoff
         if self.n_zones > 0:
-            self.sim = self.sim+self.sacsnow_run(inst=True)
+            self.sim = self.sim+self.sacsnow_run(inst=inst)
         
         #If there are upstream reaches to route, add them to the total flow
         if self.n_uptribs > 0:
@@ -459,8 +455,10 @@ class Model:
         if self.n_consuse > 0:
             self.consuse_run()
             qnat_cu_adj=self.consuse_states['QDIV'].sum(axis=1)-self.consuse_states['QRF_out'].sum(axis=1)
-           #Backfill to fill all values after 00:00 and forward fill to correct missing values at end of timeseries
+            #Backfill to fill all values after 00:00 and forward fill to correct missing values at end of timeseries
             qnat_cu_adj=qnat_cu_adj.reindex(self.sim.index).backfill().ffill()
             self.sim = self.sim - qnat_cu_adj
+            #Replace any negative values with zero
+            self.sim[self.sim < 0]=0
 
         return self.sim
