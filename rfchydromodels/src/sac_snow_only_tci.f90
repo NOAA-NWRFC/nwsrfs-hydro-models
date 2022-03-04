@@ -61,6 +61,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   ! used in all model HRUs
   ! model state variables not listed start at 0
   double precision, dimension(6):: spin_up_start_states, spin_up_end_states
+  integer:: spin_up_counter
   double precision:: pdiff
   double precision, dimension(n_hrus):: init_swe, init_uztwc, init_uzfwc, init_lztwc, init_lzfsc, &
           init_lzfpc, init_adimc
@@ -491,13 +492,16 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
     
     ! =============== Spin up procedure =====================================
 
-    ! start everything at 0
-    spin_up_start_states = 0 
-    spin_up_end_states = 0 
+    ! starting values
+    spin_up_start_states = 1.0 
+    spin_up_end_states = 0.0
     pdiff = 1.0
     ts_per_year = ts_per_day * 365
+    spin_up_counter = 0
 
     do while (pdiff > 0.01)
+
+      spin_up_counter = spin_up_counter + 1
 
       ! put the ending states from the previous iteration as the starting states 
       uztwc_sp = real(spin_up_end_states(1))
@@ -613,15 +617,17 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
       spin_up_end_states(5) = dble(lzfpc_sp)
       spin_up_end_states(6) = dble(adimc_sp)
 
-      ! pdiff = abs(spin_up_start_states-spin_up_end_states)/(spin_up_start_states+spin_up_end_states)
-      pdiff = 0
+      pdiff = 0.0
       do k=1,6
-        if(spin_up_start_states(k)+spin_up_end_states(k) < 0.000001)then
+        ! avoid divide by zero 
+        if(spin_up_start_states(k) < 0.000001)then
           cycle
-        else
-          pdiff = pdiff + abs(spin_up_start_states(k)-spin_up_end_states(k))/(spin_up_start_states(k)+spin_up_end_states(k))
         end if
+        pdiff = pdiff + abs(spin_up_start_states(k)-spin_up_end_states(k))/spin_up_start_states(k)
       end do
+      ! on the first iteration all the states are at zero so 
+      ! artificially set pdiff and keep going
+      if(spin_up_counter .eq. 1) pdiff = 1.0
 
       spin_up_start_states = spin_up_end_states
 

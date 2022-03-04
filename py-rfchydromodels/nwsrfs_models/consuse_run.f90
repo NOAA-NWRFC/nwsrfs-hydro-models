@@ -172,8 +172,8 @@ subroutine consuse(sim_length, year, month, day, &
 
   ! ! IRFSTOR spin-up proceedure
 
-    ! start everything at 0
-    IRFSTOR_su_start = dble(0) 
+    ! starting values
+    IRFSTOR_su_start = dble(1) ! avoid divide by zero 
     IRFSTOR_su_end = dble(0) 
     pdiff = dble(1.0)
     QNAT_su=QNAT(:NDT_su)
@@ -192,17 +192,11 @@ subroutine consuse(sim_length, year, month, day, &
       IRFSTOR_su_end = dble(RFSTOR_su(NDT_su))
 
       ! ! Check the difference between starting RFSTOR and ending RFSTOR
-      pdiff = dble(0)
-      if(IRFSTOR_su_start+IRFSTOR_su_end < 0.000001)then
-        ! ! if iteration is approaching a optimum state of 0, this is end the loop
-        cycle
-      else
-        pdiff = pdiff + abs(IRFSTOR_su_start-IRFSTOR_su_end)/(IRFSTOR_su_start)
-      end if
-      
-      IRFSTOR_su_start = IRFSTOR_su_end
-    ! ! write(*,'(7f10.3)')pdiff, IRFSTOR_su_start
+      pdiff = abs(IRFSTOR_su_start-IRFSTOR_su_end)/IRFSTOR_su_start
     
+      ! write(*,'(3f10.3)')pdiff, IRFSTOR_su_start, IRFSTOR_su_end
+      IRFSTOR_su_start = IRFSTOR_su_end
+  
     end do
     
   ! ! set the initial rfstate to the final spin up values

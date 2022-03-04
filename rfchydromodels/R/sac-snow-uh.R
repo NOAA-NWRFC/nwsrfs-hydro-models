@@ -682,7 +682,6 @@ consuse <- function(input, pars, cfs=TRUE){
                  AREA_in = cu_pars[cu_pars$zone==cu_zone & cu_pars$name=='area_km2',]$value,
                  EFF_in = cu_pars[cu_pars$zone==cu_zone & cu_pars$name=='irr_eff',]$value,
                  MFLOW_in = cu_pars[cu_pars$zone==cu_zone & cu_pars$name=='min_flow_cmsd',]$value * 0.028316847,
-                 IRFSTOR_in = cu_pars[cu_pars$zone==cu_zone & cu_pars$name=='init_rf_storage',]$value,
                  ACCUM_in = cu_pars[cu_pars$zone==cu_zone & cu_pars$name=='rf_accum_rate',]$value,
                  DECAY_in = cu_pars[cu_pars$zone==cu_zone & cu_pars$name=='rf_decay_rate',]$value,
                  peadj_m = as.numeric(peadj_m),

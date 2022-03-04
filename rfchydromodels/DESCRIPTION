@@ -1,16 +1,22 @@
 Package: rfchydromodels
-Title: NWS hydrology models, SAC-SMA, SNOW17, UH
+Title: NWS hydrology models, SAC-SMA, SNOW17, UH, CONSUSE, CHANLOSS
 Version: 0.1.0
-Authors@R: person(given = "Cameron",
-           family = "Bracken",
-           role = c("aut", "cre"),
-           email = "cameron.bracken@noaa.gov",
-           comment = c(ORCID = "0000-0003-1917-402X"))
+Authors@R: c(
+           person(given = "Cameron",
+             family = "Bracken",
+             role = c("aut", "cre"),
+             email = "cameron.bracken@noaa.gov",
+             comment = c(ORCID = "0000-0003-1917-402X")),
+           person(given = "Geoffrey",
+             family = "Walters",
+             role = c("aut"),
+             email = "geoffrey.walters@noaa.gov"))
 Description: Provides functions to call Fortran versions of NWS operational 
              hydrology models, Sacramento Soil Moisture Accounting (SAC-SMA), 
              Snow Accumulation and Ablation (SNOW17). Also provides an 
-             interface to the unit hydrograph routing model. The Fortran code 
-             used in this package is considered "legacy" and is not supported,
+             interface to the unit hydrograph routing model, consumptive use 
+             and channel loss/gain modules. The Fortran code used in this package 
+             is considered "legacy" and is not supported officially by NWS,
              but it should not have any significant differences from current 
              operational models. 
 License: MIT + file LICENSE
