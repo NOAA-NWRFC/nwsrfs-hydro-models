@@ -1,6 +1,6 @@
 subroutine consuse(sim_length, year, month, day, &
     AREA_in,EFF_in,MFLOW_in, &
-    ACCUM_in,DECAY_in, peadj_m, &
+    ACCUM_in,DECAY_in, peadj_m, peadj, &
     PET_in,QNAT_in, &
     QADJ_out,QDIV_out,QRFIN_out,QRFOUT_out, &
     QOL_out,QCD_out,CE_out,RFSTOR_out)
@@ -80,12 +80,14 @@ subroutine consuse(sim_length, year, month, day, &
 ! !     MFLOW     - MINIMUM FLOW (CFSD)
 
 ! !     peadj_m   - Monthly PEadj table
+! !     peadj     - PET scale factor
+
 
   ! ! inputs
   integer, intent(in):: sim_length
   integer, dimension(sim_length), intent(in):: year, month, day
   double precision, intent(in):: AREA_in,EFF_in,MFLOW_in
-  double precision, intent(in):: ACCUM_in,DECAY_in
+  double precision, intent(in):: ACCUM_in,DECAY_in, peadj
   double precision, dimension(sim_length), intent(in):: PET_in,QNAT_in  
   double precision, dimension(12), intent(in):: peadj_m
     
@@ -166,7 +168,7 @@ subroutine consuse(sim_length, year, month, day, &
         peadj_step = peadj_m_prev(mo) + dayi/dayn*(peadj_m(mo)-peadj_m_prev(mo))
       end if 
 
-      ETD(i)=real(PET_in(i)*peadj_step)
+      ETD(i)=real(PET_in(i)*peadj_step*peadj)
       
   end do
 

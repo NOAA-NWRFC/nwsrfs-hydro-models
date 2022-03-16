@@ -391,6 +391,8 @@ class Model:
             consuse_ts_input.columns=['pet','qnat']
             consuse_ts_input[~consuse_ts_input.isna().any(axis=1)]
             
+            peadj=self.pars.loc[(self.pars.name=='peadj')&(self.pars.zone==cu_name),'value'].squeeze()
+            
             dates_input=consuse_ts_input.index
             
             consuse_ts_input=consuse_ts_input.astype('double').to_numpy()
@@ -405,7 +407,8 @@ class Model:
             states=s.consuse(dates_input.year.astype('int'), dates_input.month.astype('int'), dates_input.day.astype('int'),
                          p['area_km2'][n].astype('double'),p['irr_eff'][n].astype('double'),np.double(p['min_flow_cmsd'][n]*cms_2_cfs),
                          p['rf_accum_rate'][n].astype('double'),p['rf_decay_rate'][n].astype('double'),
-                         self.peadj_cu[:,n],consuse_ts_input[:,0],consuse_ts_input[:,1])
+                         self.peadj_cu[:,n],peadj,
+                         consuse_ts_input[:,0],consuse_ts_input[:,1])
             
             #Concat state value for CU zone to dictionary. IF QADJ 
             for count, param in  enumerate(state_param):

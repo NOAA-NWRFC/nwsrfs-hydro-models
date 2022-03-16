@@ -8,12 +8,12 @@
 !function
 subroutine  fa_ts(n_hrus, dt, sim_length, year, month, day, hour, &
     latitude, area, &
-    peadj, pxadj, peadj_m, &
+    peadj_m, &
     map_fa_pars, mat_fa_pars, pet_fa_pars, ptps_fa_pars, & 
     map_fa_limits_in, mat_fa_limits_in, pet_fa_limits_in, ptps_fa_limits_in, & 
     climo, & 
     map, ptps, mat, &
-    map_fa, mat_fa, ptps_fa, pet_fa)
+    map_fa, mat_fa, ptps_fa, pet_fa, etd)
   
   !! Calculates a forcing adjusted timeseries for MAP, MAT, PTPS, and PET
   
@@ -36,7 +36,6 @@ subroutine  fa_ts(n_hrus, dt, sim_length, year, month, day, hour, &
   double precision, dimension(12, 4), intent(in):: climo ! 4 columns, map, mat, pet, ptps
   double precision, dimension(n_hrus), intent(in):: latitude   ! PET param, decimal degrees
   double precision, dimension(n_hrus), intent(in):: area       ! km2
-  double precision, dimension(n_hrus), intent(in):: peadj, pxadj !pet and map static multiplication factors
   ! forcing adjustment parameter vectors: mult, p_redist, std, shift 
   double precision, dimension(4), intent(in):: map_fa_pars, mat_fa_pars, pet_fa_pars, ptps_fa_pars
   ! climo fa limits, static set by external data 
@@ -73,7 +72,7 @@ subroutine  fa_ts(n_hrus, dt, sim_length, year, month, day, hour, &
   ! monthly forcing adjustment parameters for map, mat, pet, ptps will be computed
   double precision, dimension(12):: map_adj, mat_adj, pet_adj, ptps_adj
   ! forcing adjusted timeseries
-  double precision, dimension(sim_length, n_hrus), intent(out):: map_fa, mat_fa, ptps_fa, pet_fa
+  double precision, dimension(sim_length, n_hrus), intent(out):: map_fa, mat_fa, ptps_fa, pet_fa, etd
   ! plane 1: map_fa, plane 2: mat_fa, plane 3: ptps_fa, plane 4:  pet_fa
   !double precision, dimension(4,sim_length, n_hrus):: fa_ts
 
@@ -405,12 +404,12 @@ subroutine  fa_ts(n_hrus, dt, sim_length, year, month, day, hour, &
 
       mat_step = mat_fa(i,nh)
       ! apply PXADJ (scaling the input values)
-      map_step = map(i,nh) * pxadj(nh) * map_adj_step
+      map_step = map(i,nh) * map_adj_step
       ! pet_hs(i,nh) is the pet from HS, 
       ! peadj_step is the conversion to etdemand (crop factor)
       ! pet_adj_step is the forcing adjustment
       ptps_step = min(ptps(i,nh) * ptps_adj_step, 1d0)
-      pet_step = pet_hs(i,nh) * pet_adj_step * peadj_step* peadj(nh)
+      pet_step = pet_hs(i,nh) * pet_adj_step
       ! if(i < 6)then
       !   write(*,'(a,6i5,8f8.2)')' after adj',nh, i, year(i), month(i), day(i), hour(i), & 
       !                                    map_step, mat_step, ptps_step, pet_step, &
@@ -437,12 +436,8 @@ subroutine  fa_ts(n_hrus, dt, sim_length, year, month, day, hour, &
       map_fa(i,nh)=map_step
       ptps_fa(i,nh)=ptps_step
       pet_fa(i,nh)=pet_step
+      etd(i,nh)=pet_step * peadj_step
 
-
-      !fa_ts(1,i,nh)=map_fa(i,nh)
-      !fa_ts(2,i,nh)=mat_fa(i,nh)
-      !fa_ts(3,i,nh)=ptps_fa(i,nh)
-      !fa_ts(4,i,nh)=pet_fa(i,nh)
       
     end do  ! ============ end simulation time loop ====================
   end do   ! ========== END of simulation areas loop   ====================
