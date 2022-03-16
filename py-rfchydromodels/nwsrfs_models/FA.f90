@@ -195,7 +195,8 @@ subroutine  fa_ts(n_hrus, dt, sim_length, year, month, day, hour, &
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   pet_hs = 0d0
-
+  pet_ts = 0d0
+  
   do nh = 1, n_hrus
     do i = 1, sim_length
       ! on the first timestep of the day (or for the whole day if the ts is daily), 
@@ -243,7 +244,7 @@ subroutine  fa_ts(n_hrus, dt, sim_length, year, month, day, hour, &
 
         ! apply global scaling peadj and distibute across timesteps 
         ! if(i .eq. 1)write(*,*)'pet_ts',pet_ts
-        pet_ts = pet_ts * peadj(nh) / dble(ts_per_day)
+        pet_ts = pet_ts / dble(ts_per_day)
         ! if(i .eq. 1)write(*,*)'pet_ts',pet_ts
 
       end if 
@@ -409,7 +410,7 @@ subroutine  fa_ts(n_hrus, dt, sim_length, year, month, day, hour, &
       ! peadj_step is the conversion to etdemand (crop factor)
       ! pet_adj_step is the forcing adjustment
       ptps_step = min(ptps(i,nh) * ptps_adj_step, 1d0)
-      pet_step = pet_hs(i,nh) * pet_adj_step * peadj_step
+      pet_step = pet_hs(i,nh) * pet_adj_step * peadj_step* peadj(nh)
       ! if(i < 6)then
       !   write(*,'(a,6i5,8f8.2)')' after adj',nh, i, year(i), month(i), day(i), hour(i), & 
       !                                    map_step, mat_step, ptps_step, pet_step, &
@@ -457,7 +458,6 @@ end subroutine
 
 subroutine  fa_adj(n_hrus, dt, sim_length, year, month, day, hour, &
     latitude, area, &
-    peadj, &
     map_fa_pars, mat_fa_pars, pet_fa_pars, ptps_fa_pars, & 
     map_fa_limits_in, mat_fa_limits_in, pet_fa_limits_in, ptps_fa_limits_in, & 
     climo, & 
@@ -485,7 +485,6 @@ subroutine  fa_adj(n_hrus, dt, sim_length, year, month, day, hour, &
   double precision, dimension(12, 4), intent(in):: climo ! 4 columns, map, mat, pet, ptps
   double precision, dimension(n_hrus), intent(in):: latitude   ! PET param, decimal degrees
   double precision, dimension(n_hrus), intent(in):: area       ! km2
-   double precision, dimension(n_hrus), intent(in):: peadj !pet static multiplication factors
   ! forcing adjustment parameter vectors: mult, p_redist, std, shift 
   double precision, dimension(4), intent(in):: map_fa_pars, mat_fa_pars, pet_fa_pars, ptps_fa_pars
   ! climo fa limits, static set by external data 
@@ -503,7 +502,6 @@ subroutine  fa_adj(n_hrus, dt, sim_length, year, month, day, hour, &
   integer, dimension(sim_length):: jday ! julian day for pet calculations
   double precision:: pet_ts, tmax_daily, tmin_daily, tave_daily ! pet for a time step and required temperature varible
   double precision, dimension(sim_length, n_hrus):: pet_hs ! pet unadjusted by pet_adj
-  double precision::  mat_step !adj forcing for current ts in loop
   double precision:: mat_adj_step!adj for current ts in loop
   double precision, dimension(12):: map_climo, mat_climo, pet_climo, ptps_climo !monthly climo
   integer, dimension(12) :: mdays, mdays_prev !lookup tables with number of days in month
@@ -636,6 +634,7 @@ subroutine  fa_adj(n_hrus, dt, sim_length, year, month, day, hour, &
   ! Compute unadjusted PET for the entire POR 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   pet_hs = 0d0
+  pet_ts = 0d0
 
   do nh = 1, n_hrus
     do i = 1, sim_length
@@ -684,7 +683,7 @@ subroutine  fa_adj(n_hrus, dt, sim_length, year, month, day, hour, &
 
         ! apply global scaling peadj and distibute across timesteps 
         ! if(i .eq. 1)write(*,*)'pet_ts',pet_ts
-        pet_ts = pet_ts * peadj(nh) / dble(ts_per_day)
+        pet_ts = pet_ts / dble(ts_per_day)
         ! if(i .eq. 1)write(*,*)'pet_ts',pet_ts
 
       end if 
