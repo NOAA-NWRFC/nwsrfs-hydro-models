@@ -3,8 +3,6 @@
 #' @param dt_hours timestep in hours
 #' @param forcing data frame with columns for forcing inputs
 #' @param pars sac parameters
-#' @param forcing_adjust does the parameter set include forcing adjustments
-#' @param climo pre computed climotology
 #' @return Vector of routed flow in cfs
 #' @export
 #'
@@ -13,9 +11,9 @@
 #' data(pars)
 #' dt_hours = 6
 #' flow_cfs = sac_snow_uh(dt_hours,forcing, pars)
-sac_snow_uh <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=NULL){
+sac_snow_uh <- function(dt_hours, forcing, pars){
 
-  tci = sac_snow(dt_hours, forcing, pars, forcing_adjust = forcing_adjust, climo = climo)
+  tci = sac_snow(dt_hours, forcing, pars)
   flow_cfs = uh(dt_hours, tci, pars)
   flow_cfs = chanloss(flow_cfs, forcing, dt_hours, pars)
   flow_cfs
@@ -27,8 +25,6 @@ sac_snow_uh <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=NULL
 #' @param forcing data frame with columns for forcing inputs
 #' @param uptribs data frame with columns for upstream flow data
 #' @param pars sac parameters
-#' @param forcing_adjust does the parameter set include forcing adjustments
-#' @param climo pre computed climotology
 #' @return Vector of routed flow in cfs
 #' @export
 #'
@@ -40,9 +36,9 @@ sac_snow_uh <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=NULL
 #' dt_hours = 6
 #' flow_cfs = sac_snow_uh_lagk(dt_hours, forcing, uptribs, pars)
 #' }
-sac_snow_uh_lagk <- function(dt_hours, forcing, uptribs, pars, forcing_adjust=TRUE, climo=NULL){
+sac_snow_uh_lagk <- function(dt_hours, forcing, uptribs, pars){
 
-  tci = sac_snow(dt_hours, forcing, pars, forcing_adjust = forcing_adjust, climo = climo)
+  tci = sac_snow(dt_hours, forcing, pars)
   flow_cfs = uh(dt_hours, tci, pars)
   flow_cfs = chanloss(flow_cfs, forcing, dt_hours, pars)
   lagk_flow_cfs = lagk(dt_hours, uptribs, pars)
@@ -54,8 +50,6 @@ sac_snow_uh_lagk <- function(dt_hours, forcing, uptribs, pars, forcing_adjust=TR
 #' @param dt_hours timestep in hours
 #' @param forcing data frame with with columns for forcing inputs
 #' @param pars sac parameters
-#' @param forcing_adjust does the parameter set include forcing adjustments
-#' @param climo climotology matrix
 #' @return Matrix (1 column per zone) of unrouted channel inflow
 #' @export
 #'
@@ -66,7 +60,7 @@ sac_snow_uh_lagk <- function(dt_hours, forcing, uptribs, pars, forcing_adjust=TR
 #' tci = sac_snow(dt_hours, forcing, pars)
 #' @useDynLib rfchydromodels sacsnow_
 #' @importFrom stats reshape
-sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=NULL){
+sac_snow <- function(dt_hours, forcing, pars){
 
   pars = as.data.frame(pars)
 
@@ -75,66 +69,6 @@ sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=NULL){
 
   n_zones = length(forcing)
   sim_length = nrow(forcing[[1]])
-
-  # limits are applied basin wide
-  if(forcing_adjust){
-    # using base R here to avoid package dependency
-    map_lower = reshape(pars[grepl('map_lower',pars$name),c('name','zone','value')],
-                        timevar='zone',idvar='name',direction='wide')[,-1]
-    map_upper = reshape(pars[grepl('map_upper',pars$name),c('name','zone','value')],
-                        timevar='zone',idvar='name',direction='wide')[,-1]
-    mat_lower = reshape(pars[grepl('mat_lower',pars$name),c('name','zone','value')],
-                        timevar='zone',idvar='name',direction='wide')[,-1]
-    mat_upper = reshape(pars[grepl('mat_upper',pars$name),c('name','zone','value')],
-                        timevar='zone',idvar='name',direction='wide')[,-1]
-    pet_lower = reshape(pars[grepl('pet_lower',pars$name),c('name','zone','value')],
-                        timevar='zone',idvar='name',direction='wide')[,-1]
-    pet_upper = reshape(pars[grepl('pet_upper',pars$name),c('name','zone','value')],
-                        timevar='zone',idvar='name',direction='wide')[,-1]
-    ptps_lower = reshape(pars[grepl('ptps_lower',pars$name),c('name','zone','value')],
-                         timevar='zone',idvar='name',direction='wide')[,-1]
-    ptps_upper = reshape(pars[grepl('ptps_upper',pars$name),c('name','zone','value')],
-                         timevar='zone',idvar='name',direction='wide')[,-1]
-
-    # limits are applied basin wide
-    if(n_zones == 1){
-      map_limits = cbind(map_lower,map_upper)
-      mat_limits = cbind(mat_lower,mat_upper)
-      pet_limits = cbind(pet_lower,pet_upper)
-      ptps_limits = cbind(ptps_lower,ptps_upper)
-    }else{
-      map_limits = cbind(map_lower[,1],map_upper[,1])
-      mat_limits = cbind(mat_lower[,1],mat_upper[,1])
-      pet_limits = cbind(pet_lower[,1],pet_upper[,1])
-      ptps_limits = cbind(ptps_lower[,1],ptps_upper[,1])
-    }
-
-    # limits are applied basin wide
-    map_fa_pars = c(pars[pars$name == 'map_scale',]$value[1],
-                    pars[pars$name == 'map_p_redist',]$value[1],
-                    pars[pars$name == 'map_std',]$value[1],
-                    pars[pars$name == 'map_shift',]$value[1])
-    mat_fa_pars = c(pars[pars$name == 'mat_scale',]$value[1],
-                    pars[pars$name == 'mat_p_redist',]$value[1],
-                    pars[pars$name == 'mat_std',]$value[1],
-                    pars[pars$name == 'mat_shift',]$value[1])
-    pet_fa_pars = c(pars[pars$name == 'pet_scale',]$value[1],
-                    pars[pars$name == 'pet_p_redist',]$value[1],
-                    pars[pars$name == 'pet_std',]$value[1],
-                    pars[pars$name == 'pet_shift',]$value[1])
-    ptps_fa_pars = c(pars[pars$name == 'ptps_scale',]$value[1],
-                     pars[pars$name == 'ptps_p_redist',]$value[1],
-                     pars[pars$name == 'ptps_std',]$value[1],
-                     pars[pars$name == 'ptps_shift',]$value[1])
-
-  }else{
-    map_limits = mat_limits = pet_limits = ptps_limits = matrix(1,12,2)
-    map_fa_pars = mat_fa_pars = pet_fa_pars = ptps_fa_pars = c(1,0,10,0)
-  }
-
-  peadj_m = reshape(pars[grepl('peadj_',pars$name) & pars$type=='sac',
-                         c('name','zone','value')],
-                    timevar='zone',idvar='name',direction='wide')[,-1]
 
   sac_pars = rbind(pars[pars$name == 'uztwm',]$value,
                    pars[pars$name == 'uzfwm',]$value,
@@ -168,47 +102,40 @@ sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=NULL){
                     pars[pars$name ==  'adc_b',]$value,
                     pars[pars$name ==  'adc_c',]$value)
 
-  if(is.null(climo)) climo = matrix(-9999,12,4)
-
+  # sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
+  #           latitude, elev, &
+  #           sac_pars, &
+  #           peadj, pxadj, &
+  #           snow_pars, &
+  #           init_swe, &
+  #           map, ptps, mat, etd, &
+  #           tci)
 
   x = .Fortran('sacsnow',
-               n_hrus=as.integer(n_zones),
-               dt=as.integer(dt_seconds),
-               sim_length=sim_length,
-               year=as.integer(forcing[[1]]$year)[1:sim_length],
-               month=as.integer(forcing[[1]]$month)[1:sim_length],
-               day=as.integer(forcing[[1]]$day)[1:sim_length],
-               hour=as.integer(forcing[[1]]$hour)[1:sim_length],
+               n_hrus = as.integer(n_zones),
+               dt = as.integer(dt_seconds),
+               sim_length = sim_length,
+               year = as.integer(forcing[[1]]$year)[1:sim_length],
+               month = as.integer(forcing[[1]]$month)[1:sim_length],
+               day = as.integer(forcing[[1]]$day)[1:sim_length],
+               hour = as.integer(forcing[[1]]$hour)[1:sim_length],
                # zone info
                latitude = pars[pars$name == 'alat',]$value,
                elev = pars[pars$name == 'elev',]$value,
-               area = pars[pars$name == 'zone_area',]$value,
                # sac parameters
                sac_pars = sac_pars,
                # pet and precp adjustments
                peadj = rep(1,n_zones),
                pxadj = rep(1,n_zones),
-               peadj_m = as.matrix(peadj_m),
                # snow parameters
                snow_pars = snow_pars,
-               # forcing adjust parameters
-               map_fa_pars = map_fa_pars,
-               mat_fa_pars = mat_fa_pars,
-               pet_fa_pars = pet_fa_pars,
-               ptps_fa_pars = ptps_fa_pars,
-               # forcing adjust limits
-               map_fa_limits = map_limits,
-               mat_fa_limits = mat_limits,
-               pet_fa_limits = pet_limits,
-               ptps_fa_limits = ptps_limits,
                # initial conditions
                init_swe = pars[pars$name == 'init_swe',]$value,
-               # externally specified climatology
-               climo = climo,
                # forcings
                map = do.call('cbind',lapply(forcing,'[[','map_mm')),
                ptps = do.call('cbind',lapply(forcing,'[[','ptps')),
                mat = do.call('cbind',lapply(forcing,'[[','mat_degc')),
+               etd = do.call('cbind',lapply(forcing,'[[','etd_mm')),
                # output
                tci = matrix(0,nrow=sim_length,ncol=n_zones))
 
@@ -220,9 +147,6 @@ sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=NULL){
 #' @param dt_hours timestep in hours
 #' @param forcing data frame with with columns for forcing inputs
 #' @param pars sac parameters
-#' @param forcing_adjust does the parameter set include forcing adjustments
-#' @param climo pre-computed climotology to use
-#' @param return_adj return monthly adjustments
 #' @return data.frame (1 column per zone) of unrouted channel inflow (tci), sac states
 #' uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, and snow water equivalent (swe),
 #' and adjusted forcing data.
@@ -235,7 +159,7 @@ sac_snow <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=NULL){
 #' states = sac_snow_states(dt_hours, forcing, pars)
 #' @useDynLib rfchydromodels sacsnowstates_
 #' @importFrom stats reshape
-sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=NULL, return_adj=FALSE){
+sac_snow_states <- function(dt_hours, forcing, pars){
 
   pars = as.data.frame(pars)
 
@@ -244,67 +168,6 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=
 
   n_zones = length(forcing)
   sim_length = nrow(forcing[[1]])
-
-
-  # limits are applied basin wide
-  if(forcing_adjust){
-    # using base R here to avoid package dependency
-    map_lower = reshape(pars[grepl('map_lower',pars$name),c('name','zone','value')],
-                        timevar='zone',idvar='name',direction='wide')[,-1]
-    map_upper = reshape(pars[grepl('map_upper',pars$name),c('name','zone','value')],
-                        timevar='zone',idvar='name',direction='wide')[,-1]
-    mat_lower = reshape(pars[grepl('mat_lower',pars$name),c('name','zone','value')],
-                        timevar='zone',idvar='name',direction='wide')[,-1]
-    mat_upper = reshape(pars[grepl('mat_upper',pars$name),c('name','zone','value')],
-                        timevar='zone',idvar='name',direction='wide')[,-1]
-    pet_lower = reshape(pars[grepl('pet_lower',pars$name),c('name','zone','value')],
-                        timevar='zone',idvar='name',direction='wide')[,-1]
-    pet_upper = reshape(pars[grepl('pet_upper',pars$name),c('name','zone','value')],
-                        timevar='zone',idvar='name',direction='wide')[,-1]
-    ptps_lower = reshape(pars[grepl('ptps_lower',pars$name),c('name','zone','value')],
-                         timevar='zone',idvar='name',direction='wide')[,-1]
-    ptps_upper = reshape(pars[grepl('ptps_upper',pars$name),c('name','zone','value')],
-                         timevar='zone',idvar='name',direction='wide')[,-1]
-
-    # limits are applied basin wide
-    if(n_zones == 1){
-      map_limits = cbind(map_lower,map_upper)
-      mat_limits = cbind(mat_lower,mat_upper)
-      pet_limits = cbind(pet_lower,pet_upper)
-      ptps_limits = cbind(ptps_lower,ptps_upper)
-    }else{
-      map_limits = cbind(map_lower[,1],map_upper[,1])
-      mat_limits = cbind(mat_lower[,1],mat_upper[,1])
-      pet_limits = cbind(pet_lower[,1],pet_upper[,1])
-      ptps_limits = cbind(ptps_lower[,1],ptps_upper[,1])
-    }
-
-    # limits are applied basin wide
-    map_fa_pars = c(pars[pars$name == 'map_scale',]$value[1],
-                    pars[pars$name == 'map_p_redist',]$value[1],
-                    pars[pars$name == 'map_std',]$value[1],
-                    pars[pars$name == 'map_shift',]$value[1])
-    mat_fa_pars = c(pars[pars$name == 'mat_scale',]$value[1],
-                    pars[pars$name == 'mat_p_redist',]$value[1],
-                    pars[pars$name == 'mat_std',]$value[1],
-                    pars[pars$name == 'mat_shift',]$value[1])
-    pet_fa_pars = c(pars[pars$name == 'pet_scale',]$value[1],
-                    pars[pars$name == 'pet_p_redist',]$value[1],
-                    pars[pars$name == 'pet_std',]$value[1],
-                    pars[pars$name == 'pet_shift',]$value[1])
-    ptps_fa_pars = c(pars[pars$name == 'ptps_scale',]$value[1],
-                     pars[pars$name == 'ptps_p_redist',]$value[1],
-                     pars[pars$name == 'ptps_std',]$value[1],
-                     pars[pars$name == 'ptps_shift',]$value[1])
-
-  }else{
-    map_limits = mat_limits = pet_limits = ptps_limits = matrix(-999,12,2)
-    map_fa_pars = mat_fa_pars = pet_fa_pars = ptps_fa_pars = c(1,0,10,0)
-  }
-
-  peadj_m = reshape(pars[grepl('peadj_',pars$name) & pars$type=='sac',
-                         c('name','zone','value')],
-                    timevar='zone',idvar='name',direction='wide')[,-1]
 
   output_matrix = matrix(0,nrow=sim_length,ncol=n_zones)
 
@@ -326,63 +189,56 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=
                    pars[pars$name == 'rserv',]$value,
                    pars[pars$name ==   'efc',]$value)
 
-  snow_pars = rbind(pars[pars$name ==    'scf',]$value,
-                    pars[pars$name ==  'mfmax',]$value,
-                    pars[pars$name ==  'mfmin',]$value,
-                    pars[pars$name ==   'uadj',]$value,
-                    pars[pars$name ==     'si',]$value,
-                    pars[pars$name ==    'nmf',]$value,
-                    pars[pars$name ==   'tipm',]$value,
-                    pars[pars$name ==  'mbase',]$value,
-                    pars[pars$name ==  'plwhc',]$value,
-                    pars[pars$name ==  'daygm',]$value,
-                    pars[pars$name ==  'adc_a',]$value,
-                    pars[pars$name ==  'adc_b',]$value,
-                    pars[pars$name ==  'adc_c',]$value)
+  snow_pars = rbind(pars[pars$name ==   'scf',]$value,
+                    pars[pars$name == 'mfmax',]$value,
+                    pars[pars$name == 'mfmin',]$value,
+                    pars[pars$name ==  'uadj',]$value,
+                    pars[pars$name ==    'si',]$value,
+                    pars[pars$name ==   'nmf',]$value,
+                    pars[pars$name ==  'tipm',]$value,
+                    pars[pars$name == 'mbase',]$value,
+                    pars[pars$name == 'plwhc',]$value,
+                    pars[pars$name == 'daygm',]$value,
+                    pars[pars$name == 'adc_a',]$value,
+                    pars[pars$name == 'adc_b',]$value,
+                    pars[pars$name == 'adc_c',]$value)
 
-  if(is.null(climo)) climo = matrix(-9999,12,4)
+  # sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
+  #                 latitude, elev, &
+  #                 sac_pars, &
+  #                 peadj, pxadj, &
+  #                 snow_pars, &
+  #                 init_swe, &
+  #                 map, ptps, mat, etd, &
+  #                 tci, aet, uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, &
+  #                 swe, aesc, neghs, liqw, raim, psfall, prain)
 
   x = .Fortran('sacsnowstates',
-               n_hrus=as.integer(n_zones),
-               dt=as.integer(dt_seconds),
-               sim_length=sim_length,
-               year=as.integer(forcing[[1]]$year)[1:sim_length],
-               month=as.integer(forcing[[1]]$month)[1:sim_length],
-               day=as.integer(forcing[[1]]$day)[1:sim_length],
-               hour=as.integer(forcing[[1]]$hour)[1:sim_length],
+               n_hrus = as.integer(n_zones),
+               dt = as.integer(dt_seconds),
+               sim_length = sim_length,
+               year = as.integer(forcing[[1]]$year)[1:sim_length],
+               month = as.integer(forcing[[1]]$month)[1:sim_length],
+               day = as.integer(forcing[[1]]$day)[1:sim_length],
+               hour = as.integer(forcing[[1]]$hour)[1:sim_length],
                # zone info
                latitude = pars[pars$name == 'alat',]$value,
                elev = pars[pars$name == 'elev',]$value,
-               area = pars[pars$name == 'zone_area',]$value,
                # sac parameters
                sac_pars = sac_pars,
                # pet and precp adjustments
                peadj = rep(1,n_zones),
                pxadj = rep(1,n_zones),
-               peadj_m = as.matrix(peadj_m),
                # snow parameters
                snow_pars = snow_pars,
-               # forcing adjust parameters
-               map_fa_pars = map_fa_pars,
-               mat_fa_pars = mat_fa_pars,
-               pet_fa_pars = pet_fa_pars,
-               ptps_fa_pars = ptps_fa_pars,
-               # forcing adjust limits
-               map_fa_limits = map_limits,
-               mat_fa_limits = mat_limits,
-               pet_fa_limits = pet_limits,
-               ptps_fa_limits = ptps_limits,
                # initial conditions
                init_swe = pars[pars$name == 'init_swe',]$value,
-               # externally specified climatology
-               climo = climo,
                # forcings
                map = do.call('cbind',lapply(forcing,'[[','map_mm')),
                ptps = do.call('cbind',lapply(forcing,'[[','ptps')),
                mat = do.call('cbind',lapply(forcing,'[[','mat_degc')),
+               etd = do.call('cbind',lapply(forcing,'[[','etd_mm')),
                # output
-               etd = output_matrix,
-               pet = output_matrix,
                tci = output_matrix,
                aet = output_matrix,
                uztwc = output_matrix,
@@ -397,21 +253,12 @@ sac_snow_states <- function(dt_hours, forcing, pars, forcing_adjust=TRUE, climo=
                liqw = output_matrix,
                raim = output_matrix,
                psfall = output_matrix,
-               prain = output_matrix,
-               mat_adj = numeric(12),
-               map_adj = numeric(12),
-               ptps_adj = numeric(12),
-               pet_adj = numeric(12))
-  #print(head(x))
+               prain = output_matrix)
 
-  if(return_adj){
-    return(as.data.frame(x[c('mat_adj','map_adj','ptps_adj','pet_adj')]))
-  }else{
-    return(format_states(x[c('year','month','day','hour',
-                      'map','mat','ptps','etd','pet','tci','aet',
-                      'uztwc','uzfwc','lztwc','lzfsc','lzfpc','adimc',
-                      'swe','aesc','neghs','liqw','raim','psfall', 'prain')]))
-  }
+  return(format_states(x[c('year','month','day','hour',
+                    'map','mat','ptps','etd','tci','aet',
+                    'uztwc','uzfwc','lztwc','lzfsc','lzfpc','adimc',
+                    'swe','aesc','neghs','liqw','raim','psfall', 'prain')]))
 }
 
 
@@ -547,7 +394,7 @@ uh2p_get_scale <- function(shape,toc){
 #' dt_hours = 6
 #' tci = sac_snow(dt_hours,forcing, pars)
 #' flow_cfs = uh(dt_hours, tci, pars)
-#' @useDynLib rfchydromodels sacsnow_
+#' @useDynLib rfchydromodels duamel_
 uh <- function(dt_hours, tci, pars){
 
   sec_per_day = 86400
@@ -604,7 +451,7 @@ uh <- function(dt_hours, tci, pars){
 #' @return Vector of flow modified by the chanloss pattern
 #' @export
 #'
-#' @useDynLib rfchydromodels sacsnow_
+#' @useDynLib rfchydromodels chanloss_
 chanloss <- function(flow, forcing, dt_hours, pars){
 
   sim_length = nrow(forcing[[1]])
@@ -653,7 +500,7 @@ chanloss <- function(flow, forcing, dt_hours, pars){
 #' @return data frame with consuse variables
 #' @export
 #'
-#' @useDynLib rfchydromodels sacsnow_
+#' @useDynLib rfchydromodels consuse_
 consuse <- function(input, pars, cfs=TRUE){
 
   input = as.data.frame(input)
@@ -717,7 +564,7 @@ consuse <- function(input, pars, cfs=TRUE){
 #' @export
 #'
 #' @examples NULL
-#' @useDynLib rfchydromodels sacsnow_
+#' @useDynLib rfchydromodels lagk_
 lagk <- function(dt_hours, uptribs, pars, sum_routes = TRUE){
 
   sec_per_day = 86400
@@ -1066,3 +913,270 @@ forcing_adjust_mat <- function (climo, pars, ll=climo*ifelse(climo>0,0.9,1.1),
   if(return_climo) return(climo_adj) else return(out)
 
 }
+
+
+#' Conduct NWRFC style forcing adjustments
+#'
+#' @param dt_hours timestep in hours
+#' @param forcing data frame with with columns for forcing inputs
+#' @param pars sac parameters
+#' @param climo climotology matrix
+#' @return Matrix (1 column per zone) of unrouted channel inflow
+#' @export
+#'
+#' @examples
+#' data(forcing)
+#' data(pars)
+#' dt_hours = 6
+#' forcing_adj = fa_nwrfc(dt_hours, forcing, pars)
+#' @useDynLib rfchydromodels fa_ts_
+#' @importFrom stats reshape
+fa_nwrfc <- function(dt_hours, forcing, pars, climo=NULL){
+
+  pars = as.data.frame(pars)
+
+  sec_per_day = 86400
+  dt_seconds = sec_per_day/(24/dt_hours)
+
+  n_zones = length(forcing)
+  sim_length = nrow(forcing[[1]])
+
+  # using base R here to avoid package dependency
+  map_lower = reshape(pars[grepl('map_lower',pars$name),c('name','zone','value')],
+                      timevar='zone',idvar='name',direction='wide')[,-1]
+  map_upper = reshape(pars[grepl('map_upper',pars$name),c('name','zone','value')],
+                      timevar='zone',idvar='name',direction='wide')[,-1]
+  mat_lower = reshape(pars[grepl('mat_lower',pars$name),c('name','zone','value')],
+                      timevar='zone',idvar='name',direction='wide')[,-1]
+  mat_upper = reshape(pars[grepl('mat_upper',pars$name),c('name','zone','value')],
+                      timevar='zone',idvar='name',direction='wide')[,-1]
+  pet_lower = reshape(pars[grepl('pet_lower',pars$name),c('name','zone','value')],
+                      timevar='zone',idvar='name',direction='wide')[,-1]
+  pet_upper = reshape(pars[grepl('pet_upper',pars$name),c('name','zone','value')],
+                      timevar='zone',idvar='name',direction='wide')[,-1]
+  ptps_lower = reshape(pars[grepl('ptps_lower',pars$name),c('name','zone','value')],
+                       timevar='zone',idvar='name',direction='wide')[,-1]
+  ptps_upper = reshape(pars[grepl('ptps_upper',pars$name),c('name','zone','value')],
+                       timevar='zone',idvar='name',direction='wide')[,-1]
+
+  # limits are applied basin wide
+  if(n_zones == 1){
+    map_limits = cbind(map_lower,map_upper)
+    mat_limits = cbind(mat_lower,mat_upper)
+    pet_limits = cbind(pet_lower,pet_upper)
+    ptps_limits = cbind(ptps_lower,ptps_upper)
+  }else{
+    map_limits = cbind(map_lower[,1],map_upper[,1])
+    mat_limits = cbind(mat_lower[,1],mat_upper[,1])
+    pet_limits = cbind(pet_lower[,1],pet_upper[,1])
+    ptps_limits = cbind(ptps_lower[,1],ptps_upper[,1])
+  }
+
+  # limits are applied basin wide
+  map_fa_pars = c(pars[pars$name == 'map_scale',]$value[1],
+                  pars[pars$name == 'map_p_redist',]$value[1],
+                  pars[pars$name == 'map_std',]$value[1],
+                  pars[pars$name == 'map_shift',]$value[1])
+  mat_fa_pars = c(pars[pars$name == 'mat_scale',]$value[1],
+                  pars[pars$name == 'mat_p_redist',]$value[1],
+                  pars[pars$name == 'mat_std',]$value[1],
+                  pars[pars$name == 'mat_shift',]$value[1])
+  pet_fa_pars = c(pars[pars$name == 'pet_scale',]$value[1],
+                  pars[pars$name == 'pet_p_redist',]$value[1],
+                  pars[pars$name == 'pet_std',]$value[1],
+                  pars[pars$name == 'pet_shift',]$value[1])
+  ptps_fa_pars = c(pars[pars$name == 'ptps_scale',]$value[1],
+                   pars[pars$name == 'ptps_p_redist',]$value[1],
+                   pars[pars$name == 'ptps_std',]$value[1],
+                   pars[pars$name == 'ptps_shift',]$value[1])
+
+  peadj_m = reshape(pars[grepl('peadj_',pars$name) & pars$type=='sac',
+                         c('name','zone','value')],
+                    timevar='zone',idvar='name',direction='wide')[,-1]
+
+  if(is.null(climo)) climo = matrix(-9999,12,4)
+
+  output_matrix = matrix(0,nrow=sim_length,ncol=n_zones)
+
+  # fa_ts(n_hrus, dt, sim_length, year, month, day, hour, &
+  #         latitude, area, &
+  #         peadj_m, &
+  #         map_fa_pars, mat_fa_pars, pet_fa_pars, ptps_fa_pars, &
+  #         map_fa_limits_in, mat_fa_limits_in, pet_fa_limits_in, ptps_fa_limits_in, &
+  #         climo, &
+  #         map, ptps, mat, &
+  #         map_fa, mat_fa, ptps_fa, pet_fa, etd)
+
+  # browser()
+
+  x = .Fortran('fa_ts',
+               n_hrus = as.integer(n_zones),
+               dt = as.integer(dt_seconds),
+               sim_length = as.integer(sim_length),
+               year = as.integer(forcing[[1]]$year),
+               month = as.integer(forcing[[1]]$month),
+               day = as.integer(forcing[[1]]$day),
+               hour = as.integer(forcing[[1]]$hour),
+               # zone info
+               latitude = pars[pars$name == 'alat',]$value,
+               area = pars[pars$name == 'zone_area',]$value,
+               # monthly crop coefficients
+               peadj_m = as.matrix(peadj_m),
+               # forcing adjust parameters
+               map_fa_pars = map_fa_pars,
+               mat_fa_pars = mat_fa_pars,
+               pet_fa_pars = pet_fa_pars,
+               ptps_fa_pars = ptps_fa_pars,
+               # forcing adjust limits
+               map_fa_limits_in = map_limits,
+               mat_fa_limits_in = mat_limits,
+               pet_fa_limits_in = pet_limits,
+               ptps_fa_limits_in = ptps_limits,
+               # externally specified climatology
+               climo = climo,
+               # forcings
+               map = do.call('cbind',lapply(forcing,'[[','map_mm')),
+               ptps = do.call('cbind',lapply(forcing,'[[','ptps')),
+               mat = do.call('cbind',lapply(forcing,'[[','mat_degc')),
+               # output
+               map_fa = output_matrix,
+               mat_fa = output_matrix,
+               ptps_fa = output_matrix,
+               pet_fa = output_matrix,
+               etd = output_matrix)
+
+  for(z in 1:n_zones){
+    forcing[[z]]$map_mm = x$map_fa[,z]
+    forcing[[z]]$mat_degc = x$mat_fa[,z]
+    forcing[[z]]$ptps = x$ptps_fa[,z]
+    forcing[[z]]$pet_mm = x$pet_fa[,z]
+    forcing[[z]]$etd_mm = x$etd[,z]
+  }
+  forcing
+}
+
+#' Conduct NWRFC style forcing adjustments
+#'
+#' @param dt_hours timestep in hours
+#' @param forcing data frame with with columns for forcing inputs
+#' @param pars sac parameters
+#' @param climo climotology matrix
+#' @return Matrix (1 column per zone) of unrouted channel inflow
+#' @export
+#'
+#' @examples
+#' data(forcing)
+#' data(pars)
+#' dt_hours = 6
+#' adj = fa_adj(dt_hours, forcing, pars)
+#' @useDynLib rfchydromodels fa_adj_
+#' @importFrom stats reshape
+fa_adj_nwrfc <- function(dt_hours, forcing, pars, climo=NULL){
+
+  pars = as.data.frame(pars)
+
+  sec_per_day = 86400
+  dt_seconds = sec_per_day/(24/dt_hours)
+
+  n_zones = length(forcing)
+  sim_length = nrow(forcing[[1]])
+
+  # using base R here to avoid package dependency
+  map_lower = reshape(pars[grepl('map_lower',pars$name),c('name','zone','value')],
+                      timevar='zone',idvar='name',direction='wide')[,-1]
+  map_upper = reshape(pars[grepl('map_upper',pars$name),c('name','zone','value')],
+                      timevar='zone',idvar='name',direction='wide')[,-1]
+  mat_lower = reshape(pars[grepl('mat_lower',pars$name),c('name','zone','value')],
+                      timevar='zone',idvar='name',direction='wide')[,-1]
+  mat_upper = reshape(pars[grepl('mat_upper',pars$name),c('name','zone','value')],
+                      timevar='zone',idvar='name',direction='wide')[,-1]
+  pet_lower = reshape(pars[grepl('pet_lower',pars$name),c('name','zone','value')],
+                      timevar='zone',idvar='name',direction='wide')[,-1]
+  pet_upper = reshape(pars[grepl('pet_upper',pars$name),c('name','zone','value')],
+                      timevar='zone',idvar='name',direction='wide')[,-1]
+  ptps_lower = reshape(pars[grepl('ptps_lower',pars$name),c('name','zone','value')],
+                       timevar='zone',idvar='name',direction='wide')[,-1]
+  ptps_upper = reshape(pars[grepl('ptps_upper',pars$name),c('name','zone','value')],
+                       timevar='zone',idvar='name',direction='wide')[,-1]
+
+  # limits are applied basin wide
+  if(n_zones == 1){
+    map_limits = cbind(map_lower,map_upper)
+    mat_limits = cbind(mat_lower,mat_upper)
+    pet_limits = cbind(pet_lower,pet_upper)
+    ptps_limits = cbind(ptps_lower,ptps_upper)
+  }else{
+    map_limits = cbind(map_lower[,1],map_upper[,1])
+    mat_limits = cbind(mat_lower[,1],mat_upper[,1])
+    pet_limits = cbind(pet_lower[,1],pet_upper[,1])
+    ptps_limits = cbind(ptps_lower[,1],ptps_upper[,1])
+  }
+
+  # limits are applied basin wide
+  map_fa_pars = c(pars[pars$name == 'map_scale',]$value[1],
+                  pars[pars$name == 'map_p_redist',]$value[1],
+                  pars[pars$name == 'map_std',]$value[1],
+                  pars[pars$name == 'map_shift',]$value[1])
+  mat_fa_pars = c(pars[pars$name == 'mat_scale',]$value[1],
+                  pars[pars$name == 'mat_p_redist',]$value[1],
+                  pars[pars$name == 'mat_std',]$value[1],
+                  pars[pars$name == 'mat_shift',]$value[1])
+  pet_fa_pars = c(pars[pars$name == 'pet_scale',]$value[1],
+                  pars[pars$name == 'pet_p_redist',]$value[1],
+                  pars[pars$name == 'pet_std',]$value[1],
+                  pars[pars$name == 'pet_shift',]$value[1])
+  ptps_fa_pars = c(pars[pars$name == 'ptps_scale',]$value[1],
+                   pars[pars$name == 'ptps_p_redist',]$value[1],
+                   pars[pars$name == 'ptps_std',]$value[1],
+                   pars[pars$name == 'ptps_shift',]$value[1])
+
+  if(is.null(climo)) climo = matrix(-9999,12,4)
+
+  output_matrix = matrix(0,nrow=sim_length,ncol=n_zones)
+
+  # fa_adj(n_hrus, dt, sim_length, year, month, day, hour, &
+  #          latitude, area, &
+  #          map_fa_pars, mat_fa_pars, pet_fa_pars, ptps_fa_pars, &
+  #          map_fa_limits_in, mat_fa_limits_in, pet_fa_limits_in, ptps_fa_limits_in, &
+  #          climo, &
+  #          map, ptps, mat, &
+  #          map_adj, mat_adj, pet_adj, ptps_adj)
+
+  # browser()
+
+  x = .Fortran('fa_adj',
+               n_hrus = as.integer(n_zones),
+               dt = as.integer(dt_seconds),
+               sim_length = as.integer(sim_length),
+               year = as.integer(forcing[[1]]$year),
+               month = as.integer(forcing[[1]]$month),
+               day = as.integer(forcing[[1]]$day),
+               hour = as.integer(forcing[[1]]$hour),
+               # zone info
+               latitude = pars[pars$name == 'alat',]$value,
+               area = pars[pars$name == 'zone_area',]$value,
+               # forcing adjust parameters
+               map_fa_pars = map_fa_pars,
+               mat_fa_pars = mat_fa_pars,
+               pet_fa_pars = pet_fa_pars,
+               ptps_fa_pars = ptps_fa_pars,
+               # forcing adjust limits
+               map_fa_limits_in = map_limits,
+               mat_fa_limits_in = mat_limits,
+               pet_fa_limits_in = pet_limits,
+               ptps_fa_limits_in = ptps_limits,
+               # externally specified climatology
+               climo = climo,
+               # forcings
+               map = do.call('cbind',lapply(forcing,'[[','map_mm')),
+               ptps = do.call('cbind',lapply(forcing,'[[','ptps')),
+               mat = do.call('cbind',lapply(forcing,'[[','mat_degc')),
+               # output
+               map_adj = numeric(12),
+               mat_adj = numeric(12),
+               pet_adj = numeric(12),
+               ptps_adj = numeric(12))
+
+  do.call('cbind',x[c('map_adj','mat_adj','pet_adj','ptps_adj')])
+}
+

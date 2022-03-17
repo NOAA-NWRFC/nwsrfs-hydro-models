@@ -4,14 +4,7 @@
 \alias{sac_snow_uh_lagk}
 \title{Execute SAC-SMA, SNOW17, UH and LAG-K with given parameters}
 \usage{
-sac_snow_uh_lagk(
-  dt_hours,
-  forcing,
-  uptribs,
-  pars,
-  forcing_adjust = TRUE,
-  climo = NULL
-)
+sac_snow_uh_lagk(dt_hours, forcing, uptribs, pars)
 }
 \arguments{
 \item{dt_hours}{timestep in hours}
@@ -21,10 +14,6 @@ sac_snow_uh_lagk(
 \item{uptribs}{data frame with columns for upstream flow data}
 
 \item{pars}{sac parameters}
-
-\item{forcing_adjust}{does the parameter set include forcing adjustments}
-
-\item{climo}{pre computed climotology}
 }
 \value{
 Vector of routed flow in cfs

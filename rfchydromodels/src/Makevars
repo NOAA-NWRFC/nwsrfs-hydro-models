@@ -5,6 +5,7 @@ all: $(SHLIB)
 
 # need to tell R the order to compile dependent modules
 sac_snow_only_tci.o sac_snow_states.o: utilities.o
+FA.o: utilities.o
 utilities.o: types.o stats.o sorting.o
 stats.o: types.o sorting.o
 

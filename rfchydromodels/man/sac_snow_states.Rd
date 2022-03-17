@@ -4,14 +4,7 @@
 \alias{sac_snow_states}
 \title{Execute SAC-SMA, SNOW17, return total channel inflow per zone, and model states}
 \usage{
-sac_snow_states(
-  dt_hours,
-  forcing,
-  pars,
-  forcing_adjust = TRUE,
-  climo = NULL,
-  return_adj = FALSE
-)
+sac_snow_states(dt_hours, forcing, pars)
 }
 \arguments{
 \item{dt_hours}{timestep in hours}
@@ -19,12 +12,6 @@ sac_snow_states(
 \item{forcing}{data frame with with columns for forcing inputs}
 
 \item{pars}{sac parameters}
-
-\item{forcing_adjust}{does the parameter set include forcing adjustments}
-
-\item{climo}{pre-computed climotology to use}
-
-\item{return_adj}{return monthly adjustments}
 }
 \value{
 data.frame (1 column per zone) of unrouted channel inflow (tci), sac states
