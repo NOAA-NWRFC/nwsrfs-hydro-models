@@ -21,7 +21,7 @@ C.......................................
 
 C     RCS Id string, for version control
       CHARACTER*60 RCSID
-      DATA RCSID/"$Id: sac1.f,v 1.1 2006/09/01 21:59:44 vicadmin Exp $"/
+      !DATA RCSID/"$Id: sac1.f,v 1.1 2006/09/01 21:59:44 vicadmin Exp $"/
 
       REAL DT
       REAL PXV
@@ -32,7 +32,13 @@ C     RCS Id string, for version control
       INTEGER IFRZE, ISC
       REAL TA,LWE,WE,AESC  
 
-      REAL LZTWM,LZFSM,LZFPM,LZSK,LZPK,LZTWC,LZFSC,LZFPC
+      !REAL LZTWM,LZFSM,LZFPM,LZSK,LZPK,LZTWC,LZFSC,LZFPC
+
+      REAL, INTENT(IN)  ::  UZTWM, UZFWM, UZK, PCTIM, ADIMP, RIVA, ZPERC
+      REAL, INTENT(IN)  ::  REXP, LZTWM, LZFSM, LZFPM, LZSK, LZPK, PFREE
+      REAL, INTENT(IN)  ::  SIDE, RSERV
+
+      REAL, INTENT(INOUT)  ::  UZTWC, UZFWC, LZTWC, LZFSC, LZFPC, ADIMC
 
 
 C     COMMON BLOCKS

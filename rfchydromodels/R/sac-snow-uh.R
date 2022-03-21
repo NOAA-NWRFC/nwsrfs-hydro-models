@@ -40,8 +40,8 @@ sac_snow_uh_lagk <- function(dt_hours, forcing, uptribs, pars){
 
   tci = sac_snow(dt_hours, forcing, pars)
   flow_cfs = uh(dt_hours, tci, pars)
-  flow_cfs = chanloss(flow_cfs, forcing, dt_hours, pars)
   lagk_flow_cfs = lagk(dt_hours, uptribs, pars)
+  flow_cfs = chanloss(flow_cfs, forcing, dt_hours, pars)
   flow_cfs + lagk_flow_cfs
 }
 
@@ -255,10 +255,18 @@ sac_snow_states <- function(dt_hours, forcing, pars){
                psfall = output_matrix,
                prain = output_matrix)
 
-  return(format_states(x[c('year','month','day','hour',
-                    'map','mat','ptps','etd','tci','aet',
-                    'uztwc','uzfwc','lztwc','lzfsc','lzfpc','adimc',
-                    'swe','aesc','neghs','liqw','raim','psfall', 'prain')]))
+  return_vars = c('year','month','day','hour',
+                  'map','mat','ptps','etd','tci','aet',
+                  'uztwc','uzfwc','lztwc','lzfsc','lzfpc','adimc',
+                  'swe','aesc','neghs','liqw','raim','psfall', 'prain')
+
+  # if pet exists in the input forcings, output it as is
+  if(!is.null(forcing[[1]]$pet_mm)){
+    x[['pet']] = do.call('cbind',lapply(forcing,'[[','pet_mm'))
+    return_vars = c(return_vars,'pet')
+  }
+
+  return(format_states(x[return_vars]))
 }
 
 
@@ -516,7 +524,7 @@ consuse <- function(input, pars, cfs=TRUE){
 
     # consuse(sim_length, year, month, day, &
     #           AREA_in,EFF_in,MFLOW_in, &
-    #           IRFSTOR_in,ACCUM_in,DECAY_in, peadj_m, &
+    #           IRFSTOR_in,ACCUM_in,DECAY_in, peadj_m, peadj, &
     #           PET_in,QNAT_in, &
     #           QADJ_out,QDIV_out,QRFIN_out,QRFOUT_out, &
     #           QOL_out,QCD_out,CE_out,RFSTOR_out)
@@ -532,6 +540,7 @@ consuse <- function(input, pars, cfs=TRUE){
                  ACCUM_in = cu_pars[cu_pars$zone==cu_zone & cu_pars$name=='rf_accum_rate',]$value,
                  DECAY_in = cu_pars[cu_pars$zone==cu_zone & cu_pars$name=='rf_decay_rate',]$value,
                  peadj_m = as.numeric(peadj_m),
+                 peadj = pars[pars$name=='peadj' & pars$zone == cu_zone,]$value,
                  PET_in = as.numeric(input$pet),
                  # consuse code expects cfs so convert if necessary
                  QNAT_in = as.numeric(input$flow * ifelse(cfs,1,0.028316847)),
@@ -921,6 +930,7 @@ forcing_adjust_mat <- function (climo, pars, ll=climo*ifelse(climo>0,0.9,1.1),
 #' @param forcing data frame with with columns for forcing inputs
 #' @param pars sac parameters
 #' @param climo climotology matrix
+#' @param dry_run Do a run without any forcing adjustments, only compute pet and etd
 #' @return Matrix (1 column per zone) of unrouted channel inflow
 #' @export
 #'
@@ -931,7 +941,7 @@ forcing_adjust_mat <- function (climo, pars, ll=climo*ifelse(climo>0,0.9,1.1),
 #' forcing_adj = fa_nwrfc(dt_hours, forcing, pars)
 #' @useDynLib rfchydromodels fa_ts_
 #' @importFrom stats reshape
-fa_nwrfc <- function(dt_hours, forcing, pars, climo=NULL){
+fa_nwrfc <- function(dt_hours, forcing, pars, climo=NULL, dry_run=FALSE){
 
   pars = as.data.frame(pars)
 
@@ -972,23 +982,27 @@ fa_nwrfc <- function(dt_hours, forcing, pars, climo=NULL){
     ptps_limits = cbind(ptps_lower[,1],ptps_upper[,1])
   }
 
-  # limits are applied basin wide
-  map_fa_pars = c(pars[pars$name == 'map_scale',]$value[1],
-                  pars[pars$name == 'map_p_redist',]$value[1],
-                  pars[pars$name == 'map_std',]$value[1],
-                  pars[pars$name == 'map_shift',]$value[1])
-  mat_fa_pars = c(pars[pars$name == 'mat_scale',]$value[1],
-                  pars[pars$name == 'mat_p_redist',]$value[1],
-                  pars[pars$name == 'mat_std',]$value[1],
-                  pars[pars$name == 'mat_shift',]$value[1])
-  pet_fa_pars = c(pars[pars$name == 'pet_scale',]$value[1],
-                  pars[pars$name == 'pet_p_redist',]$value[1],
-                  pars[pars$name == 'pet_std',]$value[1],
-                  pars[pars$name == 'pet_shift',]$value[1])
-  ptps_fa_pars = c(pars[pars$name == 'ptps_scale',]$value[1],
-                   pars[pars$name == 'ptps_p_redist',]$value[1],
-                   pars[pars$name == 'ptps_std',]$value[1],
-                   pars[pars$name == 'ptps_shift',]$value[1])
+  if(dry_run){
+    map_fa_pars = mat_fa_pars = pet_fa_pars = ptps_fa_pars = c(1,0,10,0)
+  }else{
+    # limits are applied basin wide
+    map_fa_pars = c(pars[pars$name == 'map_scale',]$value[1],
+                    pars[pars$name == 'map_p_redist',]$value[1],
+                    pars[pars$name == 'map_std',]$value[1],
+                    pars[pars$name == 'map_shift',]$value[1])
+    mat_fa_pars = c(pars[pars$name == 'mat_scale',]$value[1],
+                    pars[pars$name == 'mat_p_redist',]$value[1],
+                    pars[pars$name == 'mat_std',]$value[1],
+                    pars[pars$name == 'mat_shift',]$value[1])
+    pet_fa_pars = c(pars[pars$name == 'pet_scale',]$value[1],
+                    pars[pars$name == 'pet_p_redist',]$value[1],
+                    pars[pars$name == 'pet_std',]$value[1],
+                    pars[pars$name == 'pet_shift',]$value[1])
+    ptps_fa_pars = c(pars[pars$name == 'ptps_scale',]$value[1],
+                     pars[pars$name == 'ptps_p_redist',]$value[1],
+                     pars[pars$name == 'ptps_std',]$value[1],
+                     pars[pars$name == 'ptps_shift',]$value[1])
+  }
 
   peadj_m = reshape(pars[grepl('peadj_',pars$name) & pars$type=='sac',
                          c('name','zone','value')],
@@ -1061,6 +1075,8 @@ fa_nwrfc <- function(dt_hours, forcing, pars, climo=NULL){
 #' @param forcing data frame with with columns for forcing inputs
 #' @param pars sac parameters
 #' @param climo climotology matrix
+#' @param dry_run Do a run without any forcing adjustments, only compute pet and etd
+#' @param return_climo Return the computed climo, instead of adjustments
 #' @return Matrix (1 column per zone) of unrouted channel inflow
 #' @export
 #'
@@ -1071,7 +1087,7 @@ fa_nwrfc <- function(dt_hours, forcing, pars, climo=NULL){
 #' adj = fa_adj(dt_hours, forcing, pars)
 #' @useDynLib rfchydromodels fa_adj_
 #' @importFrom stats reshape
-fa_adj_nwrfc <- function(dt_hours, forcing, pars, climo=NULL){
+fa_adj_nwrfc <- function(dt_hours, forcing, pars, climo = NULL, dry_run = FALSE, return_climo = FALSE){
 
   pars = as.data.frame(pars)
 
@@ -1112,23 +1128,28 @@ fa_adj_nwrfc <- function(dt_hours, forcing, pars, climo=NULL){
     ptps_limits = cbind(ptps_lower[,1],ptps_upper[,1])
   }
 
-  # limits are applied basin wide
-  map_fa_pars = c(pars[pars$name == 'map_scale',]$value[1],
-                  pars[pars$name == 'map_p_redist',]$value[1],
-                  pars[pars$name == 'map_std',]$value[1],
-                  pars[pars$name == 'map_shift',]$value[1])
-  mat_fa_pars = c(pars[pars$name == 'mat_scale',]$value[1],
-                  pars[pars$name == 'mat_p_redist',]$value[1],
-                  pars[pars$name == 'mat_std',]$value[1],
-                  pars[pars$name == 'mat_shift',]$value[1])
-  pet_fa_pars = c(pars[pars$name == 'pet_scale',]$value[1],
-                  pars[pars$name == 'pet_p_redist',]$value[1],
-                  pars[pars$name == 'pet_std',]$value[1],
-                  pars[pars$name == 'pet_shift',]$value[1])
-  ptps_fa_pars = c(pars[pars$name == 'ptps_scale',]$value[1],
-                   pars[pars$name == 'ptps_p_redist',]$value[1],
-                   pars[pars$name == 'ptps_std',]$value[1],
-                   pars[pars$name == 'ptps_shift',]$value[1])
+  if(dry_run){
+    map_fa_pars = mat_fa_pars = pet_fa_pars = ptps_fa_pars = c(1,0,10,0)
+  }else{
+    # limits are applied basin wide
+    map_fa_pars = c(pars[pars$name == 'map_scale',]$value[1],
+                    pars[pars$name == 'map_p_redist',]$value[1],
+                    pars[pars$name == 'map_std',]$value[1],
+                    pars[pars$name == 'map_shift',]$value[1])
+    mat_fa_pars = c(pars[pars$name == 'mat_scale',]$value[1],
+                    pars[pars$name == 'mat_p_redist',]$value[1],
+                    pars[pars$name == 'mat_std',]$value[1],
+                    pars[pars$name == 'mat_shift',]$value[1])
+    pet_fa_pars = c(pars[pars$name == 'pet_scale',]$value[1],
+                    pars[pars$name == 'pet_p_redist',]$value[1],
+                    pars[pars$name == 'pet_std',]$value[1],
+                    pars[pars$name == 'pet_shift',]$value[1])
+    ptps_fa_pars = c(pars[pars$name == 'ptps_scale',]$value[1],
+                     pars[pars$name == 'ptps_p_redist',]$value[1],
+                     pars[pars$name == 'ptps_std',]$value[1],
+                     pars[pars$name == 'ptps_shift',]$value[1])
+  }
+
 
   if(is.null(climo)) climo = matrix(-9999,12,4)
 
@@ -1166,6 +1187,7 @@ fa_adj_nwrfc <- function(dt_hours, forcing, pars, climo=NULL){
                pet_fa_limits_in = pet_limits,
                ptps_fa_limits_in = ptps_limits,
                # externally specified climatology
+               # map, mat, pet, ptps
                climo = climo,
                # forcings
                map = do.call('cbind',lapply(forcing,'[[','map_mm')),
@@ -1177,6 +1199,11 @@ fa_adj_nwrfc <- function(dt_hours, forcing, pars, climo=NULL){
                pet_adj = numeric(12),
                ptps_adj = numeric(12))
 
-  do.call('cbind',x[c('map_adj','mat_adj','pet_adj','ptps_adj')])
+  if(return_climo){
+    colnames(x$climo) = c('map','mat','pet','ptps')
+    as.data.frame(x$climo)
+  }else{
+    as.data.frame(do.call('cbind',x[c('map_adj','mat_adj','pet_adj','ptps_adj')]))
+  }
 }
 

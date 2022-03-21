@@ -477,7 +477,7 @@ subroutine  fa_adj(n_hrus, dt, sim_length, year, month, day, hour, &
   integer, intent(in):: sim_length   ! length of simulation for dt
   integer, dimension(sim_length), intent(in):: year, month, day, hour !TS of date component
   double precision, dimension(sim_length, n_hrus), intent(in):: map, ptps, mat  ! atmospheric forcing variables
-  double precision, dimension(12, 4), intent(in):: climo ! 4 columns, map, mat, pet, ptps
+  double precision, dimension(12, 4), intent(inout):: climo ! 4 columns, map, mat, pet, ptps
   double precision, dimension(n_hrus), intent(in):: latitude   ! PET param, decimal degrees
   double precision, dimension(n_hrus), intent(in):: area       ! km2
   ! forcing adjustment parameter vectors: mult, p_redist, std, shift 
@@ -551,6 +551,7 @@ subroutine  fa_adj(n_hrus, dt, sim_length, year, month, day, hour, &
   if(calc_climo)then
     ! compute 12 monthly climo values (calendar year)
     mat_climo = monthly_climo_mean(mat_aw, month)
+    climo(:,2) = mat_climo
   else
     do i = 1,12
       mat_climo(i) = climo(i,2)
@@ -715,6 +716,9 @@ subroutine  fa_adj(n_hrus, dt, sim_length, year, month, day, hour, &
     map_climo = monthly_climo_sum(map_aw, month)
     pet_climo = monthly_climo_sum(pet_aw, month)
     ptps_climo = monthly_climo_mean(ptps_aw, month)
+    climo(:,1) = map_climo
+    climo(:,3) = pet_climo
+    climo(:,4) = ptps_climo
   else 
     do i = 1,12
       map_climo(i) = climo(i,1)

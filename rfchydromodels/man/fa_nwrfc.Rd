@@ -4,7 +4,7 @@
 \alias{fa_nwrfc}
 \title{Conduct NWRFC style forcing adjustments}
 \usage{
-fa_nwrfc(dt_hours, forcing, pars, climo = NULL)
+fa_nwrfc(dt_hours, forcing, pars, climo = NULL, dry_run = FALSE)
 }
 \arguments{
 \item{dt_hours}{timestep in hours}
@@ -14,6 +14,8 @@ fa_nwrfc(dt_hours, forcing, pars, climo = NULL)
 \item{pars}{sac parameters}
 
 \item{climo}{climotology matrix}
+
+\item{dry_run}{Do a run without any forcing adjustments, only compute pet and etd}
 }
 \value{
 Matrix (1 column per zone) of unrouted channel inflow
