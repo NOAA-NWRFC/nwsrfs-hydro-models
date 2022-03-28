@@ -198,10 +198,6 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
     do i=1,11
       if(adc(i) < 0.05) adc(i) = 0.05
     end do
-
-    ! print run dates
-    ! write(*,*)'  start:',year(1), month(1), day(1), hour(1)
-    ! write(*,*)'    end:',year(sim_length), month(sim_length), day(sim_length), hour(sim_length)
   
     ! get sfc_pressure (pa is estimate by subroutine, needed by snow17 call)
     pa = sfc_pressure(elev(nh))
@@ -216,6 +212,8 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
     spin_up_counter = 0
 
     do while (pdiff > 0.01)
+
+      spin_up_counter = spin_up_counter + 1
 
       ! put the ending states from the previous iteration as the starting states 
       uztwc_sp = real(spin_up_end_states(1))
@@ -256,9 +254,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
 
         ! modify ET demand using the effective forest cover 
         ! Anderson calb manual pdf page 232
-        ! if(aesc_sp > 0.1) write(*,*) 'etd before efc', etd_step
         etd(i,nh) = efc(nh)*etd(i,nh)+(1d0-efc(nh))*(1d0-dble(aesc_sp))*etd(i,nh)
-        ! if(aesc_sp > 0.1) write(*,*) 'etd before efc', etd_step
     
         call exsac(1, real(dt), raim_sp, real(mat(i,nh)), real(etd(i,nh)), &
             !SAC PARAMETERS
@@ -332,61 +328,6 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
     ! =============== START SIMULATION TIME LOOP =====================================
     do i = 1,sim_length,1
 
-      ! if(i < 6)then
-      !   write(*,'(a,6i5,8f8.2)')' after adj',nh, i, year(i), month(i), day(i), hour(i), & 
-      !                                    map_step, mat_step, ptps_step, etd_step,       
-      ! end if
-
-      ! if(i .eq. 1)then
-      !   write(*,*)
-      !   write(*,*)'Snow inputs:'
-      !   write(*,'(a10,i12)')'dt_sec',int(dt,4)
-      !   write(*,'(a10,i12)')'dt_hr',int(dt/sec_hour,4)
-      !   write(*,'(a10,i12)')'day',int(day(i),4)
-      !   write(*,'(a10,i12)')'month',int(month(i),4)
-      !   write(*,'(a10,i12)')'year',int(year(i),4)
-      !   write(*,'(a10,f30.17)')'map',real(map(i,nh))
-      !   write(*,'(a10,f30.17)')'mat',real(mat(i,nh))
-      !   write(*,'(a10,f30.17)')'ptps',real(ptps(i,nh))
-      !   write(*,'(a10,f30.17)')'raim',raim_sp
-      !   write(*,'(a10,f30.17)')'alat',real(latitude(nh))
-      !   write(*,'(a10,f30.17)')'scf',real(scf(nh))
-      !   write(*,'(a10,f30.17)')'mfmax',real(mfmax(nh)) 
-      !   write(*,'(a10,f30.17)')'mfmin',real(mfmin(nh))
-      !   write(*,'(a10,f30.17)')'uadj',real(uadj(nh))
-      !   write(*,'(a10,f30.17)')'si',real(si(nh))
-      !   write(*,'(a10,f30.17)')'nmf',real(nmf(nh))
-      !   write(*,'(a10,f30.17)')'tipm',real(tipm(nh))
-      !   write(*,'(a10,f30.17)')'mbase',real(mbase(nh))
-      !   write(*,'(a10,f30.17)')'pxtemp',real(pxtemp(nh))
-      !   write(*,'(a10,f30.17)')'plwhc',real(plwhc(nh))
-      !   write(*,'(a10,f30.17)')'daygm',real(daygm(nh))
-      !   write(*,'(a10,f30.17)')'elev',real(elev(nh))
-      !   write(*,'(a10,f30.17)')'pa',real(pa) 
-      !   write(*,'(a10,11f5.2)')'adc',real(adc)
-      !   write(*,'(a10,f30.17)')'cs(1)',cs(1)
-      !   write(*,'(a10,f30.17)')'cs(2)',cs(2)
-      !   write(*,'(a10,f30.17)')'cs(3)',cs(3)
-      !   write(*,'(a10,f30.17)')'cs(4)',cs(4)
-      !   write(*,'(a10,f30.17)')'cs(5)',cs(5)
-      !   write(*,'(a10,f30.17)')'cs(6)',cs(6)
-      !   write(*,'(a10,f30.17)')'cs(7)',cs(7)
-      !   write(*,'(a10,f30.17)')'cs(8)',cs(8)
-      !   write(*,'(a10,f30.17)')'cs(9)',cs(9)
-      !   write(*,'(a10,f30.17)')'cs(10)',cs(10)
-      !   write(*,'(a10,f30.17)')'cs(11)',cs(11)
-      !   write(*,'(a10,f30.17)')'cs(12)',cs(12)
-      !   write(*,'(a10,f30.17)')'cs(13)',cs(13)
-      !   write(*,'(a10,f30.17)')'cs(14)',cs(14)
-      !   write(*,'(a10,f30.17)')'cs(15)',cs(15)
-      !   write(*,'(a10,f30.17)')'cs(16)',cs(16)
-      !   write(*,'(a10,f30.17)')'cs(17)',cs(17)
-      !   write(*,'(a10,f30.17)')'cs(18)',cs(18)
-      !   write(*,'(a10,f30.17)')'cs(19)',cs(19)
-      !   write(*,'(a10,f30.17)')'taprev',taprev
-      ! end if 
-
-
 
       call exsnow19(int(dt,4),int(dt/sec_hour,4),int(day(i),4),int(month(i),4),int(year(i),4),&
           !SNOW17 INPUT AND OUTPUT VARIABLES
@@ -401,87 +342,13 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
           !SNOW17 CARRYOVER VARIABLES
           cs, taprev_sp) 
 
-      ! if(i .eq. 1)then
-      !   write(*,*)
-      !   write(*,*)'Snow outputs:'
-      !   write(*,'(a10,f30.17)')'raim',raim_sp
-      !   write(*,'(a10,f30.17)')'sneqv',sneqv_sp
-      !   write(*,'(a10,f30.17)')'snow',snow_sp
-      !   write(*,'(a10,f30.17)')'snowh',snowh_sp
-      !   write(*,'(a10,f30.17)')'swe',cs(1)
-      !   write(*,'(a10,f30.17)')'cs(2)',cs(2)
-      !   write(*,'(a10,f30.17)')'cs(3)',cs(3)
-      !   write(*,'(a10,f30.17)')'cs(4)',cs(4)
-      !   write(*,'(a10,f30.17)')'cs(5)',cs(5)
-      !   write(*,'(a10,f30.17)')'cs(6)',cs(6)
-      !   write(*,'(a10,f30.17)')'cs(7)',cs(7)
-      !   write(*,'(a10,f30.17)')'cs(8)',cs(8)
-      !   write(*,'(a10,f30.17)')'cs(9)',cs(9)
-      !   write(*,'(a10,f30.17)')'cs(10)',cs(10)
-      !   write(*,'(a10,f30.17)')'cs(11)',cs(11)
-      !   write(*,'(a10,f30.17)')'cs(12)',cs(12)
-      !   write(*,'(a10,f30.17)')'cs(13)',cs(13)
-      !   write(*,'(a10,f30.17)')'cs(14)',cs(14)
-      !   write(*,'(a10,f30.17)')'cs(15)',cs(15)
-      !   write(*,'(a10,f30.17)')'cs(16)',cs(16)
-      !   write(*,'(a10,f30.17)')'cs(17)',cs(17)
-      !   write(*,'(a10,f30.17)')'cs(18)',cs(18)
-      !   write(*,'(a10,f30.17)')'cs(19)',cs(19)
-      !   write(*,'(a10,f30.17)')'taprev_sp',taprev_sp
-      ! end if 
-
-      !cs_states(:,i,nh)  = cs
-      !taprev_states(i,nh) = taprev_sp
-
-      !write(*,*)taprev_sp
 
       ! taprev does not get updated in place like cs does
       taprev_sp = real(mat(i,nh))
 
-      ! if(i .eq. 1)then
-      !   write(*,*)
-      !   write(*,*)'Sac inputs:'
-      !   write(*,'(a10,f30.17)')'dt',real(dt)
-      !   write(*,'(a10,f30.17)')'raim',raim_sp
-      !   write(*,'(a10,f30.17)')'mat',real(mat(i,nh))
-      !   write(*,'(a10,f30.17)')'etd',real(etd(i,nh))
-      !   write(*,'(a10,f30.17)')'uztwm',real(uztwm(nh))
-      !   write(*,'(a10,f30.17)')'uzfwm',real(uzfwm(nh))
-      !   write(*,'(a10,f30.17)')'uzk',real(uzk(nh))
-      !   write(*,'(a10,f30.17)')'pctim',real(pctim(nh)) 
-      !   write(*,'(a10,f30.17)')'adimp',real(adimp(nh))
-      !   write(*,'(a10,f30.17)')'riva',real(riva(nh))
-      !   write(*,'(a10,f30.17)')'zperc',real(zperc(nh))
-      !   write(*,'(a10,f30.17)')'rexp',real(rexp(nh))
-      !   write(*,'(a10,f30.17)')'lztwm',real(lztwm(nh))
-      !   write(*,'(a10,f30.17)')'lzfsm',real(lzfsm(nh))
-      !   write(*,'(a10,f30.17)')'lzfpm',real(lzfpm(nh))
-      !   write(*,'(a10,f30.17)')'lzsk',real(lzsk(nh))
-      !   write(*,'(a10,f30.17)')'lzpk',real(lzpk(nh))
-      !   write(*,'(a10,f30.17)')'pfree',real(pfree(nh))
-      !   write(*,'(a10,f30.17)')'side',real(side(nh))
-      !   write(*,'(a10,f30.17)')'rserv',real(rserv(nh))
-      ! end if 
-
-      ! if(i .eq. 1)then
-      !   write(*,*)
-      !   write(*,*)'Sac States:'
-      !   write(*,'(a10,f30.17)')'uztwc',uztwc_sp
-      !   write(*,'(a10,f30.17)')'uzfwc',uzfwc_sp
-      !   write(*,'(a10,f30.17)')'lztwc',lztwc_sp
-      !   write(*,'(a10,f30.17)')'lzfsc',lzfsc_sp
-      !   write(*,'(a10,f30.17)')'lzfpc',lzfpc_sp
-      !   write(*,'(a10,f30.17)')'adimc',adimc_sp
-      ! end if 
-
-      ! grab areal extent of snow cover from snow17 output 
-      ! if(aesc > 0.1) write(*,*)'aesc ',aesc_sp
-
       ! modify ET demand using the effective forest cover 
       ! Anderson calb manual pdf page 232
-      ! if(aesc > 0.1) write(*,*) 'etd before efc', etd(i,nh)
       etd(i,nh) = efc(nh)*etd(i,nh)+(1d0-efc(nh))*(1d0-dble(aesc_sp))*etd(i,nh)
-      ! if(aesc > 0.1) write(*,*) 'etd after efc', etd_step
   
       call exsac(1, real(dt), raim_sp, real(mat(i,nh)), real(etd(i,nh)), &
           !SAC PARAMETERS
@@ -497,22 +364,6 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
           uztwc_sp, uzfwc_sp, lztwc_sp, lzfsc_sp, lzfpc_sp, adimc_sp, &
           !SAC OUTPUTS
           qs_sp, qg_sp, tci_sp, aet_sp)
-
-      ! if(i .eq. 1)then
-      !   write(*,*)
-      !   write(*,*)'Sac Outputs:'
-      !   write(*,'(a10,f30.17)')'uztwc',uztwc_sp
-      !   write(*,'(a10,f30.17)')'uzfwc',uzfwc_sp
-      !   write(*,'(a10,f30.17)')'lztwc',lztwc_sp
-      !   write(*,'(a10,f30.17)')'lzfsc',lzfsc_sp
-      !   write(*,'(a10,f30.17)')'lzfpc',lzfpc_sp
-      !   write(*,'(a10,f30.17)')'adimc',adimc_sp
-      !   write(*,'(a10,f30.17)')'qs',qs_sp
-      !   write(*,'(a10,f30.17)')'qg',qg_sp
-      !   write(*,'(a10,f30.17)')'q',tci_sp
-      !   write(*,'(a10,f30.17)')'aet',aet_sp
-      !   write(*,*)'***************************************************************'
-      ! end if 
     
       ! place state variables in output arrays
       uztwc(i,nh) = dble(uztwc_sp)
@@ -554,19 +405,8 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       ! SNEQV=TWE/1000.
       ! SNOWH=SNDPT/100.
 
+    end do  ! ============ end simulation time loop ====================
 
-      !write(*,'(5i5,4f8.2)')nh, year(i), month(i), day(i), hour(i), map(i,nh), mat(i,nh), ptps(i,nh), etd(i,nh), 
-      !write(*,'(4i5,7f8.3)')year(i), month(i), day(i), hour(i), uztwc_sp, uzfwc_sp, lztwc_sp, &
-      !                       lzfsc_sp, lzfpc_sp, adimc_sp, tci_sp(i,nh)
-
-    end do  
-    ! ============ end simulation time loop ====================
-
-  end do   ! ========== END of simulation areas loop   ====================
-
-
-  ! ====== print combined simulation output ============
-  ! print*, 'Sim_length (days) =',sim_length/(86400/dt)
-  ! print*, '--------------------------------------------------------------'
+  end do   ! ========== end of simulation areas loop   ====================
 
 end subroutine

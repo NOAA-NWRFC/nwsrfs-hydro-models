@@ -41,8 +41,8 @@ sac_snow_uh_lagk <- function(dt_hours, forcing, uptribs, pars){
   tci = sac_snow(dt_hours, forcing, pars)
   flow_cfs = uh(dt_hours, tci, pars)
   lagk_flow_cfs = lagk(dt_hours, uptribs, pars)
-  flow_cfs = chanloss(flow_cfs, forcing, dt_hours, pars)
-  flow_cfs + lagk_flow_cfs
+  total_flow_cfs = chanloss(flow_cfs + lagk_flow_cfs, forcing, dt_hours, pars)
+  total_flow_cfs
 }
 
 #' Execute SAC-SMA, SNOW17, return total channel inflow per zone
@@ -125,8 +125,8 @@ sac_snow <- function(dt_hours, forcing, pars){
                # sac parameters
                sac_pars = sac_pars,
                # pet and precp adjustments
-               peadj = rep(1,n_zones),
-               pxadj = rep(1,n_zones),
+               peadj = pars[pars$name == 'peadj',]$value,
+               pxadj = pars[pars$name == 'pxadj',]$value,
                # snow parameters
                snow_pars = snow_pars,
                # initial conditions
@@ -227,8 +227,8 @@ sac_snow_states <- function(dt_hours, forcing, pars){
                # sac parameters
                sac_pars = sac_pars,
                # pet and precp adjustments
-               peadj = rep(1,n_zones),
-               pxadj = rep(1,n_zones),
+               peadj = pars[pars$name == 'peadj',]$value,
+               pxadj = pars[pars$name == 'pxadj',]$value,
                # snow parameters
                snow_pars = snow_pars,
                # initial conditions
@@ -474,27 +474,28 @@ chanloss <- function(flow, forcing, dt_hours, pars){
     return(flow)
   }else{
     cl_factors = numeric(n_clmods)
-    cl_periods = matrix(NA, n_clmods, 2)
+    cl_periods = matrix(NA, 2, n_clmods)
     for(i in 1:n_clmods){
-      cl_periods[i,1] = pars[pars$name == sprintf('cl_period_start_%02d',i),]$value
-      cl_periods[i,2] = pars[pars$name == sprintf('cl_period_end_%02d',i),]$value
+      cl_periods[1,i] = pars[pars$name == sprintf('cl_period_start_%02d',i),]$value
+      cl_periods[2,i] = pars[pars$name == sprintf('cl_period_end_%02d',i),]$value
       cl_factors[i] = pars[pars$name == sprintf('cl_factor_%02d',i),]$value
     }
+    mode(cl_periods) <- 'integer'
 
 
-      cl_flow = .Fortran('chanloss',
-                        n_clmods = as.integer(n_clmods),
-                        dt = as.integer(dt_hours),
-                        sim_length = as.integer(sim_length),
-                        year = as.integer(forcing[[1]]$year)[1:sim_length],
-                        month = as.integer(forcing[[1]]$month)[1:sim_length],
-                        day = as.integer(forcing[[1]]$day)[1:sim_length],
-                        hour = as.integer(forcing[[1]]$hour)[1:sim_length],
-                        factor = cl_factors,
-                        period = as.integer(cl_periods),
-                        sim = flow[1:sim_length],
-                        sim_adj = numeric(sim_length))
-      return(cl_flow$sim_adj)
+    cl_flow = .Fortran('chanloss',
+                      n_clmods = as.integer(n_clmods),
+                      dt = as.integer(dt_hours),
+                      sim_length = as.integer(sim_length),
+                      year = as.integer(forcing[[1]]$year)[1:sim_length],
+                      month = as.integer(forcing[[1]]$month)[1:sim_length],
+                      day = as.integer(forcing[[1]]$day)[1:sim_length],
+                      hour = as.integer(forcing[[1]]$hour)[1:sim_length],
+                      factor = cl_factors,
+                      period = cl_periods,
+                      sim = flow[1:sim_length],
+                      sim_adj = numeric(sim_length))
+    return(cl_flow$sim_adj)
   }
 }
 
