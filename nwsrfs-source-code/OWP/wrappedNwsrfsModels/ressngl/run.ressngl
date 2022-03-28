@@ -1,0 +1,39 @@
+#!/usr/bin/ksh
+usage="USAGE: run.ressngl basin_name\n"
+#set -o xtrace
+if [[ $# -eq 0 ]]
+then
+    print "\n$usage"
+    exit 0
+fi
+
+inputDir=$PWD/testData/$1
+
+progname=${PWD##*/}
+echo $progname
+echo "Basin Name: " $1
+dirname=bin
+
+#ABRFC, NCRFC => LOCALHR = NLSTZ = -6(CDT)
+#CNRFC LOCALHR = NLSTZ = -8(PST)
+#NERFC LOCALHR = NLSTZ = -5
+
+ARGUMENTS_FILE=$inputDir/arguments.txt
+#rm old files produced by model
+rm -f $inputDir/output.txt $inputDir/statesO.txt $inputDir/diag.txt
+
+echo
+$dirname/$progname $ARGUMENTS_FILE
+#valgrind --track-origins=yes --tool=memcheck --leak-check=full --show-reachable=yes $dirname/$progname $ARGUMENTS_FILE  #>/tmp/$1 2>&1
+echo
+diff $inputDir/output.txt $inputDir/output.txt.orig 
+if [[ $? == 0 ]]
+then
+   echo -e "\n No timeseries diffs found."
+fi
+
+diff $inputDir/statesO.txt $inputDir/statesO.txt.orig
+if [[ $? == 0 ]]
+then
+   echo -e " No StatesO diffs found.\n"
+fi

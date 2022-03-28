@@ -1,0 +1,24 @@
+# 11/2008
+# This file is for information purposes (not sued by code) and is used to map OHD's and FEWS' representation of
+# units
+#
+#  	OHD UNITS 	FEWS UNITS
+
+ 	PCTD 		PCTD	
+	REAL		 
+ 	INT		-
+	PCT		%
+	MM		mm
+	CM		cm
+	M		m
+	IN		IN
+	FT 		ft
+	FT 		feet
+ 	CMSD		cmsd
+	CFSD 		cfsd
+ 	DEGC		oC
+	DEGC		DEGC
+ 	CMS   		cms
+	CFS 		cfs
+	ACFT 		acft
+	M/S		m/s

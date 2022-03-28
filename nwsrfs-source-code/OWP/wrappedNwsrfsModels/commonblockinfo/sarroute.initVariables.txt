@@ -1,0 +1,161 @@
+variable = IODBUG is not used
+
+variable = ITRACE is not used
+
+variable = IDBALL is not used
+
+variable = NDEBUG is not used
+
+variable = IDEBUG(20) is not used
+
+variable = IN
+10QINEN(I)=QINEN(I)*RMF+RCF
+20QINST(I)=QINST(I)*RMF+RCF
+910QINEN(I)=(QINEN(I)-RCF)/RMF
+920QINST(I)=(QINST(I)-RCF)/RMF
+COMMON/IONUM/IN,ITSDATA,IPR,IPU
+IN=1
+NINTS=1
+NINTS=2
+NINTS=NINT(P(32))
+READ(IN,*,ERR=9992)CIDINS,CODINS,CIDINE,CODINE,
+READ(IN,*,ERR=9993)NPHASE,RN,RKTS,NPQTST,NCOMP
+READ(IN,*,ERR=9994)QTABLE(I),TSTBLE(I)
+READ(IN,*,ERR=9995)QI1
+READ(IN,*,ERR=9996)QPHASE(I)
+READ(IN,FMT='(A)',ERR=9991)CTITLE
+
+variable = ITSDATA
+COMMON/IONUM/IN,ITSDATA,IPR,IPU
+
+variable = IPR
+COMMON/IONUM/IN,ITSDATA,IPR,IPU
+
+variable = IPU
+COMMON/IONUM/IN,ITSDATA,IPR,IPU
+
+variable = IDARUN is not used
+
+variable = IHRRUN is not used
+
+variable = LDARUN is not used
+
+variable = LHRRUN is not used
+
+variable = LDACPD is not used
+
+variable = LHRCPD is not used
+
+variable = NOW(5) is not used
+
+variable = LOCAL is not used
+
+variable = NOUTZ is not used
+
+variable = NOUTDS is not used
+
+variable = NLSTZ is not used
+
+variable = IDA
+	IDA=startDay
+	IDADAT=startDay
+
+variable = IHR
+	IHR=startHour
+
+variable = LDA
+	LDA=endDay
+
+variable = LHR
+	LHR=endHour
+
+variable = IDADAT
+	IDADAT=startDay
+
+variable = IFILLC is not init
+
+variable = NCSTOR is not used
+
+variable = ICDAY(20) is not used
+
+variable = ICHOUR(20) is not used
+
+variable = IDARUN is not used
+
+variable = IHRRUN is not used
+
+variable = LDARUN is not used
+
+variable = LHRRUN is not used
+
+variable = LDACPD is not used
+
+variable = LHRCPD is not used
+
+variable = NOW(5) is not used
+
+variable = LOCAL is not used
+
+variable = NOUTZ is not used
+
+variable = NOUTDS is not used
+
+variable = NLSTZ is not used
+
+variable = IDA
+	IDA=startDay
+	IDADAT=startDay
+
+variable = IHR
+	IHR=startHour
+
+variable = LDA
+	LDA=endDay
+
+variable = LHR
+	LHR=endHour
+
+variable = IDADAT
+	IDADAT=startDay
+
+variable = IFILLC is not init
+
+variable = NCSTOR is not used
+
+variable = ICDAY(20) is not used
+
+variable = ICHOUR(20) is not used
+
+variable = IODBUG is not used
+
+variable = ITRACE is not used
+
+variable = IDBALL is not used
+
+variable = NDEBUG is not used
+
+variable = IDEBUG(20) is not used
+
+variable = IN
+10QINEN(I)=QINEN(I)*RMF+RCF
+20QINST(I)=QINST(I)*RMF+RCF
+910QINEN(I)=(QINEN(I)-RCF)/RMF
+920QINST(I)=(QINST(I)-RCF)/RMF
+COMMON/IONUM/IN,ITSDATA,IPR,IPU
+IN=1
+NINTS=1
+NINTS=2
+NINTS=NINT(P(32))
+READ(IN,*,ERR=9992)CIDINS,CODINS,CIDINE,CODINE,
+READ(IN,*,ERR=9993)NPHASE,RN,RKTS,NPQTST,NCOMP
+READ(IN,*,ERR=9994)QTABLE(I),TSTBLE(I)
+READ(IN,*,ERR=9995)QI1
+READ(IN,*,ERR=9996)QPHASE(I)
+READ(IN,FMT='(A)',ERR=9991)CTITLE
+
+variable = IPR
+COMMON/IONUM/IN,ITSDATA,IPR,IPU
+
+variable = IPU
+COMMON/IONUM/IN,ITSDATA,IPR,IPU
+

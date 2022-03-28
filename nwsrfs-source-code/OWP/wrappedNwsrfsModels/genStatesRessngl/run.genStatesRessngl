@@ -1,0 +1,31 @@
+#!/usr/bin/ksh
+usage="USAGE: run.genStatesRessngl basin_name\n"
+#set -o xtrace
+if [[ $# -eq 0 ]]
+then
+    print "\n$usage"
+    exit 0
+fi
+
+inputDir=$PWD/testData/$1
+
+progname=${PWD##*/}
+echo -e "\n=====> $progname\n"
+echo "Basin Name: " $1
+dirname=bin
+
+NWSDATATYPEFILE=../nwsrfs_datatype_mapping_file.txt
+
+#rm old files produced by model
+rm -f $inputDir/diag.txt $inputDir/statesI.txt 
+
+$dirname/$progname $inputDir/params.txt \
+$inputDir/statesI.txt \
+$inputDir/diag.txt $NWSDATATYPEFILE
+
+echo
+diff $inputDir/statesI.txt $inputDir/statesI.txt.legacy
+if [[ $? == 0 ]]
+then
+   echo -e " No StatesO diffs found.\n"
+fi

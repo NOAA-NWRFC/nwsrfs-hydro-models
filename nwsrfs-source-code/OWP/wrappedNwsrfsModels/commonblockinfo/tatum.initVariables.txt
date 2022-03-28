@@ -1,0 +1,128 @@
+variable = IODBUG is not used
+
+variable = ITRACE is not used
+
+variable = IDBALL is not init
+
+variable = NDEBUG is not init
+
+variable = IDEBUG(20) is not used
+
+variable = IDARUN is not used
+
+variable = IHRRUN is not used
+
+variable = LDARUN is not used
+
+variable = LHRRUN is not used
+
+variable = LDACPD is not used
+
+variable = LHRCPD is not used
+
+variable = IN
+	IN=1
+231READ(IN,917,ERR=235)(P(16+I),I=1,NL)
+FLOWIN=QIN(I)
+READ(IN,917,ERR=118)(P(NQST+I-1),I=1,NLM1)
+READ(IN,917,ERR=246)(P(IPTR+J),J=1,NCL)
+READ(IN,917,ERR=262)(C(IPTR+J),J=1,NCLM)
+
+variable = IPR
+	IPR=0
+
+variable = IPU
+	IPU=0
+
+variable = IFILLC is not init
+
+variable = NCSTOR is not used
+
+variable = ICDAY(20) is not used
+
+variable = ICHOUR(20) is not used
+
+variable = IN
+	IN=1
+231READ(IN,917,ERR=235)(P(16+I),I=1,NL)
+FLOWIN=QIN(I)
+READ(IN,917,ERR=118)(P(NQST+I-1),I=1,NLM1)
+READ(IN,917,ERR=246)(P(IPTR+J),J=1,NCL)
+READ(IN,917,ERR=262)(C(IPTR+J),J=1,NCLM)
+
+variable = IPR
+	IPR=0
+
+variable = IPU
+	IPU=0
+
+variable = IDARUN is not used
+
+variable = IHRRUN is not used
+
+variable = LDARUN is not used
+
+variable = LHRRUN is not used
+
+variable = LDACPD is not used
+
+variable = LHRCPD is not used
+
+variable = NOW(5) is not used
+
+variable = LOCAL is not used
+
+variable = NOUTZ is not used
+
+variable = NOUTDS is not used
+
+variable = NLSTZ is not used
+
+variable = IDA
+	IDA=startDay
+	IDADAT=startDay
+
+variable = IHR
+	IHR=startHour
+
+variable = LDA
+	LDA=endDay
+
+variable = LHR
+	LHR=endHour
+
+variable = IDADAT
+	IDADAT=startDay
+
+variable = IFILLC is not init
+
+variable = NCSTOR is not used
+
+variable = ICDAY(20) is not used
+
+variable = ICHOUR(20) is not used
+
+variable = IN
+	IN=1
+231READ(IN,917,ERR=235)(P(16+I),I=1,NL)
+FLOWIN=QIN(I)
+READ(IN,917,ERR=118)(P(NQST+I-1),I=1,NLM1)
+READ(IN,917,ERR=246)(P(IPTR+J),J=1,NCL)
+READ(IN,917,ERR=262)(C(IPTR+J),J=1,NCLM)
+
+variable = IPR
+	IPR=0
+
+variable = IPU
+	IPU=0
+
+variable = IODBUG is not used
+
+variable = ITRACE is not used
+
+variable = IDBALL is not init
+
+variable = NDEBUG is not init
+
+variable = IDEBUG(20) is not used
+

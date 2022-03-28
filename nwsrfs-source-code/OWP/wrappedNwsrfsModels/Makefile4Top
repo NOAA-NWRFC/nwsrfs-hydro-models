@@ -1,0 +1,36 @@
+# This template file is used for each model top Makefile
+#
+# File Name: Makefile4Top
+# Author: Raymond.Chui@noaa.gov
+# Created: August, 2009
+
+# Where the macro PGM is definded in each model's */Makefile file
+make:  
+	cd ../common; make -s
+	mkdir -p lib obj
+	gcc_version=`/usr/bin/x86_64-redhat-linux-gcc --version | head -1 | cut -d ' ' -f3`; \
+	top_roof=`pwd | sed s/$(PGM)//`; \
+	cd src; \
+	alldir=`ls -d model_* 2> /dev/null`; \
+	make -f $$top_roof/Makefile4Src MODULES="`echo $$alldir`" PROG=$(PGM) TOP_ROOF=$$top_roof \
+	GCC_VERSION=$$gcc_version \
+	CHPSDIR=$(CHPSDIR) BUILD=$(BUILD) SUBDIRS="$(SUBDIRS)" \
+	OTHERLIB="$(OTHERLIB)" OTHERINCLUDE="$(OTHERINCLUDE)"
+	# copy the executable to the Modules bin directory for testing through FEWS
+	-mkdir -p ../../ohdcorechpstests/Modules/bin 
+	-cp -fp bin/$(PGM) ../../ohdcorechpstests/Modules/bin
+
+libs:
+	top_roof=`pwd | sed s/$(PGM)//`; \
+	cd src; make -s -f $$top_roof/Makefile4Src PROG=$(PGM) TOP_ROOF=$$top_roof libs
+
+clean:
+	rm -rf obj
+	rm -rf lib/lib*.a
+	top_roof=`pwd | sed s/$(PGM)//`; \
+	cd src; make -f $$top_roof/Makefile4Src PROG=$(PGM) TOP_ROOF=$$top_roof cleanall
+	# rm the executable from the Modules directory used for testing through FEWS
+	-rm -rf ../../ohdcorechpstests/Modules/bin/$(PGM)
+
+cleanlib: clean
+	-rm -f lib/lib$(PGM).a

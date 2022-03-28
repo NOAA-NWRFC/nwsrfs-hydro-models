@@ -1,0 +1,104 @@
+# This is a template Makefile for all models under their source
+# directory before the target all:
+# All below macros, suffixes and targets are used for
+# each */src/Makefile and Makefile4Subdir files
+#
+# File Name: MakefileTemplate
+# Author: Raymond.Chui@noaa.gov
+# Created: August, 2009
+#          November, 2016 - updated 32bit applications to compile on 
+#                           64-bit environment.
+#          
+.SUFFIXES : .a .o .cxx .c .f
+
+SRC = $(PROG).c
+OBJ = ${SRC:.c=.o}
+UPPER = ..
+LIBDIR = $(UPPER)/lib
+OBJDIR = $(UPPER)/$(UPPER)/obj
+LIB = $(LIBDIR)/lib${SRC:.c=.a}
+BINDIR = $(UPPER)/bin
+BIN = $(BINDIR)/${SRC:.c=}
+
+INCLUDE = $(TOP_ROOF)$(PROG)/include
+COMMON = $(TOP_ROOF)common
+
+COMMONLIB = ${COMMON}/lib/libcommon.a
+NWSRFSLIB = ${COMMON}/lib/libnwsrfs.a
+
+REDHAT_GCC = /usr/lib/gcc/x86_64-redhat-linux/$(GCC_VERSION)
+
+
+INSERTS      = -I$(COMMON)/include/commonblocks \
+               -I$(COMMON)/include  \
+               -I$(INCLUDE)/common \
+               -I$(INCLUDE) \
+			   $(OTHERINCLUDE)
+
+INSERTS_CC   = -I/usr/X11R6/include  \
+               -I/usr/include  \
+	       -I/usr/local/netcdf/include  \
+               -I$(REDHAT_GCC)/include  \
+				$(INSERTS)
+
+INSERTS_FC   = $(INSERTS)
+
+INSERTS_CXX  = -I/usr/X11R6/include  \
+               -I/usr/include  \
+               -I$(REDHAT_GCC)/include  \
+				$(INSERTS)
+ARCH_FLAGS = -march=i686 -mtune=i686 -m32
+
+FC       = /usr/bin/gfortran  
+FFLAGS   = $(ARCH_FLAGS) -g -p -fpic -w -c -std=legacy -fno-f2c -fno-automatic -Dlinux
+
+CC       = /usr/bin/x86_64-redhat-linux-gcc 
+CFLAGS   = $(ARCH_FLAGS) -gstabs -fpic -Wall -fno-strict-aliasing -Wno-maybe-uninitialized -Wno-sizeof-pointer-memaccess -Wno-unused-variable -Wno-unused-but-set-variable -Wno-comment -g -Dlinux
+
+CXX      = /usr/bin/x86_64-redhat-linux-g++ -Wno-deprecated
+CXXFLAGS = $(ARCH_FLAGS) -gstabs -fpic -fno-strict-aliasing -Wno-write-strings
+
+LOADER = /usr/bin/gfortran $(ARCH_FLAGS) -Wl,-noinhibit-exec
+MAPPER = -v
+
+DIR_LOAD = -Wl,-rpath=. 
+DIR_LOAD_FC  = $(DIR_LOAD) 
+DIR_LOAD_CXX = -L/lib  $(DIR_LOAD) 
+
+LIB_SYSTEM = $(DIR_LOAD) -lm -lc -lrt -ldl
+LIB_SYSTEM_CXX= -L$(LIB_SYSTEM) -lstdc++  
+
+OBJ_CC = ${SRC_CC:.cxx=.o}
+OBJ_C = ${SRC_C:.c=.o}
+OBJ_F = ${SRC_F:.f=.o}
+
+AR = ar -rv
+REMOVE = rm -f
+COPY = cp -pu
+
+.f.a :
+	$(FC) $(FFLAGS) $(INSERTS_FC) -c $<
+	$(AR) $(LIB) $*.o
+	$(REMOVE) $*.o
+
+.f.o :
+	$(FC) $(FFLAGS) $(INSERTS_FC) -c $<
+	$(COPY) $*.o $(OBJDIR)
+
+.cxx.a :
+	$(CXX) $(CXXFLAGS) $(INSERTS_CXX) -c $<
+	$(AR) $(LIB) $*.o
+	$(REMOVE) $*.o
+
+.cxx.o :
+	$(CXX) $(CXXFLAGS) $(INSERTS_CXX) -c $<
+	$(COPY) $*.o $(OBJDIR)
+
+.c.a :
+	$(CC) $(CFLAGS) $(INSERTS_CC) -c $<
+	$(AR) $(LIB) $*.o
+	$(REMOVE) $*.o
+
+.c.o :
+	$(CC) $(CFLAGS) $(INSERTS_CC) -c $<
+	$(COPY) $*.o $(OBJDIR)

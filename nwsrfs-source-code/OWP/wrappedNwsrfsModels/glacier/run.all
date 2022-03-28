@@ -1,0 +1,34 @@
+#!/usr/bin/ksh
+#usage="USAGE: run.glacier basin_name (mnda2, snoa2)\n"
+usage="USAGE: run.all\n"
+set -o xtrace
+
+rm -f memcheck
+
+for segdef in mnda2 calibration_30yrs mnda2_cox_same_params mnda2_cox_change_glacier_params snoa2 crna2;
+do
+inputDir=$PWD/testData/$segdef
+progname=${PWD##*/}
+currentDir=$PWD
+
+#rm old files produced by model
+rm -f $inputDir/outputs.txt $inputDir/statesO.txt $inputDir/diag.txt
+
+progname=${PWD##*/}
+echo "Basin name = " $segdef
+dirname=bin
+ARGUMENTS_FILE=$currentDir/testData/$segdef/arguments.txt
+
+echo
+#$dirname/$progname $ARGUMENTS_FILE
+echo '==============> ' $segdef >> memcheck
+
+valgrind --track-origins=yes --tool=memcheck --leak-check=full --show-reachable=yes $dirname/$progname $ARGUMENTS_FILE >> memcheck 2>&1
+
+diff $inputDir/output_ts.txt $inputDir/output_ts.txt.orig
+diff $inputDir/output_states.txt $inputDir/output_states.txt.orig
+
+set +o xtrace
+print "============ DONE $segdef ==========="
+set -o xtrace
+done 

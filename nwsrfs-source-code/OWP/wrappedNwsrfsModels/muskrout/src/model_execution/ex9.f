@@ -1,0 +1,209 @@
+C MEMBER EX9
+C  (from old member FCEX9)
+C
+      SUBROUTINE EX9(PO,CO,QI,QO)
+C
+C     THIS IS THE EXECUTION SUBROUTINE FOR THE
+C     MUSKINGUM ROUTINE OPERATION
+C
+C     SUBROUTINE INITIALLY WRITTEN BY
+C        DAVID REED - HRL   OCT. 1979
+C
+C     PO  - Parameter Array - 	Input
+C     CO  - CarryOver Array - 	Input
+C     QI  - Input Timeseries- 	Input
+C     QO  - Output Timeseries - Output
+C
+      DIMENSION PO(1),CO(1),QI(1),QO(1),CQ(2)
+C
+C     COMMON BLOCKS
+cav      COMMON/FDBUG/IODBUG,ITRACE,IDBALL,NDEBUG,IDEBUG(20)
+cav      COMMON/FCTIME/IDARUN,IHRRUN,LDARUN,LHRRUN,LDACPD ,LHRCPD,
+cav     1NOW(5),LOCAL,NOUTZ,NOUTDS,NLSTZ,IDA,IHR,LDA,LHR,IDADAT
+cav      COMMON/IONUM/IN,IPR,IPU
+cav      COMMON/FCARY/IFILLC,NCSTOR,ICDAY(20),ICHOUR(20)
+
+      
+      INCLUDE 'flogm'
+      INCLUDE 'fcary'
+      INCLUDE 'fctime'
+C
+C    ================================= RCS keyword statements ==========
+      CHARACTER*68     RCSKW1,RCSKW2
+      DATA             RCSKW1,RCSKW2 /                                 '
+     .$Source: /fs/hseb/ob72/rfc/ofs/src/fcst_ex/RCS/ex9.f,v $
+     . $',                                                             '
+     .$Id: ex9.f,v 1.1 1995/09/17 18:57:25 dws Exp $
+     . $' /
+C    ===================================================================
+C
+C
+C     CHECK TRACE LEVEL
+CAV      IF(ITRACE.GE.1) WRITE(IODBUG,900)
+C
+      
+      IF (FEWSDEBUG.GE.1) THEN      
+         WRITE(MESSAGESTRING,900)
+         call logfromfortran(DEBUG_LEVEL, MESSAGESTRING)
+  900    FORMAT(1H0,13H**EX9 ENTERED)
+      ENDIF     
+C
+C     CHECK TO SEE IF DEBUG OUTPUT IS NEEDED FOR THIS OPERATION
+CAV      IBUG=1
+CAV      IF(IDBALL.GT.0) IBUG=1
+CAV      IF(NDEBUG.EQ.0) GO TO 100
+CAV      DO 10 I=1,NDEBUG
+CAV      IF(IDEBUG(I).EQ.9) GO TO 11
+CAV   10 CONTINUE
+CAV      GO TO 100
+CAV   11 IBUG=1
+C
+C
+  100 IPO=20
+      IPC=2      
+C     DEBUG OPTION PRINT OUT
+      IF(FEWSDEBUG.EQ.0) GO TO 101
+      WRITE(MESSAGESTRING,901) (PO(I),I=2,6)
+  901 FORMAT(1H0,10X,22HMUSKINGUM ROUTING FOR ,5A4)
+      call logfromfortran(DEBUG_LEVEL, MESSAGESTRING)  
+      WRITE(MESSAGESTRING,902) IPO,IPC
+  902 FORMAT(1H0,8X,31HBEGIN OF EX9: PO AND CO ARRAYS.,5X,21HNUMBER OF VA
+     1LUES--PO=,I3,2X,3HCO=,I2)
+      call logfromfortran(DEBUG_LEVEL, MESSAGESTRING)  
+C
+C     PRINT OUT PO AND CO ARRAYS
+      WRITE(MESSAGESTRING,903) (PO(I),I=1,IPO)
+      call logfromfortran(DEBUG_LEVEL, MESSAGESTRING)
+  903 FORMAT(1H0,14(F8.3,1X))      
+      WRITE(MESSAGESTRING,903)(CO(I),I=1,IPC)
+      call logfromfortran(DEBUG_LEVEL, MESSAGESTRING)     
+  101 IC=1      
+      ICOUNT=0
+      ICTERR=0
+      QIN1=CO(1)
+      QOUT1=CO(2)      
+      KDA=IDA
+      KHR=IHR
+      KDT=PO(10)
+      i=0
+C
+C     BEGIN COMPUTATION LOOP
+C
+cav  102 I=(KDA-IDADAT)*24/KDT+KHR/KDT 
+      
+cav no offset is needed      
+  102 I=1+I         
+      QIN2=QI(I)        
+      QOUT2=PO(17)*QIN2+PO(18)*QIN1+PO(19)*QOUT1
+      IF(QOUT2.LE.1.0E-7)QOUT2=0.0
+      ICOUNT=ICOUNT+1       
+      IF(QOUT2.GE.0.) GO TO 150
+      IDIV=4
+      DIV=FLOAT(IDIV)
+      TINC=FLOAT(KDT)/DIV
+      DELQ=(QIN2-QIN1)/DIV
+      HDT=FLOAT(KDT)*0.5/DIV
+      XK=PO(15)*PO(16)
+      DENOM=PO(15)-XK+HDT
+      C0=(HDT-XK)/DENOM
+      C1=(XK+HDT)/DENOM
+      C2=(PO(15)-XK-HDT)/DENOM
+      QINTI1=QIN1
+      QINTO1=QOUT1
+      DO 160 IJ=1,IDIV
+      QINTI2=QINTI1+DELQ
+      QINTO2=C0*QINTI2+C1*QINTI1+C2*QINTO1
+     
+      IF(QINTO2.LE.1.0E-7)QINTO2=0.0
+      QINTI1=QINTI2
+      QINTO1=QINTO2      
+  160 CONTINUE
+      QOUT2=QINTO2
+      IF(QOUT2.GE.0.) GO TO 150
+      GO TO(121,123,122),ICOUNT
+  122 QOUT2=2.*QO(I-1)-QO(I-2)
+      IF(QOUT2.GE.0.) GO TO 150
+      QOUT2=0.
+      ICTERR=ICTERR+1
+      GO TO 150
+C      INTERPOLATION FOR SECOND POINT
+C
+C
+  123 QOUT2=2.*QO(I-1)-CO(2)
+      IF(QOUT2.GE.0.) GO TO 150
+      QOUT2=0.
+      ICTERR=ICTERR+1
+      GO TO 150
+C
+C
+C
+C     FOR LINEAR INTERPOLATION OF FIRST CALCULATION
+C      QOUT2=INITIAL OUTFLOW CARRYOVER
+C
+  121 QOUT2=CO(2)
+      IF((ICVAL.EQ.0).AND.(IVALUE.EQ.1)) ICTERR=ICTERR+1
+  150 QO(I)=QOUT2  
+        
+      IF( FEWSDEBUG.GE.4 .AND. I .LE. 100 ) THEN     
+         write(MESSAGESTRING,997)QI(I),QO(I),I
+         call logfromfortran(DEBUG_LEVEL, MESSAGESTRING)
+  997    FORMAT(1H0,5X,11H INPUT TS: ,(F9.4),12H OUTPUT TS: ,(F9.4),
+     +   8H INDEX: ,(I3))         
+      ENDIF
+      QIN1=QIN2         
+      QOUT1=QOUT2
+      
+C
+C     CHECK TO SEE IF CARRY OVER SHOULD BE STORED      
+      IF(IFILLC.EQ.0) GO TO 103
+C
+C     CHECK TO SEE IF INTERMEDIATE CARRYOVER SHOULD BE STORED
+      IF(IC.GT.NCSTOR) GO TO 103
+      IF((KDA.EQ.ICDAY(IC)).AND.(KHR.EQ.ICHOUR(IC))) GO TO 104
+      GO TO 103
+C     CARRYOVER IS BEING SAVED
+  104 CQ(1)=QI(I)      
+      CQ(2)=QO(I)       
+      IC=IC+1
+cav      CALL FCWTCO(KDA,KHR,CQ,2)
+      
+  103 IF((KDA.EQ.LDA).AND.(KHR.EQ.LHR)) GO TO 105      
+      ITIME=KHR+KDT
+      IF(ITIME.GT.24) GO TO 106
+      KHR=KHR+KDT
+      GO TO 102
+  106 KDA=KDA+1
+      KHR=KHR-24+KDT
+      GO TO 102
+C
+C     CHECK TO SEE IF CARRYOVER SHOULD BE STORED
+  105 IF(IFILLC.EQ.0) GO TO 109
+      CO(1)=QI(I)      
+      CO(2)=QO(I)
+      
+  109 IF(ICTERR.LE.2) GO TO 107
+      WRITE (MESSAGESTRING,966) (PO(K),K=2,6),ICTERR
+      call logfromfortran(WARNING_LEVEL, MESSAGESTRING)
+  966 FORMAT(1H0,37H**WARNING** IN MUSKINGUM ROUTING FOR ,5A4,//,10X,
+     149HCALCULATED OUTFLOWS WERE NEGATIVE AND SET TO ZERO,I3,5HTIMES)
+      
+cav      CALL WARN
+C     CHECK FOR DEBUG OUTPUT
+  107 IF(FEWSDEBUG.EQ.0) GO TO 108 
+      WRITE(MESSAGESTRING,901)(PO(I),I=2,6)
+      call logfromfortran(DEBUG_LEVEL, MESSAGESTRING)      
+      WRITE(MESSAGESTRING,992)IPO,IPC
+      call logfromfortran(DEBUG_LEVEL, MESSAGESTRING)
+  992 FORMAT(1H0,7X,31H END OF EX9: PO AND CO ARRAYS.,5X,21HNUMBER OF VA
+     1LUES--PO=,I3,2X,3HCO=,I2) 
+      psize = IPO     
+      WRITE(MESSAGESTRING,903)(PO(I),I=1,IPO)
+      call logfromfortran(DEBUG_LEVEL, MESSAGESTRING)      
+      WRITE(MESSAGESTRING,903)(CO(I),I=1,IPC)
+      call logfromfortran(DEBUG_LEVEL, MESSAGESTRING)       
+  108 WRITE(MESSAGESTRING,998)
+      call logfromfortran(DEBUG_LEVEL, MESSAGESTRING)
+  998 FORMAT(1H0,12H**EX9 EXITED)
+      
+      RETURN
+      END

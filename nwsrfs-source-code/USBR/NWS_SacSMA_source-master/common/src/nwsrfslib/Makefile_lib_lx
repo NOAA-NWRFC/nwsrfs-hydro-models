@@ -1,0 +1,122 @@
+#  ============================================================================
+#  pgm: Makefile_lib_lx .. makefile to update the my-nwsrfslib library file
+#
+#  cmt: File made on Tue Apr  1 11:54:05 EDT 2008 by user "leecr"
+#  ============================================================================
+
+SRC=$(PWD)
+LIB = ../../lib
+ARFLAGS  = rv
+# below for 8.3 commented out
+#FC       = /fs/opt/pgi/linux86/bin/pgf90
+FC       = /fs/shared/NEWopt/Linux/pgi724/linux86/7.2/bin/pgf90
+FOPTIM   = -g -fpic -g77libs
+FFLAGS   = $(FOPTIM) -Mbackslash -Mpreprocess
+
+INSERTS      = -I../../include  \
+	       -I../../include/commonblocks
+	       
+# below for 8.3 commented out
+#INSERTS_FC   = -I/fs/opt/pgi/linux86/include
+INSERTS_FC   = -I/fs/shared/NEWopt/Linux/pgi724/linux86/7.2/include
+
+CC       = /usr/bin/gcc
+COPTIM   =
+CFLAGS   = $(COPTIM) -fno-strict-aliasing -DUNIX -DGRTYPE_PS -DGRTYPE_XWIN -DLINX -DX1D -DTIMER -D__USE_GNU -DUSE_XM_MWMUTIL_H -DUSE_XGPM -Wall -Wno-unused-variable -Wno-comment
+
+INSERTS_CC   = -I/usr/include/informix/esql  \
+		-I/usr/X11R6/include  \
+		-I/usr/include  \
+		-I/usr/lib/gcc/i386-redhat-linux/3.4.6/include  \
+		-I/usr/local/netcdf/include  \
+		-I/usr/local/jdk-1.5.0_04/include  \
+		-I/usr/local/jdk-1.5.0_04/include/linux  \
+		-I/usr/include
+                
+	       
+.SUFFIXES:   .f .c .h .o .a
+
+.f.a:
+	@echo "-------------------------------- $<"
+	@$(FC) $(FFLAGS) $(INSERTS_FC) $(INSERTS) -c $< \
+	   && ar $(ARFLAGS) $@ $*.o \
+	   || echo "e - $*"
+	@rm -f $*.o
+	@rm -f ${*F}.stb
+	@echo "--------------------------------"
+
+.c.a:
+	@echo "-------------------------------- $<"
+	@$(CC) $(CFLAGS) $(INSERTS_CC) $(INSERTS) -c $< \
+	   && ar $(ARFLAGS) $@ $*.o \
+	   || echo "e - $*"
+	@rm -f $*.o
+	@echo "--------------------------------"
+
+$(LIB)/libnwsrfslib_tw.a:  \
+     $(LIB)/libnwsrfslib_tw.a(fcitzc.o)  \
+     $(LIB)/libnwsrfslib_tw.a(fctzc.o)  \
+     $(LIB)/libnwsrfslib_tw.a(ffa2f.o)  \
+     $(LIB)/libnwsrfslib_tw.a(ffa2i.o)  \
+     $(LIB)/libnwsrfslib_tw.a(ffi2a.o)  \
+     $(LIB)/libnwsrfslib_tw.a(hckdat.o)  \
+     $(LIB)/libnwsrfslib_tw.a(ifbug.o)  \
+     $(LIB)/libnwsrfslib_tw.a(ifmsng.o)  \
+     $(LIB)/libnwsrfslib_tw.a(mdyh1.o)  \
+     $(LIB)/libnwsrfslib_tw.a(mdyh2.o)  \
+     $(LIB)/libnwsrfslib_tw.a(umemov.o)  \
+     $(LIB)/libnwsrfslib_tw.a(lenstr.o)  \
+     $(LIB)/libnwsrfslib_tw.a(error.o)  \
+     $(LIB)/libnwsrfslib_tw.a(substr.o)  \
+     $(LIB)/libnwsrfslib_tw.a(ueror.o)  \
+     $(LIB)/libnwsrfslib_tw.a(ufa2f.o)  \
+     $(LIB)/libnwsrfslib_tw.a(ufa2i.o)  \
+     $(LIB)/libnwsrfslib_tw.a(uffind.o)  \
+     $(LIB)/libnwsrfslib_tw.a(ufibuf.o)  \
+     $(LIB)/libnwsrfslib_tw.a(ufield.o)  \
+     $(LIB)/libnwsrfslib_tw.a(ufldst.o)  \
+     $(LIB)/libnwsrfslib_tw.a(ugtfld.o)  \
+     $(LIB)/libnwsrfslib_tw.a(uindex.o)  \
+     $(LIB)/libnwsrfslib_tw.a(uindxc.o)  \
+     $(LIB)/libnwsrfslib_tw.a(uline.o)  \
+     $(LIB)/libnwsrfslib_tw.a(uline2.o)  \
+     $(LIB)/libnwsrfslib_tw.a(ulinel.o)  \
+     $(LIB)/libnwsrfslib_tw.a(umemst.o)  \
+     $(LIB)/libnwsrfslib_tw.a(uprcr2.o)  \
+     $(LIB)/libnwsrfslib_tw.a(uprcrd.o)  \
+     $(LIB)/libnwsrfslib_tw.a(uprfld.o)  \
+     $(LIB)/libnwsrfslib_tw.a(urepet.o)  \
+     $(LIB)/libnwsrfslib_tw.a(uwarn.o)  \
+     $(LIB)/libnwsrfslib_tw.a(uckflt.o)  \
+     $(LIB)/libnwsrfslib_tw.a(uckint.o)  \
+     $(LIB)/libnwsrfslib_tw.a(ufinfx.o)  \
+     $(LIB)/libnwsrfslib_tw.a(ufixed.o)  \
+     $(LIB)/libnwsrfslib_tw.a(ufpack.o)  \
+     $(LIB)/libnwsrfslib_tw.a(upackn.o)  \
+     $(LIB)/libnwsrfslib_tw.a(ufrlfx.o)  \
+     $(LIB)/libnwsrfslib_tw.a(umovex.o)  \
+     $(LIB)/libnwsrfslib_tw.a(unoblk.o)  \
+     $(LIB)/libnwsrfslib_tw.a(unpaks.o)  \
+     $(LIB)/libnwsrfslib_tw.a(unumic.o)  \
+     $(LIB)/libnwsrfslib_tw.a(uschbf.o)  \
+     $(LIB)/libnwsrfslib_tw.a(usrblk.o)  \
+     $(LIB)/libnwsrfslib_tw.a(uswitc.o)  \
+     $(LIB)/libnwsrfslib_tw.a(warn.o) \
+     $(LIB)/libnwsrfslib_tw.a(fgetrc.o) \
+     $(LIB)/libnwsrfslib_tw.a(fhqs1.o) \
+     $(LIB)/libnwsrfslib_tw.a(fhsolv.o) \
+     $(LIB)/libnwsrfslib_tw.a(fhydex.o) \
+     $(LIB)/libnwsrfslib_tw.a(floopr.o) \
+     $(LIB)/libnwsrfslib_tw.a(fqsolv.o) \
+     $(LIB)/libnwsrfslib_tw.a(frict.o) \
+     $(LIB)/libnwsrfslib_tw.a(fsect.o) \
+     $(LIB)/libnwsrfslib_tw.a(fshfrc.o) \
+     $(LIB)/libnwsrfslib_tw.a(fterpl.o) \
+     $(LIB)/libnwsrfslib_tw.a(funsrc.o) \
+     $(LIB)/libnwsrfslib_tw.a(fxtrpl.o) \
+     $(LIB)/libnwsrfslib_tw.a(fstgq.o) \
+     $(LIB)/libnwsrfslib_tw.a(xsarck.o) \
+     $(LIB)/libnwsrfslib_tw.a(get_apps_defaults.o)
+
+clean:
+	-rm -f $(LIB)/libnwsrfslib_tw.a
