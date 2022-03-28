@@ -61,6 +61,10 @@ subroutine chanloss(n_clmods, dt, sim_length, year, month, day, hour, &
   
   dt_hours = dt/3600
 
+  ! do i=1,2
+  !   write(*,'(100i3)') period(i,:)
+  ! end do
+
   !! 1) Create monthly adjustment table
   
   !! 1a) Create adjustment table lookup
@@ -91,6 +95,10 @@ subroutine chanloss(n_clmods, dt, sim_length, year, month, day, hour, &
      cl_adj_lookup(1:second_period,n)=1
     end if
   end do
+
+  ! do i=1,n_clmods
+  !   write(*,'(12i2)') cl_adj_lookup(:,i)
+  ! end do
   
   !! 1b) Create adjustment tableI
   cl_adj_m=1
@@ -112,7 +120,9 @@ subroutine chanloss(n_clmods, dt, sim_length, year, month, day, hour, &
     if (num_fa>=1) then
       cl_adj_m(j)=sum_fa/dble(num_fa)
     end if
-  end do     
+  end do    
+
+  ! write(*,'(12f6.3)') cl_adj_m 
 
   !! 2) Use monthly adjustment table to interpolate the adjustment factor for each time step
 
