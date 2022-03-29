@@ -98,7 +98,6 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   integer, dimension(sim_length), intent(in):: year, month, day, hour
 
   ! atmospheric forcing variables
-  
   double precision, dimension(sim_length, n_hrus), intent(in):: map, mat, etd, ptps 
   double precision:: map_step, etd_step
 
@@ -146,13 +145,15 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   ! this is not used, since ptps is input, but set it just so its not empty
   pxtemp = 0 
 
-  ! ========================= HRU AREA LOOP ========================================================
-  !   loop through the simulation areas, running the lumped model code for each
-
-  ! print*, '--------------------------------------------------------------'
+  ! ========================= ZONE AREA LOOP ========================================================
+  !   loop through the zones, running the lumped model code for each
 
   do nh=1,n_hrus
     ! print*, 'Running area',nh,'out of',n_hrus
+
+    ! print run dates
+    ! write(*,*)'  start:',year(1), month(1), day(1), hour(1)
+    ! write(*,*)'    end:',year(sim_length), month(sim_length), day(sim_length), hour(sim_length)
 
     ! set the areal depletion curve based on parameters ax^b+(1-a)x^c
     ! 0 < a < 1; b, c > 0 
@@ -167,10 +168,6 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
     do i=1,11
       if(adc(i) < 0.05) adc(i) = 0.05
     end do
-
-    ! print run dates
-    ! write(*,*)'  start:',year(1), month(1), day(1), hour(1)
-    ! write(*,*)'    end:',year(sim_length), month(sim_length), day(sim_length), hour(sim_length)
   
     ! get sfc_pressure (pa is estimate by subroutine, needed by snow17 call)
     pa = sfc_pressure(elev(nh))
@@ -179,9 +176,9 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
     ! =============== Spin up procedure =====================================
 
     ! starting values
-    spin_up_start_states = 1.0 
-    spin_up_end_states = 0.0
-    pdiff = 1.0
+    spin_up_start_states = 1d0 
+    spin_up_end_states = 0d0
+    pdiff = 1d0
     ts_per_year = ts_per_day * 365
     spin_up_counter = 0
 
@@ -197,10 +194,10 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
       lzfpc_sp = real(spin_up_end_states(5))
       adimc_sp = real(spin_up_end_states(6))
 
-      ! swe will usually be 0 as well, except for glaciers 
+      ! inital swe will usually be 0, except for glaciers 
       cs(1) = real(init_swe(nh))
       ! set the rest to zero
-      cs(2:19) = 0
+      cs(2:19) = 0.0
       taprev_sp = real(mat(1,nh))
 
       psfall_sp = real(0)
@@ -295,10 +292,11 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
     lzfpc_sp = real(init_lzfpc(nh))
     adimc_sp = real(init_adimc(nh))
 
-    ! AWW: just initialize first/main component of SWE (model 'WE')
+    ! initialize first/main component of SWE (model 'WE')
+    ! inital swe will usually be 0, except for glaciers 
     cs(1) = real(init_swe(nh))
     ! set the rest to zero
-    cs(2:19) = 0
+    cs(2:19) = 0.0
     taprev_sp = real(mat(1,nh))
 
     psfall_sp = real(0)
@@ -308,11 +306,9 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
     ! =============== START SIMULATION TIME LOOP =====================================
     do i = 1,sim_length,1
 
-
       ! apply adjustments (zone-wise) for the current timestep
       map_step = map(i,nh) * pxadj(nh)
       etd_step = etd(i,nh) * peadj(nh) 
-
 
       call exsnow19(int(dt,4),int(dt/sec_hour,4),int(day(i),4),int(month(i),4),int(year(i),4),&
           !SNOW17 INPUT AND OUTPUT VARIABLES

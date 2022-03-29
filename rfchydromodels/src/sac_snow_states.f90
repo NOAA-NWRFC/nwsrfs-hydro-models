@@ -110,9 +110,8 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   integer, dimension(sim_length), intent(in):: year, month, day, hour
 
   ! atmospheric forcing variables
-  !f2py intent(inout) map, etd
+  !f2py intent(in,out) map, etd
   double precision, dimension(sim_length, n_hrus), intent(inout):: map, etd
-  !f2py intent(in) ptps, mat
   double precision, dimension(sim_length, n_hrus), intent(in):: ptps, mat
   double precision:: map_step, etd_step
 

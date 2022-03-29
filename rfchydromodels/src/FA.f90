@@ -477,6 +477,7 @@ subroutine  fa_adj(n_hrus, dt, sim_length, year, month, day, hour, &
   integer, intent(in):: sim_length   ! length of simulation for dt
   integer, dimension(sim_length), intent(in):: year, month, day, hour !TS of date component
   double precision, dimension(sim_length, n_hrus), intent(in):: map, ptps, mat  ! atmospheric forcing variables
+  !f2py intent(in,out) climo
   double precision, dimension(12, 4), intent(inout):: climo ! 4 columns, map, mat, pet, ptps
   double precision, dimension(n_hrus), intent(in):: latitude   ! PET param, decimal degrees
   double precision, dimension(n_hrus), intent(in):: area       ! km2

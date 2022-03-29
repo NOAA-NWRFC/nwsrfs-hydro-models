@@ -51,7 +51,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   integer:: dt_hours          ! model timestep in hours
   integer:: ts_per_day, ts_per_year
 
-  ! initial states if for a cold start run
+  ! initial states for a cold start run
   ! used in all model HRUs
   ! model state variables not listed start at 0
   double precision, dimension(6):: spin_up_start_states, spin_up_end_states
@@ -113,6 +113,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   !f2py intent(in,out) map, etd
   double precision, dimension(sim_length, n_hrus), intent(inout):: map, etd
   double precision, dimension(sim_length, n_hrus), intent(in):: ptps, mat
+  double precision:: map_step, etd_step
 
   ! initilize outputs 
   tci = 0
@@ -173,16 +174,14 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   pxtemp = 0
   
   ! ========================= HRU AREA LOOP ========================================================
-  !   loop through the simulation areas, running the lumped model code for each
-
-  ! print*, '--------------------------------------------------------------'
+  !   loop through the zones, running the lumped model code for each
 
   do nh=1,n_hrus
-
-    map(:,nh) = map(:,nh) * pxadj(nh)
-    etd(:,nh) = etd(:,nh) * peadj(nh)
-
     ! print*, 'Running area',nh,'out of',n_hrus
+
+    ! print run dates
+    ! write(*,*)'  start:',year(1), month(1), day(1), hour(1)
+    ! write(*,*)'    end:',year(sim_length), month(sim_length), day(sim_length), hour(sim_length)
 
     ! set the areal depletion curve based on parameters ax^b+(1-a)x^c
     ! 0 < a < 1; b, c > 0 
@@ -203,10 +202,10 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   
     ! =============== Spin up procedure =====================================
 
-    ! start everything at 0
-    spin_up_start_states = 0 
-    spin_up_end_states = 0 
-    pdiff = 1.0
+    ! starting values
+    spin_up_start_states = 1d0 
+    spin_up_end_states = 0d0
+    pdiff = 1d0
     ts_per_year = ts_per_day * 365
     spin_up_counter = 0
 
@@ -222,10 +221,10 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       lzfpc_sp = real(spin_up_end_states(5))
       adimc_sp = real(spin_up_end_states(6))
 
-      ! swe will usually be 0 as well, except for glaciers 
+      ! inital swe will usually be 0, except for glaciers 
       cs(1) = real(init_swe(nh))
       ! set the rest to zero
-      cs(2:19) = 0
+      cs(2:19) = 0.0
       taprev_sp = real(mat(1,nh))
 
       psfall_sp = real(0)
@@ -235,9 +234,13 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       ! run for 1 year 
       do i = 1,ts_per_year
 
+        ! apply pe and px adjustments (zone-wise) for the current timestep
+        map_step = map(i,nh) * pxadj(nh)
+        etd_step = etd(i,nh) * peadj(nh)
+
         call exsnow19(int(dt,4),int(dt/sec_hour,4),int(day(i),4),int(month(i),4),int(year(i),4),&
             !SNOW17 INPUT AND OUTPUT VARIABLES
-            real(map(i,nh)), real(ptps(i,nh)), real(mat(i,nh)), &
+            real(map_step), real(ptps(i,nh)), real(mat(i,nh)), &
             raim_sp, sneqv_sp, snow_sp, snowh_sp, psfall_sp, prain_sp, aesc_sp,&
             !SNOW17 PARAMETERS
             !ALAT,SCF,MFMAX,MFMIN,UADJ,SI,NMF,TIPM,MBASE,PXTEMP,PLWHC,DAYGM,ELEV,PA,ADC
@@ -253,9 +256,9 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
 
         ! modify ET demand using the effective forest cover 
         ! Anderson calb manual pdf page 232
-        etd(i,nh) = efc(nh)*etd(i,nh)+(1d0-efc(nh))*(1d0-dble(aesc_sp))*etd(i,nh)
+        etd_step = efc(nh)*etd_step+(1d0-efc(nh))*(1d0-dble(aesc_sp))*etd_step
     
-        call exsac(1, real(dt), raim_sp, real(mat(i,nh)), real(etd(i,nh)), &
+        call exsac(1, real(dt), raim_sp, real(mat(i,nh)), real(etd_step), &
             !SAC PARAMETERS
             !UZTWM,UZFWM,UZK,PCTIM,ADIMP,RIVA,ZPERC, &
             !REXP,LZTWM,LZFSM,LZFPM,LZSK,LZPK,PFREE, &
@@ -297,7 +300,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
 
     end do 
     ! write(*,*)
-    
+
     ! Save the spun up states to use for init in the full run
     init_uztwc(nh) = spin_up_end_states(1)
     init_uzfwc(nh) = spin_up_end_states(2)
@@ -305,6 +308,8 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
     init_lzfsc(nh) = spin_up_end_states(4)
     init_lzfpc(nh) = spin_up_end_states(5)
     init_adimc(nh) = spin_up_end_states(6)
+
+    ! =============== End spin up procedure =====================================
 
     ! set single precision sac state variables to initial values
     uztwc_sp = real(init_uztwc(nh))
@@ -314,23 +319,27 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
     lzfpc_sp = real(init_lzfpc(nh))
     adimc_sp = real(init_adimc(nh))
 
-    ! AWW: just initialize first/main component of SWE (model 'WE')
+    ! initialize first/main component of SWE (model 'WE')
+    ! inital swe will usually be 0, except for glaciers 
     cs(1) = real(init_swe(nh))
     ! set the rest to zero
-    cs(2:19) = 0
-    taprev_sp= real(mat(1,nh))
+    cs(2:19) = 0.0
+    taprev_sp = real(mat(1,nh))
      
-    psfall_sp=real(0)
-    prain_sp=real(0)
-    aesc_sp=real(0)
+    psfall_sp = real(0)
+    prain_sp = real(0)
+    aesc_sp = real(0)
     
     ! =============== START SIMULATION TIME LOOP =====================================
     do i = 1,sim_length,1
 
+      ! apply adjustments (zone-wise) for the current timestep
+      map_step = map(i,nh) * pxadj(nh)
+      etd_step = etd(i,nh) * peadj(nh) 
 
       call exsnow19(int(dt,4),int(dt/sec_hour,4),int(day(i),4),int(month(i),4),int(year(i),4),&
           !SNOW17 INPUT AND OUTPUT VARIABLES
-          real(map(i,nh)), real(ptps(i,nh)), real(mat(i,nh)), &
+          real(map_step), real(ptps(i,nh)), real(mat(i,nh)), &
           raim_sp, sneqv_sp, snow_sp, snowh_sp, psfall_sp, prain_sp, aesc_sp,&
           !SNOW17 PARAMETERS
           !ALAT,SCF,MFMAX,MFMIN,UADJ,SI,NMF,TIPM,MBASE,PXTEMP,PLWHC,DAYGM,ELEV,PA,ADC
@@ -347,9 +356,9 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
 
       ! modify ET demand using the effective forest cover 
       ! Anderson calb manual pdf page 232
-      etd(i,nh) = efc(nh)*etd(i,nh)+(1d0-efc(nh))*(1d0-dble(aesc_sp))*etd(i,nh)
+      etd_step = efc(nh)*etd_step+(1d0-efc(nh))*(1d0-dble(aesc_sp))*etd_step
   
-      call exsac(1, real(dt), raim_sp, real(mat(i,nh)), real(etd(i,nh)), &
+      call exsac(1, real(dt), raim_sp, real(mat(i,nh)), real(etd_step), &
           !SAC PARAMETERS
           !UZTWM,UZFWM,UZK,PCTIM,ADIMP,RIVA,ZPERC, &
           !REXP,LZTWM,LZFSM,LZFPM,LZSK,LZPK,PFREE, &
@@ -359,7 +368,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
           real(rexp(nh)), real(lztwm(nh)), real(lzfsm(nh)), real(lzfpm(nh)), &
           real(lzsk(nh)), real(lzpk(nh)), real(pfree(nh)),&
           real(side(nh)), real(rserv(nh)), &
-          !SAC State variables (in and out)
+          !SAC State variables
           uztwc_sp, uzfwc_sp, lztwc_sp, lzfsc_sp, lzfpc_sp, adimc_sp, &
           !SAC OUTPUTS
           qs_sp, qg_sp, tci_sp, aet_sp)
@@ -374,9 +383,13 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       tci(i,nh) = dble(tci_sp)
       aet(i,nh) = dble(aet_sp)
 
+      ! inout forcings to capture the pe/pxadj and efc
+      map(i,nh) = map_step
+      etd(i,nh) = etd_step
+
       raim(i,nh) = dble(raim_sp)
-      psfall(i,nh)=dble(psfall_sp)
-      prain(i,nh)=dble(prain_sp)
+      psfall(i,nh) = dble(psfall_sp)
+      prain(i,nh) = dble(prain_sp)
       neghs(i,nh) = dble(cs(2))
       liqw(i,nh) = dble(cs(3))
       aesc(i,nh) = dble(aesc_sp)
@@ -384,8 +397,8 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       nexlag = 5/int(dt/sec_hour) + 2
 
       TEX = 0.0
-      DO j=1,nexlag,1
-        TEX=TEX+dble(cs(10+j))
+      DO j = 1,nexlag,1
+        TEX = TEX+dble(cs(10+j))
       END DO
 
       swe(i,nh) = dble(cs(1))+dble(cs(3))+dble(cs(9))+TEX

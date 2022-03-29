@@ -98,7 +98,6 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   integer, dimension(sim_length), intent(in):: year, month, day, hour
 
   ! atmospheric forcing variables
-  !f2py intent(in) map, mat, etd, ptps 
   double precision, dimension(sim_length, n_hrus), intent(in):: map, mat, etd, ptps 
   double precision:: map_step, etd_step
 
