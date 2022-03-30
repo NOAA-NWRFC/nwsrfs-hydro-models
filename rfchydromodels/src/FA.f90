@@ -408,7 +408,11 @@ subroutine  fa_ts(n_hrus, dt, sim_length, year, month, day, hour, &
       ! pet_hs(i,nh) is the pet from HS, 
       ! peadj_step is the conversion to etdemand (crop factor)
       ! pet_adj_step is the forcing adjustment
-      ptps_step = min(ptps(i,nh) * ptps_adj_step, 1d0)
+      if(ptps(i,nh) < 1_dp)then
+        ptps_step = min(ptps(i,nh) * ptps_adj_step, 1d0)
+      else
+        ptps_step = ptps(i,nh)
+      end if 
       pet_step = pet_hs(i,nh) * pet_adj_step
       ! if(i < 6)then
       !   write(*,'(a,6i5,8f8.2)')' after adj',nh, i, year(i), month(i), day(i), hour(i), & 
