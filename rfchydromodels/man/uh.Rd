@@ -4,7 +4,7 @@
 \alias{uh}
 \title{Two parameter unit hydrograph routing for one or more basin zones}
 \usage{
-uh(dt_hours, tci, pars)
+uh(dt_hours, tci, pars, sum_zones = TRUE)
 }
 \arguments{
 \item{dt_hours}{timestep in hours}
@@ -12,6 +12,9 @@ uh(dt_hours, tci, pars)
 \item{tci}{channel inflow matrix, one column per zone}
 
 \item{pars}{parameters}
+
+\item{sum_zones}{should routed flows from multiple zones be added and returned as a vector, or
+kept separate and returned as a matrix}
 }
 \value{
 Vector of routed flow in cfs

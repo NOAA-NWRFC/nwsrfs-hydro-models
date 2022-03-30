@@ -393,6 +393,8 @@ uh2p_get_scale <- function(shape,toc){
 #' @param dt_hours timestep in hours
 #' @param tci channel inflow matrix, one column per zone
 #' @param pars parameters
+#' @param sum_zones should routed flows from multiple zones be added and returned as a vector, or
+#'                  kept separate and returned as a matrix
 #' @return Vector of routed flow in cfs
 #' @export
 #'
@@ -403,7 +405,7 @@ uh2p_get_scale <- function(shape,toc){
 #' tci = sac_snow(dt_hours,forcing, pars)
 #' flow_cfs = uh(dt_hours, tci, pars)
 #' @useDynLib rfchydromodels duamel_
-uh <- function(dt_hours, tci, pars){
+uh <- function(dt_hours, tci, pars, sum_zones = TRUE){
 
   sec_per_day = 86400
   dt_seconds = sec_per_day/(24/dt_hours)
@@ -416,7 +418,7 @@ uh <- function(dt_hours, tci, pars){
   m = 1000 # max unit hydro
   n = sim_length + m
 
-  flow_cfs = numeric(sim_length)
+  flow_cfs = if(sum_zones) numeric(sim_length) else tci
   for(i in 1:n_zones){
 
     shape = pars[pars$name == 'unit_shape',]$value[i]
@@ -442,9 +444,13 @@ uh <- function(dt_hours, tci, pars){
                       qr = as.single(numeric(n)))
 
     # convert to cfs
-    flow_cfs = flow_cfs +
-      routed$qr[1:sim_length] * 1000 * 3.28084**3 / dt_seconds *
+    zone_flow = routed$qr[1:sim_length] * 1000 * 3.28084**3 / dt_seconds *
       pars[pars$name == 'zone_area',]$value[i]
+    if(sum_zones){
+      flow_cfs = flow_cfs + zone_flow
+    }else{
+      flow_cfs[,i] = zone_flow
+    }
   }
 
   flow_cfs
