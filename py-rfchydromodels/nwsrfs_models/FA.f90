@@ -46,7 +46,7 @@ subroutine  fa_ts(n_hrus, dt, sim_length, year, month, day, hour, &
   ! ! LOCAL VARIBLES ! !
   logical:: calc_climo
   integer:: nh,i,k           ! AWW index for looping through areas
-  integer:: dt_hours, ts_per_day           ! model timestep in hours and number of timesteps per day
+  integer:: dt_hours, ts_per_day, ts_in_day    ! model timestep in hours and number of timesteps per day
   ! area weighted forcings for climo calculations
   double precision, dimension(sim_length):: map_aw, ptps_aw, mat_aw, pet_aw
   ! climo fa limits, static set by external data 
@@ -60,7 +60,7 @@ subroutine  fa_ts(n_hrus, dt, sim_length, year, month, day, hour, &
   double precision, dimension(12):: map_climo, mat_climo, pet_climo, ptps_climo !monthly climo
   integer, dimension(12) :: mdays, mdays_prev !lookup tables with number of days in month
   integer:: mo  !current month for ts 
-  double precision :: dayn, dayi,interp_day, decimal_day !used to interpolatet fa per ts
+  double precision :: dayn, dayi,interp_day, decimal_day !used to interpolate fa per ts
   ! arrays to assist in interpolating fa to apply
   double precision, dimension(12):: mat_adj_prev, mat_adj_next
   double precision, dimension(12):: map_adj_prev, map_adj_next
@@ -79,7 +79,11 @@ subroutine  fa_ts(n_hrus, dt, sim_length, year, month, day, hour, &
   mdays =      (/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /) 
   mdays_prev = (/ 31, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30 /) 
 
-
+  map_fa = 0 
+  mat_fa = 0 
+  ptps_fa = 0 
+  pet_fa = 0
+  etd = 0
 
   ts_per_day = 86400/dt
   dt_hours = dt/3600
@@ -202,11 +206,12 @@ subroutine  fa_ts(n_hrus, dt, sim_length, year, month, day, hour, &
       ! compute the pet for the whole day, then divide it by the number of timesteps
       if((hour(i) .eq. 0) .or. (ts_per_day .eq. 1))then
 
+        ts_in_day = min(ts_per_day,sim_length-i+1)
         ! if(i .eq. 1)write(*,*)'mat',mat(i:(i+ts_per_day-1),nh)
         ! if(i .eq. 1)write(*,*) 'timestep', i, 'of', sim_length, year(i), month(i), day(i), hour(i), jday(i)
-        tmax_daily = maxval(mat_fa(i:(i+ts_per_day-1),nh))
-        tmin_daily = minval(mat_fa(i:(i+ts_per_day-1),nh))
-        tave_daily = sum(mat_fa(i:(i+ts_per_day-1),nh))/dble(ts_per_day)
+        tmax_daily = maxval(mat_fa(i:(i+ts_in_day-1),nh))
+        tmin_daily = minval(mat_fa(i:(i+ts_in_day-1),nh))
+        tave_daily = sum(mat_fa(i:(i+ts_in_day-1),nh))/dble(ts_in_day)
 
         !Calculate extraterrestrial radiation
         !Inverse Relative Distance Earth to Sun
@@ -218,9 +223,17 @@ subroutine  fa_ts(n_hrus, dt, sim_length, year, month, day, hour, &
         !Extraterrestrial Radiation (MJm^-2*day^-1)
         Ra = (24. * 60.) / pi * 0.0820 * dr * (omega_s * dsin(latitude(nh) * pi / 180.) * dsin(rho) + &
                          dcos(latitude(nh) * pi / 180.) * dcos(rho) * dsin(omega_s))
-        
-        ! if(i<=1)then
-        !   write(*,*)i, nh, jday(i)
+
+        ! daily pet from Hargreaves-Semani equation, units are mm/day, so divide 
+        ! by number of timesteps in a day   
+        pet_ts = 0.0023 * (tave_daily + 17.8) * (tmax_daily - tmin_daily)**0.5 * Ra / 2.45
+        ! if(i .eq. 1)write(*,*)tmax_daily, tmin_daily, tave_daily, pet_ts
+
+        ! ignore negative values
+        if(pet_ts < 0) pet_ts = 0
+
+        ! if(isnan(pet_ts))then
+        !   write(*,*)i, nh, jday(i), ts_per_day, ts_in_day
         !   write(*,*)'lat',latitude(nh)
         !   write(*,*)'dr',dr
         !   write(*,*)'rho',rho
@@ -233,18 +246,8 @@ subroutine  fa_ts(n_hrus, dt, sim_length, year, month, day, hour, &
         !   write(*,*)'tmin_daily',tmin_daily
         ! end if
 
-        ! daily pet from Hargreaves-Semani equation, units are mm/day, so divide 
-        ! by number of timesteps in a day   
-        pet_ts = 0.0023 * (tave_daily + 17.8) * (tmax_daily - tmin_daily)**0.5 * Ra / 2.45
-        ! if(i .eq. 1)write(*,*)tmax_daily, tmin_daily, tave_daily, pet_ts
-
-        ! ignore negative values
-        if(pet_ts < 0) pet_ts = 0
-
         ! apply global scaling peadj and distibute across timesteps 
-        ! if(i .eq. 1)write(*,*)'pet_ts',pet_ts
         pet_ts = pet_ts / dble(ts_per_day)
-        ! if(i .eq. 1)write(*,*)'pet_ts',pet_ts
 
       end if 
       pet_hs(i,nh) = pet_ts 
@@ -274,6 +277,10 @@ subroutine  fa_ts(n_hrus, dt, sim_length, year, month, day, hour, &
   map_aw = map_aw / sum(area)
   pet_aw = pet_aw / sum(area)
   ptps_aw = ptps_aw / sum(area)
+
+  ! do i = 1,sim_length
+  !   if(isnan(pet_aw(i)))write(*,*)'pet is nan at step:',i
+  ! end do
 
   if(calc_climo)then
     ! compute 12 monthly climo values (calendar year)
@@ -394,6 +401,18 @@ subroutine  fa_ts(n_hrus, dt, sim_length, year, month, day, hour, &
         ptps_adj_step = ptps_adj_prev(mo) + dayi/dayn*(ptps_adj(mo)-ptps_adj_prev(mo))
         peadj_step = peadj_m_prev(mo,nh) + dayi/dayn*(peadj_m(mo,nh)-peadj_m_prev(mo,nh))
       end if 
+      ! if(isnan(pet_adj_step) .and. i .eq. 1) then 
+      !   write(*,'(2i3,5f10.3)')nh, mo, pet_adj_prev(mo), dayi, dayn, pet_adj(mo), pet_adj_prev(mo)
+      !   write(*,*)'adjustments: map, mat, pet, ptps'
+      !   do k=1,12
+      !    write(*,"(4f8.2)")map_adj(k),mat_adj(k),pet_adj(k),ptps_adj(k)
+      !   end do 
+
+      !   write(*,*)'PET FA pars: ', pet_fa_pars
+      !   do k=1,12
+      !    write(*,*)pet_climo(k),pet_fa_limits(k,1), pet_fa_limits(k,2)
+      !   end do 
+      ! end if 
 
 
       ! if(i < 6)then
@@ -405,42 +424,27 @@ subroutine  fa_ts(n_hrus, dt, sim_length, year, month, day, hour, &
       mat_step = mat_fa(i,nh)
       ! apply PXADJ (scaling the input values)
       map_step = map(i,nh) * map_adj_step
-      ! pet_hs(i,nh) is the pet from HS, 
-      ! peadj_step is the conversion to etdemand (crop factor)
-      ! pet_adj_step is the forcing adjustment
       if(ptps(i,nh) < 1d0)then
         ptps_step = min(ptps(i,nh) * ptps_adj_step, 1d0)
       else
         ptps_step = ptps(i,nh)
       end if 
+      ! pet_hs(i,nh) is the pet from HS, 
+      ! peadj_step is the conversion to etdemand (crop factor)
+      ! pet_adj_step is the forcing adjustment
       pet_step = pet_hs(i,nh) * pet_adj_step
-      ! if(i < 6)then
+      ! if(i < 2)then
       !   write(*,'(a,6i5,8f8.2)')' after adj',nh, i, year(i), month(i), day(i), hour(i), & 
       !                                    map_step, mat_step, ptps_step, pet_step, &
       !                                    map_adj_step, mat_adj_step, ptps_adj_step, pet_adj_step
       !   write(*,*)'pet: ',pet_step, pet_hs(i,nh), peadj_step,  pet_adj_step
       ! end if
-
-      ! if(i .eq. 1)then
-      !   write(*,*)
-      !   write(*,*)'Snow inputs:'
-      !   write(*,'(a10,i12)')'dt_sec',int(dt,4)
-      !   write(*,'(a10,i12)')'dt_hr',int(dt/sec_hour,4)
-      !   write(*,'(a10,i12)')'day',int(day(i),4)
-      !   write(*,'(a10,i12)')'month',int(month(i),4)
-      !   write(*,'(a10,i12)')'year',int(year(i),4)
-      !   write(*,'(a10,f30.17)')'map_step',real(map(i,nh))
-      !   write(*,'(a10,f30.17)')'mat_step',real(mat(i,nh))
-      !   write(*,'(a10,f30.17)')'ptps_step',real(ptps(i,nh))
-      !   write(*,'(a10,f30.17)')'alat',real(latitude(nh))
-
-      ! end if 
       
       ! assign map_fa, pet_fa, mat_fa
-      map_fa(i,nh)=map_step
-      ptps_fa(i,nh)=ptps_step
-      pet_fa(i,nh)=pet_step
-      etd(i,nh)=pet_step * peadj_step
+      map_fa(i,nh) = map_step
+      ptps_fa(i,nh) = ptps_step
+      pet_fa(i,nh) = pet_step
+      etd(i,nh) = pet_step * peadj_step
 
       
     end do  ! ============ end simulation time loop ====================
