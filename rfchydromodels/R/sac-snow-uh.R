@@ -371,21 +371,56 @@ uh2p_cfs_in <- function(shape, scale, timestep, area){
 #'
 #' @param shape gamma shape parameter
 #' @param toc time of concentration (hours)
+#' @param dt_hours UH timestep (hours)
 #'
 #' @return stuff
 #' @export
 #'
 #' @examples
 #' uh2p_get_scale(2,50)
-uh2p_get_scale <- function(shape,toc){
-  # fitted regression parameters to shape vs. toc relationship
-  b = c(`(Intercept)` = 0.255299308548535, shape = -0.314173822659083,
-        toc = 0.0061508368818229, `I(shape^2)` = 0.0809339755573929,
-        `I(toc^2)` = 1.42743463788263e-06, `I(shape * toc)` = -0.00111691593640601)
-  scale = b[1] + b[2]*shape + b[3]*toc + b[4]*shape^2 + b[5]*toc^2 + b[6]*shape*toc
+uh2p_get_scale <- function(shape, toc, dt_hours){
+  # find a reasonable upper limit for scale, some values are unstable
+  scale_lim = scale_uplimit(shape, dt_hours)
+  # optimization to find scale given shape and toc
+  scale = optimize(uh2p_seek, shape, dt_hours, toc, interval=c(.01,scale_lim))$minimum
   # bump up very small or negative values to prevent 0 length UH
   max(as.numeric(scale),0.02)
 }
+
+
+#' Find a reasonable scale upper limit for optimization
+#'
+#' @param shape
+#' @param dt_hours
+#'
+#' @return
+scale_uplimit <- function(shape, dt_hours){
+  scale = 0.1
+  len_1 = 0
+  len_2 = length(uh2p(shape, scale, dt_hours))
+  while ((len_1 <= len_2) & (scale < 5)){
+    len_1 = len_2
+    scale = scale+.1
+    len_2 = length(uh2p(shape, scale, dt_hours))
+  }
+  return(scale-.1)
+}
+
+#' Objective function for finding a scale parameter given shape and toc
+#'
+#' @param scale
+#' @param shape
+#' @param dt_hours
+#' @param toc
+#'
+#' @return
+uh2p_seek <- function(scale, shape, dt_hours, toc){
+  # add one to the length becuase the first ordinate is at time 0
+  uh_len = round(toc/dt_hours,0)+1
+  len_dif = abs(length(uh2p(shape, scale, dt_hours)) - uh_len)
+  return(len_dif)
+}
+
 
 
 #' Two parameter unit hydrograph routing for one or more basin zones
@@ -429,7 +464,7 @@ uh <- function(dt_hours, tci, pars, sum_zones = TRUE){
       scale = pars[pars$name == 'unit_scale',]$value[i]
     }else{
       toc = toc_gis * toc_adj
-      scale = uh2p_get_scale(shape,toc)
+      scale = uh2p_get_scale(shape, toc, dt_hours)
     }
 
     routed = .Fortran('duamel',
