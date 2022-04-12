@@ -1,0 +1,509 @@
+variable = IN
+	IN=1
+601FORMAT(11X,14HINFKA7-QB=/(10X,14F8.2))
+603FORMAT(11X,40HINDO10LOOP,X1,X2,VALUE,Y2,XK1,XK2=,6G10.4)
+606FORMAT(11X,41HINDO5LOOP-J,X14,X2,VALUE,Y2,S2ODT=,
+607FORMAT(11X,27HINDO10LOOP-Y2,S2ODT=,2G10.4)
+609FORMAT(11X,45HKLTDT/8INDO5LOOP-SETY2=MIN(X2,VALUE)/
+614FORMAT(11X,'INDO10LOOP,VALUE=',G10.4)
+900FORMAT(1H0,10X,26HINSUBROUTINEFLAG7-QA=/(1X,10F12.3))
+901FORMAT(1H0,10X,13HINEX7-QB=/(1X,10F12.3))
+DATARSTYPI/4HQINE/,RSTYPM/4HQME/
+DTYPIN=P(4)
+
+variable = IPR
+	IPR=0
+IPR=11
+
+variable = IPU
+	IPU=0
+
+variable = IODBUG is not used
+
+variable = ITRACE is not used
+
+variable = IDBALL is not used
+
+variable = NDEBUG is not used
+
+variable = IDEBUG(20) is not used
+
+variable = IDARUN is not used
+
+variable = IHRRUN is not used
+
+variable = LDARUN is not used
+
+variable = LHRRUN is not used
+
+variable = LDACPD is not used
+
+variable = LHRCPD is not used
+
+variable = IFILLC is not init
+
+variable = NCSTOR is not init
+
+variable = ICDAY(20) is not used
+
+variable = ICHOUR(20) is not used
+
+variable = IODBUG is not used
+
+variable = ITRACE is not used
+
+variable = IDBALL is not used
+
+variable = NDEBUG is not used
+
+variable = IDEBUG(20) is not used
+
+variable = IODBUG is not used
+
+variable = ITRACE is not used
+
+variable = IDBALL is not used
+
+variable = NDEBUG is not used
+
+variable = IDEBUG(20) is not used
+
+variable = IDARUN is not used
+
+variable = IHRRUN is not used
+
+variable = LDARUN is not used
+
+variable = LHRRUN is not used
+
+variable = LDACPD is not used
+
+variable = LHRCPD is not used
+
+variable = IFILLC is not init
+
+variable = NCSTOR is not init
+
+variable = ICDAY(20) is not used
+
+variable = ICHOUR(20) is not used
+
+variable = IN
+	IN=1
+601FORMAT(11X,14HINFKA7-QB=/(10X,14F8.2))
+603FORMAT(11X,40HINDO10LOOP,X1,X2,VALUE,Y2,XK1,XK2=,6G10.4)
+606FORMAT(11X,41HINDO5LOOP-J,X14,X2,VALUE,Y2,S2ODT=,
+607FORMAT(11X,27HINDO10LOOP-Y2,S2ODT=,2G10.4)
+609FORMAT(11X,45HKLTDT/8INDO5LOOP-SETY2=MIN(X2,VALUE)/
+614FORMAT(11X,'INDO10LOOP,VALUE=',G10.4)
+900FORMAT(1H0,10X,26HINSUBROUTINEFLAG7-QA=/(1X,10F12.3))
+901FORMAT(1H0,10X,13HINEX7-QB=/(1X,10F12.3))
+DATARSTYPI/4HQINE/,RSTYPM/4HQME/
+DTYPIN=P(4)
+
+variable = IPR
+	IPR=0
+IPR=11
+
+variable = IPU
+	IPU=0
+
+variable = IATL
+	DATAIATL,C1,C2/1,12.0,100.0/
+80IATL=1
+IATL=1
+
+variable = C1
+	DATAIATL,C1,C2/1,12.0,100.0/
+
+variable = C2
+	DATAIATL,C1,C2/1,12.0,100.0/
+
+variable = IODBUG is not used
+
+variable = ITRACE is not used
+
+variable = IDBALL is not used
+
+variable = NDEBUG is not used
+
+variable = IDEBUG(20) is not used
+
+variable = IN
+	IN=1
+601FORMAT(11X,14HINFKA7-QB=/(10X,14F8.2))
+603FORMAT(11X,40HINDO10LOOP,X1,X2,VALUE,Y2,XK1,XK2=,6G10.4)
+606FORMAT(11X,41HINDO5LOOP-J,X14,X2,VALUE,Y2,S2ODT=,
+607FORMAT(11X,27HINDO10LOOP-Y2,S2ODT=,2G10.4)
+609FORMAT(11X,45HKLTDT/8INDO5LOOP-SETY2=MIN(X2,VALUE)/
+614FORMAT(11X,'INDO10LOOP,VALUE=',G10.4)
+900FORMAT(1H0,10X,26HINSUBROUTINEFLAG7-QA=/(1X,10F12.3))
+901FORMAT(1H0,10X,13HINEX7-QB=/(1X,10F12.3))
+DATARSTYPI/4HQINE/,RSTYPM/4HQME/
+DTYPIN=P(4)
+
+variable = IPR
+	IPR=0
+IPR=11
+
+variable = IPU
+	IPU=0
+
+variable = IODBUG is not used
+
+variable = ITRACE is not used
+
+variable = IDBALL is not used
+
+variable = NDEBUG is not used
+
+variable = IDEBUG(20) is not used
+
+variable = ICPUT is not used
+
+variable = ICPUON is not used
+
+variable = INCPU is not used
+
+variable = IN
+	IN=1
+601FORMAT(11X,14HINFKA7-QB=/(10X,14F8.2))
+603FORMAT(11X,40HINDO10LOOP,X1,X2,VALUE,Y2,XK1,XK2=,6G10.4)
+606FORMAT(11X,41HINDO5LOOP-J,X14,X2,VALUE,Y2,S2ODT=,
+607FORMAT(11X,27HINDO10LOOP-Y2,S2ODT=,2G10.4)
+609FORMAT(11X,45HKLTDT/8INDO5LOOP-SETY2=MIN(X2,VALUE)/
+614FORMAT(11X,'INDO10LOOP,VALUE=',G10.4)
+900FORMAT(1H0,10X,26HINSUBROUTINEFLAG7-QA=/(1X,10F12.3))
+901FORMAT(1H0,10X,13HINEX7-QB=/(1X,10F12.3))
+DATARSTYPI/4HQINE/,RSTYPM/4HQME/
+DTYPIN=P(4)
+
+variable = IPR
+	IPR=0
+IPR=11
+
+variable = IPU
+	IPU=0
+
+variable = IODBUG is not used
+
+variable = ITRACE is not used
+
+variable = IDBALL is not used
+
+variable = NDEBUG is not used
+
+variable = IDEBUG(20) is not used
+
+variable = ICPUT is not used
+
+variable = ICPUON is not used
+
+variable = INCPU is not used
+
+variable = IDARUN is not used
+
+variable = IHRRUN is not used
+
+variable = LDARUN is not used
+
+variable = LHRRUN is not used
+
+variable = LDACPD is not used
+
+variable = LHRCPD is not used
+
+variable = IGAGE is not init
+
+variable = TLAG(2) is not used
+
+variable = IODBUG is not used
+
+variable = ITRACE is not used
+
+variable = IDBALL is not used
+
+variable = NDEBUG is not used
+
+variable = IDEBUG(20) is not used
+
+variable = IODBUG is not used
+
+variable = ITRACE is not used
+
+variable = IDBALL is not used
+
+variable = NDEBUG is not used
+
+variable = IDEBUG(20) is not used
+
+variable = IODBUG is not used
+
+variable = ITRACE is not used
+
+variable = IDBALL is not used
+
+variable = NDEBUG is not used
+
+variable = IDEBUG(20) is not used
+
+variable = IODBUG is not used
+
+variable = ITRACE is not used
+
+variable = IDBALL is not used
+
+variable = NDEBUG is not used
+
+variable = IDEBUG(20) is not used
+
+variable = IN
+	IN=1
+601FORMAT(11X,14HINFKA7-QB=/(10X,14F8.2))
+603FORMAT(11X,40HINDO10LOOP,X1,X2,VALUE,Y2,XK1,XK2=,6G10.4)
+606FORMAT(11X,41HINDO5LOOP-J,X14,X2,VALUE,Y2,S2ODT=,
+607FORMAT(11X,27HINDO10LOOP-Y2,S2ODT=,2G10.4)
+609FORMAT(11X,45HKLTDT/8INDO5LOOP-SETY2=MIN(X2,VALUE)/
+614FORMAT(11X,'INDO10LOOP,VALUE=',G10.4)
+900FORMAT(1H0,10X,26HINSUBROUTINEFLAG7-QA=/(1X,10F12.3))
+901FORMAT(1H0,10X,13HINEX7-QB=/(1X,10F12.3))
+DATARSTYPI/4HQINE/,RSTYPM/4HQME/
+DTYPIN=P(4)
+
+variable = IPR
+	IPR=0
+IPR=11
+
+variable = IPU
+	IPU=0
+
+variable = IATL
+	DATAIATL,C1,C2/1,12.0,100.0/
+80IATL=1
+IATL=1
+
+variable = C1
+	DATAIATL,C1,C2/1,12.0,100.0/
+
+variable = C2
+	DATAIATL,C1,C2/1,12.0,100.0/
+
+variable = IDARUN is not used
+
+variable = IHRRUN is not used
+
+variable = LDARUN is not used
+
+variable = LHRRUN is not used
+
+variable = LDACPD is not used
+
+variable = LHRCPD is not used
+
+variable = NOW(5) is not used
+
+variable = LOCAL is not used
+
+variable = NOUTZ is not used
+
+variable = NOUTDS is not used
+
+variable = NLSTZ is not used
+
+variable = IDA
+	IDA=startDay
+	IDADAT=startDay
+
+variable = IHR
+	IHR=startHour
+
+variable = LDA
+	LDA=endDay
+
+variable = LHR
+	LHR=endHour
+
+variable = IDADAT
+	IDADAT=startDay
+
+variable = IFILLC is not init
+
+variable = NCSTOR is not init
+
+variable = ICDAY(20) is not used
+
+variable = ICHOUR(20) is not used
+
+variable = IN
+	IN=1
+601FORMAT(11X,14HINFKA7-QB=/(10X,14F8.2))
+603FORMAT(11X,40HINDO10LOOP,X1,X2,VALUE,Y2,XK1,XK2=,6G10.4)
+606FORMAT(11X,41HINDO5LOOP-J,X14,X2,VALUE,Y2,S2ODT=,
+607FORMAT(11X,27HINDO10LOOP-Y2,S2ODT=,2G10.4)
+609FORMAT(11X,45HKLTDT/8INDO5LOOP-SETY2=MIN(X2,VALUE)/
+614FORMAT(11X,'INDO10LOOP,VALUE=',G10.4)
+900FORMAT(1H0,10X,26HINSUBROUTINEFLAG7-QA=/(1X,10F12.3))
+901FORMAT(1H0,10X,13HINEX7-QB=/(1X,10F12.3))
+DATARSTYPI/4HQINE/,RSTYPM/4HQME/
+DTYPIN=P(4)
+
+variable = IPR
+	IPR=0
+IPR=11
+
+variable = IPU
+	IPU=0
+
+variable = IN
+	IN=1
+601FORMAT(11X,14HINFKA7-QB=/(10X,14F8.2))
+603FORMAT(11X,40HINDO10LOOP,X1,X2,VALUE,Y2,XK1,XK2=,6G10.4)
+606FORMAT(11X,41HINDO5LOOP-J,X14,X2,VALUE,Y2,S2ODT=,
+607FORMAT(11X,27HINDO10LOOP-Y2,S2ODT=,2G10.4)
+609FORMAT(11X,45HKLTDT/8INDO5LOOP-SETY2=MIN(X2,VALUE)/
+614FORMAT(11X,'INDO10LOOP,VALUE=',G10.4)
+900FORMAT(1H0,10X,26HINSUBROUTINEFLAG7-QA=/(1X,10F12.3))
+901FORMAT(1H0,10X,13HINEX7-QB=/(1X,10F12.3))
+DATARSTYPI/4HQINE/,RSTYPM/4HQME/
+DTYPIN=P(4)
+
+variable = IPR
+	IPR=0
+IPR=11
+
+variable = IPU
+	IPU=0
+
+variable = IN
+	IN=1
+601FORMAT(11X,14HINFKA7-QB=/(10X,14F8.2))
+603FORMAT(11X,40HINDO10LOOP,X1,X2,VALUE,Y2,XK1,XK2=,6G10.4)
+606FORMAT(11X,41HINDO5LOOP-J,X14,X2,VALUE,Y2,S2ODT=,
+607FORMAT(11X,27HINDO10LOOP-Y2,S2ODT=,2G10.4)
+609FORMAT(11X,45HKLTDT/8INDO5LOOP-SETY2=MIN(X2,VALUE)/
+614FORMAT(11X,'INDO10LOOP,VALUE=',G10.4)
+900FORMAT(1H0,10X,26HINSUBROUTINEFLAG7-QA=/(1X,10F12.3))
+901FORMAT(1H0,10X,13HINEX7-QB=/(1X,10F12.3))
+DATARSTYPI/4HQINE/,RSTYPM/4HQME/
+DTYPIN=P(4)
+
+variable = IPR
+	IPR=0
+IPR=11
+
+variable = IPU
+	IPU=0
+
+variable = IODBUG is not used
+
+variable = ITRACE is not used
+
+variable = IDBALL is not used
+
+variable = NDEBUG is not used
+
+variable = IDEBUG(20) is not used
+
+variable = MENNST
+MENNST=1
+
+variable = LAGDT is not init
+
+variable = NCD7
+NCD7=0
+NCD7=NCD7+1
+
+variable = NLAGK is not used
+
+variable = IATL
+	DATAIATL,C1,C2/1,12.0,100.0/
+80IATL=1
+IATL=1
+
+variable = C1
+	DATAIATL,C1,C2/1,12.0,100.0/
+
+variable = C2
+	DATAIATL,C1,C2/1,12.0,100.0/
+
+variable = IODBUG is not used
+
+variable = ITRACE is not used
+
+variable = IDBALL is not used
+
+variable = NDEBUG is not used
+
+variable = IDEBUG(20) is not used
+
+variable = IATL
+	DATAIATL,C1,C2/1,12.0,100.0/
+80IATL=1
+IATL=1
+
+variable = C1
+	DATAIATL,C1,C2/1,12.0,100.0/
+
+variable = C2
+	DATAIATL,C1,C2/1,12.0,100.0/
+
+variable = IN
+	IN=1
+601FORMAT(11X,14HINFKA7-QB=/(10X,14F8.2))
+603FORMAT(11X,40HINDO10LOOP,X1,X2,VALUE,Y2,XK1,XK2=,6G10.4)
+606FORMAT(11X,41HINDO5LOOP-J,X14,X2,VALUE,Y2,S2ODT=,
+607FORMAT(11X,27HINDO10LOOP-Y2,S2ODT=,2G10.4)
+609FORMAT(11X,45HKLTDT/8INDO5LOOP-SETY2=MIN(X2,VALUE)/
+614FORMAT(11X,'INDO10LOOP,VALUE=',G10.4)
+900FORMAT(1H0,10X,26HINSUBROUTINEFLAG7-QA=/(1X,10F12.3))
+901FORMAT(1H0,10X,13HINEX7-QB=/(1X,10F12.3))
+DATARSTYPI/4HQINE/,RSTYPM/4HQME/
+DTYPIN=P(4)
+
+variable = IPR
+	IPR=0
+IPR=11
+
+variable = IPU
+	IPU=0
+
+variable = IODBUG is not used
+
+variable = ITRACE is not used
+
+variable = IDBALL is not used
+
+variable = NDEBUG is not used
+
+variable = IDEBUG(20) is not used
+
+variable = IN
+	IN=1
+601FORMAT(11X,14HINFKA7-QB=/(10X,14F8.2))
+603FORMAT(11X,40HINDO10LOOP,X1,X2,VALUE,Y2,XK1,XK2=,6G10.4)
+606FORMAT(11X,41HINDO5LOOP-J,X14,X2,VALUE,Y2,S2ODT=,
+607FORMAT(11X,27HINDO10LOOP-Y2,S2ODT=,2G10.4)
+609FORMAT(11X,45HKLTDT/8INDO5LOOP-SETY2=MIN(X2,VALUE)/
+614FORMAT(11X,'INDO10LOOP,VALUE=',G10.4)
+900FORMAT(1H0,10X,26HINSUBROUTINEFLAG7-QA=/(1X,10F12.3))
+901FORMAT(1H0,10X,13HINEX7-QB=/(1X,10F12.3))
+DATARSTYPI/4HQINE/,RSTYPM/4HQME/
+DTYPIN=P(4)
+
+variable = IPR
+	IPR=0
+IPR=11
+
+variable = IPU
+	IPU=0
+
+variable = IODBUG is not used
+
+variable = ITRACE is not used
+
+variable = IDBALL is not used
+
+variable = NDEBUG is not used
+
+variable = IDEBUG(20) is not used
+

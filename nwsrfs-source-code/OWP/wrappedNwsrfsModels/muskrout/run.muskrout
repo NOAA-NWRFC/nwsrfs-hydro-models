@@ -1,0 +1,29 @@
+#!/usr/bin/ksh
+set -vx
+usage="USAGE: run.muskrout basin_name\n"
+if [[ $# -eq 0 ]]
+then
+    print "\n$usage"
+    exit 0
+fi
+
+BASIN_NAME=$1
+CURRENT_DIR=$PWD
+
+TEST_DATA_DIR=./testData/$BASIN_NAME
+MUSKROUT_BIN_DIR=$CURRENT_DIR/bin/
+MUSKROUT_EXE_NAME=muskrout
+
+#ARGUMENT FILE
+ARGUMENT_FILE=$TEST_DATA_DIR/arguments.txt
+
+PARAMS_STATUS=PARAMS_UNCHANGED
+
+#OUTPUT FILES 
+OUTPUT_TS_FILE=$TEST_DATA_DIR/output_ts.txt
+OUTPUT_STATES_FILE=$TEST_DATA_DIR/output_states.txt
+
+$MUSKROUT_BIN_DIR/$MUSKROUT_EXE_NAME $ARGUMENT_FILE
+
+diff $CURRENT_DIR/testData/$BASIN_NAME/output_ts.txt.orig $OUTPUT_TS_FILE 
+diff  $CURRENT_DIR/testData/$BASIN_NAME/output_states.txt.orig $OUTPUT_STATES_FILE 

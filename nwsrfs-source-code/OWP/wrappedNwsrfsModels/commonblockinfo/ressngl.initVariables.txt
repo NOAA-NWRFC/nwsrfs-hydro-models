@@ -1,0 +1,808 @@
+variable = IDARUN is not used
+
+variable = IHRRUN is not used
+
+variable = LDARUN is not used
+
+variable = LHRRUN is not used
+
+variable = LDACPD
+LDACPD=lastjulday
+
+variable = LHRCPD
+LHRCPD=lastjulhour
+
+variable = NOW(5) is not used
+
+variable = NTIMESTEPS
+NTIMESTEPS=TOTALHOURS/modelTimeStep
+
+variable = IN
+901FORMAT(1H0,10X,13HINEX7-QB=/(1X,10F12.3))
+DATAIN/5/
+DATARSTYPI/4HQINE/,RSTYPM/4HQME/
+OPEN(IN,ERR=100,ACCESS='SEQUENTIAL',FORM='FORMATTED',
+
+variable = IPR
+!IPR=11
+DATAIPR/6/
+IPRBLN=0
+IPRCRD=0
+IPRMPT=0
+
+variable = IPU
+DATAIPU/7/
+
+variable = IODBUG is not used
+
+variable = ITRACE is not init
+
+variable = IDBALL is not used
+
+variable = NDEBUG is not used
+
+variable = IDEBUG(20) is not used
+
+variable = NWFRAC
+NWFRAC=0
+NWFRAC=NWFRAC+1
+
+variable = IN
+901FORMAT(1H0,10X,13HINEX7-QB=/(1X,10F12.3))
+DATAIN/5/
+DATARSTYPI/4HQINE/,RSTYPM/4HQME/
+OPEN(IN,ERR=100,ACCESS='SEQUENTIAL',FORM='FORMATTED',
+
+variable = IPR
+!IPR=11
+DATAIPR/6/
+IPRBLN=0
+IPRCRD=0
+IPRMPT=0
+
+variable = IPU
+DATAIPU/7/
+
+variable = IODBUG is not used
+
+variable = ITRACE is not init
+
+variable = IDBALL is not used
+
+variable = NDEBUG is not used
+
+variable = IDEBUG(20) is not used
+
+variable = IDARUN is not used
+
+variable = IHRRUN is not used
+
+variable = LDARUN is not used
+
+variable = LHRRUN is not used
+
+variable = LDACPD
+LDACPD=lastjulday
+
+variable = LHRCPD
+LHRCPD=lastjulhour
+
+variable = IFILLC is not init
+
+variable = NCSTOR is not init
+
+variable = ICDAY(20) is not used
+
+variable = ICHOUR(20) is not used
+
+variable = IODBUG is not used
+
+variable = ITRACE is not init
+
+variable = IDBALL is not used
+
+variable = NDEBUG is not used
+
+variable = IDEBUG(20) is not used
+
+variable = IODBUG is not used
+
+variable = ITRACE is not init
+
+variable = IDBALL is not used
+
+variable = NDEBUG is not used
+
+variable = IDEBUG(20) is not used
+
+variable = IODBUG is not used
+
+variable = ITRACE is not init
+
+variable = IDBALL is not used
+
+variable = NDEBUG is not used
+
+variable = IDEBUG(20) is not used
+
+variable = IODBUG is not used
+
+variable = ITRACE is not init
+
+variable = IDBALL is not used
+
+variable = NDEBUG is not used
+
+variable = IDEBUG(20) is not used
+
+variable = IDARUN is not used
+
+variable = IHRRUN is not used
+
+variable = LDARUN is not used
+
+variable = LHRRUN is not used
+
+variable = LDACPD
+LDACPD=lastjulday
+
+variable = LHRCPD
+LHRCPD=lastjulhour
+
+variable = IFILLC is not init
+
+variable = NCSTOR is not init
+
+variable = ICDAY(20) is not used
+
+variable = ICHOUR(20) is not used
+
+variable = IN
+901FORMAT(1H0,10X,13HINEX7-QB=/(1X,10F12.3))
+DATAIN/5/
+DATARSTYPI/4HQINE/,RSTYPM/4HQME/
+OPEN(IN,ERR=100,ACCESS='SEQUENTIAL',FORM='FORMATTED',
+
+variable = IPR
+!IPR=11
+DATAIPR/6/
+IPRBLN=0
+IPRCRD=0
+IPRMPT=0
+
+variable = IPU
+DATAIPU/7/
+
+variable = IATL
+80IATL=1
+IATL=1
+
+variable = C1 is not used
+
+variable = C2 is not used
+
+variable = IODBUG is not used
+
+variable = ITRACE is not init
+
+variable = IDBALL is not used
+
+variable = NDEBUG is not used
+
+variable = IDEBUG(20) is not used
+
+variable = IN
+901FORMAT(1H0,10X,13HINEX7-QB=/(1X,10F12.3))
+DATAIN/5/
+DATARSTYPI/4HQINE/,RSTYPM/4HQME/
+OPEN(IN,ERR=100,ACCESS='SEQUENTIAL',FORM='FORMATTED',
+
+variable = IPR
+!IPR=11
+DATAIPR/6/
+IPRBLN=0
+IPRCRD=0
+IPRMPT=0
+
+variable = IPU
+DATAIPU/7/
+
+variable = IOERR is not used
+
+variable = NWARN is not used
+
+variable = NERRS is not used
+
+variable = ISEG(2) is not used
+
+variable = IOPNUM is not used
+
+variable = OPNAME(2) is not used
+
+variable = NWFRAC
+NWFRAC=0
+NWFRAC=NWFRAC+1
+
+variable = IODBUG is not used
+
+variable = ITRACE is not init
+
+variable = IDBALL is not used
+
+variable = NDEBUG is not used
+
+variable = IDEBUG(20) is not used
+
+variable = IODBUG is not used
+
+variable = ITRACE is not init
+
+variable = IDBALL is not used
+
+variable = NDEBUG is not used
+
+variable = IDEBUG(20) is not used
+
+variable = IATL
+80IATL=1
+IATL=1
+
+variable = C1 is not used
+
+variable = C2 is not used
+
+variable = IGAGE
+1670FORMAT(5X,'IGAGE=',I2,2X,'ISTAGE=',I2,2X,'ITRIB=',I3,2X,
+IGAGE=1
+IGAGE=IG
+TLAG(IGAGE)=0.0
+
+variable = TLAG(2) is not used
+
+variable = NTIMESTEPS
+NTIMESTEPS=TOTALHOURS/modelTimeStep
+
+variable = IATL
+80IATL=1
+IATL=1
+
+variable = C1 is not used
+
+variable = C2 is not used
+
+variable = NTIMESTEPS
+NTIMESTEPS=TOTALHOURS/modelTimeStep
+
+variable = IATL
+80IATL=1
+IATL=1
+
+variable = C1 is not used
+
+variable = C2 is not used
+
+variable = IGAGE
+1670FORMAT(5X,'IGAGE=',I2,2X,'ISTAGE=',I2,2X,'ITRIB=',I3,2X,
+IGAGE=1
+IGAGE=IG
+TLAG(IGAGE)=0.0
+
+variable = TLAG(2) is not used
+
+variable = NTIMESTEPS
+NTIMESTEPS=TOTALHOURS/modelTimeStep
+
+variable = NTS17
+NTS17=6
+NTS17=7
+
+variable = NTIMESTEPS
+NTIMESTEPS=TOTALHOURS/modelTimeStep
+
+variable = NTS17
+NTS17=6
+NTS17=7
+
+variable = NTIMESTEPS
+NTIMESTEPS=TOTALHOURS/modelTimeStep
+
+variable = LP
+LPTAEL=LOCOWS(I5)+NTIMESTEPS
+LPTAEL=LPTADL+NTIMESTEPS
+LPTQIM=LPTQI+NTIMESTEPS
+
+variable = ICD
+10READ(ICD,20,END=30)STRNG
+ICD=IN
+ICD=IOLICD
+ICD=MUNI26
+ICDSTP=72
+ICDSTR=1
+IOLICD=ICD
+
+variable = LPD is not used
+
+variable = LPE is not used
+
+variable = ICDPUN is not used
+
+variable = LSYS
+DATALSYS/3/
+
+variable = IODBUG is not used
+
+variable = ITRACE is not init
+
+variable = IDBALL is not used
+
+variable = NDEBUG is not used
+
+variable = IDEBUG(20) is not used
+
+variable = NFIELD is not used
+
+variable = IFTYPE(50) is not used
+
+variable = IFCNT(50) is not used
+
+variable = IFSTRT(50) is not used
+
+variable = IFSTOP(50) is not used
+
+variable = ICDBUF is not used
+
+variable = ICDSTR
+ICDSTR=1
+
+variable = ICDSTP
+ICDSTP=72
+
+variable = NRDCRD
+NRDCRD=0
+
+variable = IPRBLN
+IPRBLN=0
+
+variable = IPRCRD
+IPRCRD=0
+
+variable = MAXFLD
+MAXFLD=50
+
+variable = IPRMPT
+IPRMPT=0
+
+variable = NPUCRD is not used
+
+variable = PFCOMA is not used
+
+variable = IPRTCD is not used
+
+variable = ICKDAT is not used
+
+variable = ICDTMP is not used
+
+variable = IOPREP is not used
+
+variable = ICDSPC is not used
+
+variable = ICDQTE is not used
+
+variable = NFLDNQ is not used
+
+variable = CMTCHR
+DATACMTCHR/'$'/
+
+variable = IBUG
+IBUG=0!setto2fordebug
+
+variable = MINODT is not init
+
+variable = IMETEN is not used
+
+variable = CONVL is not used
+
+variable = CONVL3 is not used
+
+variable = CONVLT is not used
+
+variable = CONVST is not used
+
+variable = DIML is not used
+
+variable = DIML3 is not used
+
+variable = DIMLT is not used
+
+variable = UMM is not used
+
+variable = UM
+DATANUMOP/26/,SNAME/8HRES-SNGL/
+NUM6=2*NTIMESTEPS
+NUMRC=0
+
+variable = UCMS is not used
+
+variable = UCMSD is not used
+
+variable = NSE is not init
+
+variable = STORGE(250) is not used
+
+variable = ELSTOR(250) is not used
+
+variable = INTERP is not used
+
+variable = COQME is not used
+
+variable = COQIN is not used
+
+variable = COEL0 is not used
+
+variable = COEL1 is not used
+
+variable = OKELST is not used
+
+variable = NFIELD is not used
+
+variable = IFTYPE(50) is not used
+
+variable = IFCNT(50) is not used
+
+variable = IFSTRT(50) is not used
+
+variable = IFSTOP(50) is not used
+
+variable = ICDBUF is not used
+
+variable = ICDSTR
+ICDSTR=1
+
+variable = ICDSTP
+ICDSTP=72
+
+variable = NRDCRD
+NRDCRD=0
+
+variable = IPRBLN
+IPRBLN=0
+
+variable = IPRCRD
+IPRCRD=0
+
+variable = MAXFLD
+MAXFLD=50
+
+variable = IPRMPT
+IPRMPT=0
+
+variable = NPUCRD is not used
+
+variable = PFCOMA is not used
+
+variable = IPRTCD is not used
+
+variable = ICKDAT is not used
+
+variable = ICDTMP is not used
+
+variable = IOPREP is not used
+
+variable = ICDSPC is not used
+
+variable = ICDQTE is not used
+
+variable = NFLDNQ is not used
+
+variable = CMTCHR
+DATACMTCHR/'$'/
+
+variable = SUKYWD(3
+awk: cmd. line:1: (FILENAME=- FNR=1) fatal: Invalid regular expression: /SUKYWD(3/
+
+variable = 12) is not init
+
+variable = LSUKEY(12) is not used
+
+variable = NSUKEY
+DATANSUKEY/12/
+
+variable = ENDSP(2) is not used
+
+variable = NDSUKY
+DATANDSUKY/3/
+
+variable = IN
+901FORMAT(1H0,10X,13HINEX7-QB=/(1X,10F12.3))
+DATAIN/5/
+DATARSTYPI/4HQINE/,RSTYPM/4HQME/
+OPEN(IN,ERR=100,ACCESS='SEQUENTIAL',FORM='FORMATTED',
+
+variable = IPR
+!IPR=11
+DATAIPR/6/
+IPRBLN=0
+IPRCRD=0
+IPRMPT=0
+
+variable = IPU
+DATAIPU/7/
+
+variable = IODBUG is not used
+
+variable = ITRACE is not init
+
+variable = IDBALL is not used
+
+variable = NDEBUG is not used
+
+variable = IDEBUG(20) is not used
+
+variable = MENNST
+MENNST=1
+
+variable = LAGDT
+LAGDT=MINODT
+
+variable = NCD7
+NCD7=0
+NCD7=NCD7+1
+
+variable = NLAGK
+NLAGK=0
+NLAGK=NLAGK+1
+
+variable = IATL
+80IATL=1
+IATL=1
+
+variable = C1 is not used
+
+variable = C2 is not used
+
+variable = MENNST
+MENNST=1
+
+variable = LAGDT
+LAGDT=MINODT
+
+variable = NCD7
+NCD7=0
+NCD7=NCD7+1
+
+variable = NLAGK
+NLAGK=0
+NLAGK=NLAGK+1
+
+variable = LP
+LPTAEL=LOCOWS(I5)+NTIMESTEPS
+LPTAEL=LPTADL+NTIMESTEPS
+LPTQIM=LPTQI+NTIMESTEPS
+
+variable = ICD
+10READ(ICD,20,END=30)STRNG
+ICD=IN
+ICD=IOLICD
+ICD=MUNI26
+ICDSTP=72
+ICDSTR=1
+IOLICD=ICD
+
+variable = LPD is not used
+
+variable = LPE is not used
+
+variable = ICDPUN is not used
+
+variable = LSYS
+DATALSYS/3/
+
+variable = NTIMESTEPS
+NTIMESTEPS=TOTALHOURS/modelTimeStep
+
+variable = TRANSFERINDICATOR is not used
+
+variable = TSID(2) is not used
+
+variable = COMMONBLOCKTRANSFERNECESSARY is not used
+
+variable = /2X
+2141FORMAT(/2X,'LH1=',I5,5X,'LQ1=',I5,5X,'LXE1=',I5,5X,
+
+variable = RTCVID(2) is not used
+
+variable = RIVERN(5) is not used
+
+variable = RIVSTA(5) is not used
+
+variable = RLAT is not used
+
+variable = RLONG is not used
+
+variable = NUMRC
+NUMRC=0
+
+variable = RCSID(2
+awk: cmd. line:1: (FILENAME=- FNR=1) fatal: Invalid regular expression: /RCSID(2/
+
+variable = 2) is not init
+
+variable = NSHIFT(2) is not used
+
+variable = IJHSHF(5
+awk: cmd. line:1: (FILENAME=- FNR=1) fatal: Invalid regular expression: /IJHSHF(5/
+
+variable = 2) is not init
+
+variable = LJHSHF(5
+awk: cmd. line:1: (FILENAME=- FNR=1) fatal: Invalid regular expression: /LJHSHF(5/
+
+variable = 2
+10READ(ICD,20,END=30)STRNG
+12X,9HQDATA(I)=,F10.0,2X,'QSHFT=',F10.0)
+1F10.2,5X,7HXSECUP=,F10.2/5X,7HMETHOD=,I3,5X,7HNEEDEX=,I3,5X,
+2141FORMAT(/2X,'LH1=',I5,5X,'LQ1=',I5,5X,'LXE1=',I5,5X,
+310DO320L=1,3
+330FORMAT(1H0,2X,14HT.S.POSITION
+360QO2=QORG(I)
+DATANSUKEY/12/
+DATANUMOP/26/,SNAME/8HRES-SNGL/
+DATARCSKW1,RCSKW2/'
+DO210I=1,NRCPT
+LOCTR2=LOCTR1+NTIMESTEPS
+LOCWK2(IG)=LOCWK1(IG)+NTIMESTEPS
+LOCWK2=LOCWK1+NTIMESTEPS
+QM2=QNEW+RATM*(HORG(I)-HNEW)
+S2=TH2/(QM2-QM1)
+TH2=1.-TH1
+
+variable = QSHIFT is not init
+
+variable = QORG(100) is not used
+
+variable = HORG(100) is not used
+
+variable = NRCPTO
+NRCPTO=NRCPTS
+
+variable = IN
+901FORMAT(1H0,10X,13HINEX7-QB=/(1X,10F12.3))
+DATAIN/5/
+DATARSTYPI/4HQINE/,RSTYPM/4HQME/
+OPEN(IN,ERR=100,ACCESS='SEQUENTIAL',FORM='FORMATTED',
+
+variable = IPR
+!IPR=11
+DATAIPR/6/
+IPRBLN=0
+IPRCRD=0
+IPRMPT=0
+
+variable = IPU
+DATAIPU/7/
+
+variable = IODBUG is not used
+
+variable = ITRACE is not init
+
+variable = IDBALL is not used
+
+variable = NDEBUG is not used
+
+variable = IDEBUG(20) is not used
+
+variable = TRANSFERINDICATOR is not used
+
+variable = QSHIFT is not init
+
+variable = QORG(100) is not used
+
+variable = HORG(100) is not used
+
+variable = NRCPTO
+NRCPTO=NRCPTS
+
+variable = QMOD(100) is not used
+
+variable = HMOD(100) is not used
+
+variable = NRCPMD
+NRCPMD=NRCPTS
+
+variable = 1X is not init
+
+variable = 2A4 is not init
+
+variable = 2X
+12X,9HQDATA(I)=,F10.0,2X,'QSHFT=',F10.0)
+2141FORMAT(/2X,'LH1=',I5,5X,'LQ1=',I5,5X,'LXE1=',I5,5X,
+330FORMAT(1H0,2X,14HT.S.POSITION
+
+variable = 10A4 is not used
+
+variable = 2F10.2 is not used
+
+variable = 5A4 is not used
+
+variable = 3F10.2/1X is not used
+
+variable = F10.2
+1F10.2,5X,7HXSECUP=,F10.2/5X,7HMETHOD=,I3,5X,7HNEEDEX=,I3,5X,
+
+variable = 6X is not used
+
+variable = A4 is not init
+
+variable = 3F10.2 is not used
+
+variable = 3I10 is not init
+
+variable = F10.2
+1F10.2,5X,7HXSECUP=,F10.2/5X,7HMETHOD=,I3,5X,7HNEEDEX=,I3,5X,
+
+variable = 3I10/1X is not used
+
+variable = 2F10.2 is not used
+
+variable = F10.6 is not used
+
+variable = 2F10.2 is not used
+
+variable = 6X is not used
+
+variable = A4 is not init
+
+variable = 2I10 is not used
+
+variable = 2F10.2/1X is not used
+
+variable = I10 is not init
+
+variable = 5A4 is not used
+
+variable = 3I10 is not init
+
+variable = F10.1 is not used
+
+variable = F10.2) is not init
+
+variable = COMMONBLOCKTRANSFERNECESSARY/5X is not used
+
+variable = IODBUG is not used
+
+variable = ITRACE is not init
+
+variable = IDBALL is not used
+
+variable = NDEBUG is not used
+
+variable = IDEBUG(20) is not used
+
+variable = QSHIFT is not init
+
+variable = QORG(112) is not used
+
+variable = HORG(112) is not used
+
+variable = NRCPTO
+NRCPTO=NRCPTS
+
+variable = NIGNOR
+1610FORMAT('NIGNOR=',I5/('OPTION,START,END=',3I10/))
+
+variable = IGNOPT(10) is not used
+
+variable = IGSDAT(10) is not used
+
+variable = IGEDAT(10) is not used
+
+variable = IODBUG is not used
+
+variable = ITRACE is not init
+
+variable = IDBALL is not used
+
+variable = NDEBUG is not used
+
+variable = IDEBUG(20) is not used
+

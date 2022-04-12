@@ -1,0 +1,24 @@
+# Since each model's src subdirectory the same file structure.
+# Therefore, they can use the same Makefile.
+
+# File Name: Makefile4Subdir
+# Author: Raymond.Chui@noaa.gov
+# Created: August, 2009
+
+include $(TOP_ROOF)MakefileTemplate
+
+# Where ARCHIVE, UPPER, OBC_* are from external input
+LIB = $(UPPER)/$(ARCHIVE)
+LIBOBJ = $(LIB)($(OBJ_F) $(OBJ_C) $(OBJ_CC))
+
+# Where TOBULD is also from external input, it can be either libs or objs.
+# Therefore, either build a libxxx.a archive or build the object files
+
+all: ${TOBUILD}
+
+objs: ${OBJ_C} ${OBJ_CC} ${OBJ_F}
+
+libs: ${LIBOBJ}
+
+clean:
+	rm -f ${OBJ_C} ${OBJ_CC} ${OBJ_F}
