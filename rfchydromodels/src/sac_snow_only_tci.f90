@@ -53,7 +53,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   ! used in all model HRUs
   ! model state variables not listed start at 0
   double precision, dimension(6):: spin_up_start_states, spin_up_end_states
-  integer:: spin_up_counter
+  integer:: spin_up_counter, spin_up_max_iter
   double precision:: pdiff
   double precision, dimension(n_hrus):: init_swe, init_uztwc, init_uzfwc, init_lztwc, init_lzfsc, &
           init_lzfpc, init_adimc
@@ -181,8 +181,9 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
     pdiff = 1d0
     ts_per_year = ts_per_day * 365
     spin_up_counter = 0
+    spin_up_max_iter = 50
 
-    do while (pdiff > 0.01)
+    do while (pdiff > 0.01 .and. spin_up_counter < spin_up_max_iter)
 
       spin_up_counter = spin_up_counter + 1
 
@@ -269,7 +270,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
 
       spin_up_start_states = spin_up_end_states
 
-      ! write(*,'(7f10.3)')pdiff, spin_up_start_states
+      ! write(*,'(1i5,7f10.3)')spin_up_counter, pdiff, spin_up_start_states
 
     end do 
     ! write(*,*)

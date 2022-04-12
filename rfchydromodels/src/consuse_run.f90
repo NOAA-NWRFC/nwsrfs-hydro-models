@@ -103,12 +103,13 @@ subroutine consuse(sim_length, year, month, day, &
   double precision, dimension(12):: peadj_m_prev, peadj_m_next
 
   ! ! local spin-up varibles
-  integer, parameter:: NDT_su =365
+  integer, parameter:: NDT_su = 365
   double precision:: IRFSTOR_su_start, IRFSTOR_su_end, pdiff
   real :: IRFSTOR_su
   real, dimension(NDT_su):: ETD_su,QNAT_su
   real, dimension(NDT_su):: QADJ_su,QDIV_su,QRFIN_su,QRFOUT_su
   real, dimension(NDT_su):: QOL_su,QCD_su,CE_su,RFSTOR_su
+  integer:: spin_up_counter, spin_up_max_iter
   
   ! ! output 
   double precision, dimension(sim_length), intent(out):: QADJ_out,QDIV_out
@@ -180,9 +181,13 @@ subroutine consuse(sim_length, year, month, day, &
     pdiff = dble(1.0)
     QNAT_su=QNAT(:NDT_su)
     ETD_su=ETD(:NDT_su)
+    spin_up_counter = 0
+    spin_up_max_iter = 50
     
     ! ! Continue searching for IRFSTOR until starting storage is within 1% of ending storage
-    do while (pdiff > 0.01)
+    do while (pdiff > 0.01 .and. spin_up_counter < spin_up_max_iter)
+
+      spin_up_counter = spin_up_counter + 1
 
       ! put the ending states from the previous iteration as the starting states 
       IRFSTOR_su = real(IRFSTOR_su_end)
