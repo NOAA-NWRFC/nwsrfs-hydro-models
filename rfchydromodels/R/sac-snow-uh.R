@@ -531,7 +531,6 @@ chanloss <- function(flow, forcing, dt_hours, pars){
                       year = as.integer(forcing[[1]]$year)[1:sim_length],
                       month = as.integer(forcing[[1]]$month)[1:sim_length],
                       day = as.integer(forcing[[1]]$day)[1:sim_length],
-                      hour = as.integer(forcing[[1]]$hour)[1:sim_length],
                       factor = cl_factors,
                       period = cl_periods,
                       sim = flow[1:sim_length],

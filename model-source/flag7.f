@@ -56,7 +56,7 @@ C    ================================= RCS keyword statements ==========
      . $' /
 C    ===================================================================
 C
-      DATA ICPU/4HCPU /
+CCB      DATA ICPU/4HCPU /
 C
 C
       NOTCPU=.TRUE.
@@ -86,9 +86,10 @@ CGW  Added varible
       IB=0
       COTIME=NDT*6   
 C
-  700 ADD=.TRUE.
-      NP=P(16)
-      NC=C(1)
+C  700 ADD=.TRUE.
+      ADD=.TRUE.
+      NP=int(P(16))
+      NC=int(C(1))
 CFC      IF(IB.NE.1)GO TO 5
 CGW      IF(FEWSDEBUG .GE. 1) THEN
 CGW        CALL FPRPC7(NP,P,NC,C)
@@ -104,11 +105,12 @@ CGW      END IF
 C
 CGW  900 FORMAT(1H0,10X,26HIN SUBROUTINE FLAG7 - QA =/(1X,10F12.3))  
 C
-    5 ITA=P(5)
-      NPLQ=P(19)
+C    5 ITA=P(5)
+      ITA=int(P(5))
+      NPLQ=int(P(19))
 C
       XOUT0=C(3)
-      MXLCO=C(5)
+      MXLCO=int(C(5))
 C
       LQT=1
       LC=6
@@ -272,10 +274,12 @@ CFC      WRITE(IODBUG,705)ELAPSE,XICPUT
 CFC  705 FORMAT(1H0,10X,'**ABOUT TO REMOVE IDENTICAL LAG TIMES -  ',
 CFC     1  'ELAPSED CPU TIME = ',F13.2,', TOTAL CPU TIME = ',F13.2)
 C
-  704 LQTM2=LQT-2
+C  704 LQTM2=LQT-2
+      LQTM2=LQT-2
       IF(LQTM2.GT.0)GO TO 219
       DO 230 I=1,NDT
-  230 QB(I)=QT(1)
+        QB(I)=QT(1)
+  230 CONTINUE
       GO TO 500
 C
   219 L=0
@@ -291,11 +295,13 @@ C
 C
   235 SUM=0.
       DO 236 KK=I,K,2
-  236 SUM=SUM+QT(KK-1)
+        SUM=SUM+QT(KK-1)
+  236 CONTINUE
       QT(I-1)=SUM/((L-I)/2+1)
       IBEGN=I+2
       DO 237 KK=IBEGN,L,2
-  237 QT(KK)=-999.
+        QT(KK)=-999.
+  237 CONTINUE
 C
   222 CONTINUE
 C
@@ -306,7 +312,8 @@ C
       LQTN=LQT-2
       LQTEND=LQT-1
       DO 238 KKK=KK,LQTEND
-  238 QT(KKK-1)=QT(KKK+1)
+        QT(KKK-1)=QT(KKK+1)
+  238 CONTINUE
       GO TO 245
   240 CONTINUE
 C
@@ -315,10 +322,10 @@ C     REPEATED SHORT WAVES WITH LONG LAGS.
 C     IF NO DOUBLE BACK CAN PROCESS MORE EFFICIENTLY IN
 C      NEXT SECTION OF CODING.
 C
-      MXLAG=P(20)
+      MXLAG=int(P(20))
       DO 270 I=1,NPLQ
       I1=18 + I*2
-      IF (P(I1) .GT. MXLAG) MXLAG=P(I1)
+      IF (P(I1) .GT. MXLAG) MXLAG=int(P(I1))
   270 CONTINUE
       MXLAG2=MXLAG*2
       DBLBK=.FALSE.
@@ -540,7 +547,7 @@ CGW	WRITE(MESSAGESTRING,904)(C(I),I=1,MAXDEBUG)
 CGW        call logfromfortran(DEBUG_LEVEL,MESSAGESTRING)  
  
 CGW  904 FORMAT(1H0,10X,3HC =/(1X,10F12.3))
-        NQT=(NDT+C(5))*2
+        NQT=int((NDT+C(5))*2)
  
 C LC just write max of 100 values for debug
       MAXDEBUG=NQT

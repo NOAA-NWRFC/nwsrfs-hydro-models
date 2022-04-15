@@ -1,4 +1,4 @@
-subroutine chanloss(n_clmods, dt, sim_length, year, month, day, hour, &
+subroutine chanloss(n_clmods, dt, sim_length, year, month, day, &
     factor, period, &
     sim, sim_adj)
 
@@ -40,7 +40,7 @@ subroutine chanloss(n_clmods, dt, sim_length, year, month, day, hour, &
 
   ! ! Inputs
   integer, intent(in):: n_clmods, dt, sim_length
-  integer, dimension(sim_length), intent(in):: year, month, day, hour
+  integer, dimension(sim_length), intent(in):: year, month, day
   double precision, dimension(n_clmods), intent(in):: factor
   integer, dimension(2,n_clmods), intent(in):: period
   double precision, dimension(sim_length), intent(in):: sim

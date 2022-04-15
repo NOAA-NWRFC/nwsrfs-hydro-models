@@ -2,7 +2,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
     latitude, elev, &
     sac_pars, &
     peadj, pxadj, &
-    snow_pars, & 
+    snow_pars, &
     init_swe, &
     map, ptps, mat, etd, &
     tci)
@@ -96,6 +96,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
 
   ! date variables
   integer, dimension(sim_length), intent(in):: year, month, day, hour
+  integer:: houri
 
   ! atmospheric forcing variables
   double precision, dimension(sim_length, n_hrus), intent(in):: map, mat, etd, ptps 
@@ -212,7 +213,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
         map_step = map(i,nh) * pxadj(nh)
         etd_step = etd(i,nh) * peadj(nh)
 
-        call exsnow19(int(dt,4),int(dt/sec_hour,4),int(day(i),4),int(month(i),4),int(year(i),4),&
+        call exsnow19(int(dt/sec_hour,4),int(day(i),4),int(month(i),4),int(year(i),4),&
             !SNOW17 INPUT AND OUTPUT VARIABLES
             real(map_step), real(ptps(i,nh)), real(mat(i,nh)), &
             raim_sp, sneqv_sp, snow_sp, snowh_sp, psfall_sp, prain_sp, aesc_sp,&
@@ -232,7 +233,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
         ! Anderson calb manual pdf page 232
         etd_step = efc(nh)*etd_step+(1d0-efc(nh))*(1d0-dble(aesc_sp))*etd_step
     
-        call exsac(1, real(dt), raim_sp, real(mat(i,nh)), real(etd_step), &
+        call exsac(real(dt), raim_sp, real(etd_step), &
             !SAC PARAMETERS
             !UZTWM,UZFWM,UZK,PCTIM,ADIMP,RIVA,ZPERC, &
             !REXP,LZTWM,LZFSM,LZFPM,LZSK,LZPK,PFREE, &
@@ -307,11 +308,15 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
     ! =============== START SIMULATION TIME LOOP =====================================
     do i = 1,sim_length,1
 
+      ! dummy use of the hour variable to shut the compiler up, 
+      ! we may want to use the hour as an input in the future
+      if(i.eq.1) houri = hour(i)
+
       ! apply adjustments (zone-wise) for the current timestep
       map_step = map(i,nh) * pxadj(nh)
       etd_step = etd(i,nh) * peadj(nh) 
 
-      call exsnow19(int(dt,4),int(dt/sec_hour,4),int(day(i),4),int(month(i),4),int(year(i),4),&
+      call exsnow19(int(dt/sec_hour,4),int(day(i),4),int(month(i),4),int(year(i),4),&
           !SNOW17 INPUT AND OUTPUT VARIABLES
           real(map_step), real(ptps(i,nh)), real(mat(i,nh)), &
           raim_sp, sneqv_sp, snow_sp, snowh_sp, psfall_sp, prain_sp, aesc_sp,&
@@ -331,7 +336,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
       ! Anderson calb manual pdf page 232
       etd_step = efc(nh)*etd_step+(1d0-efc(nh))*(1d0-dble(aesc_sp))*etd_step
   
-      call exsac(1, real(dt), raim_sp, real(mat(i,nh)), real(etd_step), &
+      call exsac(real(dt), raim_sp, real(etd_step), &
           !SAC PARAMETERS
           !UZTWM,UZFWM,UZK,PCTIM,ADIMP,RIVA,ZPERC, &
           !REXP,LZTWM,LZFSM,LZFPM,LZSK,LZPK,PFREE, &

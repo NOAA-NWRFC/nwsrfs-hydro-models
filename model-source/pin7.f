@@ -65,24 +65,24 @@ CGW   Adding FTPY help
 CGW Cf2py intent(out) P
 CGW Cf2py intent(out) C
 CGW      DIMENSION TSIDA(2),TSIDB(2)
-      CHARACTER*8 SNAME/'PIN7'/
+CCB      CHARACTER*8 SNAME/'PIN7'/
       LOGICAL FOP7,MEANQ
-      CHARACTER *1024 FILENAME
+CCB      CHARACTER *1024 FILENAME
 CFC      CHARACTER *4 IDIMI/'L3OT'/
       CHARACTER *5 IDIMI
-      CHARACTER *5 IUNIT      
+CCB      CHARACTER *5 IUNIT      
 CGW Additions
 C
       CHARACTER*4 TSIDA1, TSIDA2, TSIDB1, TSIDB2, DTA, DTB, METENG
       REAL TLRC, QBNTL, ICO, IINFL, IOUTFL, ISTOR, LAGTBL, KTBL
       INTEGER ISTPA, ISTPB, LAGDT, NLAGK, NDFLT, ITA, ITB, JLAG, JK
       DIMENSION LAGTBL(*), KTBL(*)
-      CHARACTER*6 RSTYPM, RSTYPI, IENG, METR, RES, SNGL 
+      CHARACTER*4 RSTYPM, RSTYPI, IENG, METR, RES, SNGL 
       CHARACTER*2 BLANK, IBLANK
 C
 C
 C    ================================= RCS keyword statements ==========
-      CHARACTER*68     RCSKW1,RCSKW2
+      CHARACTER(len=68)     RCSKW1,RCSKW2
       DATA             RCSKW1,RCSKW2 /                                 '
      .$Source: /fs/hseb/ob72/rfc/ofs/src/fcinit_pntb/RCS/pin7.f,v $
      . $',                                                             '
@@ -91,12 +91,12 @@ C    ================================= RCS keyword statements ==========
 C    ===================================================================
 C
 C
-      DATA L3OT/4HL3/T/,L3/4HL3  /
-      DATA RSTYPI/4HQINE/,RSTYPM/4HQME /
-      DATA IBLANK/4H    /,METR/4HMETR/,IENG/4HENGL/
-      DATA LAGWRD/4HLAG /,KWRD/4HK   /
-      DATA RES,SNGL/4HRES-,4HSNGL/
-      DATA BLANK/4H    /
+CCB      DATA L3OT/4HL3/T/,L3/4HL3  /
+      DATA RSTYPI/'QINE'/,RSTYPM/'QME '/
+      DATA IBLANK/'  '/,METR/'METR'/,IENG/'ENGL'/
+CCB      DATA LAGWRD/4HLAG /,KWRD/4HK   /
+      DATA RES,SNGL/'RES-','SNGL'/
+      DATA BLANK/'  '/
 C
 C
 CGW  Assigned Varibles.....................
@@ -204,7 +204,7 @@ C
       IF (LMETR.EQ.-1) THEN
 CFC         WRITE (IPR,90) METENG
 CGW      WRITE(MESSAGESTRING,90) METENG
-CGW      call logfromfortran(WARNING_LEVEL,MESSAGESTRING)	 
+CGW      call logfromfortran(WARNING_LEVEL,MESSAGESTRING)   
 CGW90    FORMAT ('0**WARNING** ENGLISH/METRIC INDICATOR (',A4,
 CGW     *   ' MUST BE ''METR'', ''ENGL'' OR BLANK. METRIC IS ASSUMED.')
 CFC         CALL WARN
@@ -241,7 +241,7 @@ C
       IF (.NOT.MEANQ.OR.IATL.EQ.1) GO TO 130
 CFC         WRITE (IPR,120)
 CGW      WRITE(MESSAGESTRING,120)
-CGW      call logfromfortran(FATAL_LEVEL,MESSAGESTRING) 	 
+CGW      call logfromfortran(FATAL_LEVEL,MESSAGESTRING)    
 CGW120   FORMAT ('0**ERROR** CANNOT USE PERIOD AVERAGE INFLOW WITH ',
 CGW     1  'MCP2 ATTENUATION (K) TECHNIQUE.')
 CFC         CALL ERROR
@@ -251,7 +251,7 @@ C
 130   IF (ITB.GT.0.OR..NOT.MEANQ) GO TO 150
 CFC         WRITE (IPR,140)
 CGW      WRITE(MESSAGESTRING,140)
-CGW      call logfromfortran(FATAL_LEVEL,MESSAGESTRING) 	 
+CGW      call logfromfortran(FATAL_LEVEL,MESSAGESTRING)    
 CGW140   FORMAT ('0**ERROR** CANNOT WRITE OUTFLOW TIME SERIES OVER ',
 CGW     1   'INFLOW TIME SERIES WHEN INFLOW IS PERIOD AVERAGED.')
 CFC         CALL ERROR
@@ -266,7 +266,7 @@ C
 170   IF (ITA.LE.ITB.OR.ITB.EQ.0) GO TO 200
 CFC         WRITE (IPR,180)ITA,ITB
 CGW      WRITE(MESSAGESTRING,180)ITA,ITB
-CGW      call logfromfortran(WARNING_LEVEL,MESSAGESTRING) 	 
+CGW      call logfromfortran(WARNING_LEVEL,MESSAGESTRING)    
 CGW180   FORMAT ('0**ERROR** INFLOW TIME STEP (',I2,
 CGW     1  ') MUST NOT BE GREATER THAN THE OUTFLOW TIME STEP (',I2,'.')
 CFC         CALL ERROR
@@ -284,7 +284,7 @@ C
 200   IF (JLAG.LT.0.OR.JK.LT.0) THEN
 CFC         WRITE (IPR,210) JLAG,JK
 CGW      WRITE(MESSAGESTRING,210) JLAG,JK
-CGW      call logfromfortran(WARNING_LEVEL,MESSAGESTRING)	 
+CGW      call logfromfortran(WARNING_LEVEL,MESSAGESTRING)   
 CGW210   FORMAT ('0**ERROR** NUMBER OF PAIRS OF VALUES IN THE ',
 CGW     1  '(LAG,Q) TABLE (',I5,') OR (K,Q) TABLE (',I5,
 CGW     *  ') CANNOT BE LESS THAN ZERO.')
@@ -377,8 +377,8 @@ CGW     END IF
 CFC         IF (IBUG.GT.1) WRITE (IPR,260) L1,L2,P(L1),P(L2)
 CGW         IF(FEWSDEBUG .GE. 1) THEN
 CGW         WRITE(MESSAGESTRING,260) L1,L2,P(L1),P(L2)
-CGW	  call logfromfortran(DEBUG_LEVEL,MESSAGESTRING)
-CGW         END IF	 
+CGW    call logfromfortran(DEBUG_LEVEL,MESSAGESTRING)
+CGW         END IF   
 CGW260   FORMAT (' L1=',I5,' L2=',I5,' P(L1)=',F10.2,' P(L2)=',F10.2)
          IF (P(L1).LE.P(L2)) GO TO 280
 CFC            WRITE (IPR,270)
@@ -403,7 +403,7 @@ C
          IF (P(I).LE.1.E6) GO TO 320
 CFC            WRITE (IPR,310) NPAIR,LAGWRD,P(I)
 CGW          WRITE(MESSAGESTRING,310) NPAIR,LAGWRD,P(I)
-CGW	    call logfromfortran(WARNING_LEVEL,MESSAGESTRING)	    
+CGW      call logfromfortran(WARNING_LEVEL,MESSAGESTRING)      
 CGW310   FORMAT ('0**WARNING** FLOW FOR PAIR ',I4,
 CGW     1 ' IN THE ',A4,'VS Q TABLE WAS ENTERED AS ',G10.4,' CMS.'/
 CGW     2 11X,'THIS VALUE HAS BEEN RESET TO 1000000 CMS.'/
@@ -470,9 +470,9 @@ CGW      CALL FFRDRL (P(IP+1),IX,IBUG,IER,NCD7)
          L1=IP+NP*2
          L2=L1+2
 CFC         IF (IBUG.GT.1) WRITE (IPR,260) L1,L2,P(L1),P(L2)
-CGW	 IF(FEWSDEBUG .GE. 1) THEN
+CGW   IF(FEWSDEBUG .GE. 1) THEN
 CGW             WRITE(MESSAGESTRING,260) L1,L2,P(L1),P(L2)
-CGW	    call logfromfortran(DEBUG_LEVEL,MESSAGESTRING)
+CGW      call logfromfortran(DEBUG_LEVEL,MESSAGESTRING)
 CGW         END IF 
          IF (P(L1).LE.P(L2)) GO TO 380
 CFC            WRITE (IPR,360)
@@ -535,13 +535,13 @@ C
 CFC      IF (IBUG.GT.0) WRITE (IODBUG,*) 'NDFLT=',NDFLT
 CGW      IF(FEWSDEBUG .GE. 1) THEN
 CGW      WRITE(MESSAGESTRING,*) 'NDFLT=',NDFLT
-CGW	call logfromfortran(DEBUG_LEVEL,MESSAGESTRING)
+CGW  call logfromfortran(DEBUG_LEVEL,MESSAGESTRING)
 CGW      END IF      
 C
       IF (NDFLT.LT.0) THEN
 CFC         WRITE (IPR,450) NDFLT
 CGW      WRITE(MESSAGESTRING,450) NDFLT
-CGW	call logfromfortran(WARNING_LEVEL,MESSAGESTRING)
+CGW  call logfromfortran(WARNING_LEVEL,MESSAGESTRING)
 CGW450   FORMAT ('0**ERROR** DEFAULT CARRYOVER FLAG (',I2,
 CGW     *   ') CANNOT BE LESS THAN ZERO.')
 CFC         CALL ERROR
@@ -556,7 +556,7 @@ C
 CFC      IF (IBUG.GT.0) WRITE (IODBUG,*) 'LAG OPTION ENABLED'
 CGW      IF(FEWSDEBUG .GE. 1) THEN
 CGW          WRITE(MESSAGESTRING,*) 'LAG OPTION ENABLED'
-CGW	call logfromfortran(DEBUG_LEVEL,MESSAGESTRING)
+CGW  call logfromfortran(DEBUG_LEVEL,MESSAGESTRING)
 CGW      END IF      
 C.......................................................................
 C
@@ -569,9 +569,9 @@ C
          K=19+2*I-1
          IF (P(K).GT.X)X=P(K)
 460      CONTINUE
-      MXCOL=X/ITA + 2
+      MXCOL=int(X/ITA + 2)
       GO TO 480
-470   MXCOL=P(20)/ITA + 2
+470   MXCOL=int(P(20)/ITA + 2)
 480   IC=5+2*MXCOL
 CFC      CALL CHECKC(IC,LC,IER)
       IF (IER.EQ.1) GO TO 560
@@ -582,7 +582,7 @@ C
 C     FILL IN DEFAULT LAG CARRYOVER VALUES
 C.......................................................................
 C
-      IX=2*C(5)
+      IX=int(2*C(5))
       CALL UMEMST (ZERO,C(6),IX)
       GO TO 530
 C.......................................................................
@@ -617,8 +617,8 @@ c
          C(ISTPA)=I*ITA
          C(ISTPB)=ICO
 c         
-515	  Continue
-CGW	  CALL FFRDRL (C(6),IX,IBUG,IER,NCD7)
+515    Continue
+CGW    CALL FFRDRL (C(6),IX,IBUG,IER,NCD7)
       IF (IER.EQ.1) GO TO 560
 C
       IF (LMETR.EQ.0) THEN
@@ -632,7 +632,7 @@ C
 C     DEFAULT LAG PORTION OF C ARRAY NOT READ IN ABOVE
 C.......................................................................
 C
-      IFIL=2*C(5)-IX
+      IFIL=int(2*C(5)-IX)
 CGW      CALL UMEMST (ZERO,C(6+IX),IFIL)
 C.......................................................................
 C
@@ -646,7 +646,7 @@ C
 C dws    P(18) was placed into an integer to replace it in the next
 C dws     statement to avoid compiler warnings ... 2006-01-23
  
-         NUMP18 = P(18)
+         NUMP18 = int(P(18))
 
       IF (FOP7(P(NUMP18),P(NUMP18+1))) IOPTK=1
 C
@@ -669,7 +669,7 @@ C
 CFC      IF (IBUG.GT.0) WRITE (IODBUG,*) 'K OPTION ENABLED'
 CGW      IF(FEWSDEBUG.GE.1) THEN
 CGW         WRITE(MESSAGESTRING,*) 'K OPTION ENABLED'
-CGW	call logfromfortran(DEBUG_LEVEL,MESSAGESTRING)
+CGW  call logfromfortran(DEBUG_LEVEL,MESSAGESTRING)
 CGW      END IF       
       IY=2
       IX=3
@@ -698,7 +698,7 @@ C
 550   C(1)=IC+.01
       IF (IATL.EQ.1.AND.IOPTK.EQ.1) THEN
 CFC         CALL PINA7 (P,LP,IP,C,LC,IC,IBUG,IER)
-         CALL PINA7 (P,IP,C,IC,IBUG,IER)	 
+         CALL PINA7 (P,IP,IER)
          ENDIF
 CGW      IF (FEWSDEBUG.GE.1) CALL FPRPC7 (IP,P,IC,C)
       IF (IER.EQ.1) GO TO 560
@@ -711,7 +711,7 @@ C
 CFC      IF (IBUG.GT.0) WRITE (IPR,570)
 CGW      IF(FEWSDEBUG .GE. 1) THEN
 CGW          WRITE(MESSAGESTRING,570)
-CGW	call logfromfortran(DEBUG_LEVEL,MESSAGESTRING)
+CGW    call logfromfortran(DEBUG_LEVEL,MESSAGESTRING)
 CGW      END IF       
 CGW570   FORMAT (' ERRORS ENCOUNTERED PROCESSING LAG/K ',
 CGW     1  'INPUT - IP AND IC SET TO ZERO')

@@ -2,15 +2,15 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
     latitude, elev, &
     sac_pars, &
     peadj, pxadj, &
-    snow_pars, & 
-    init_swe, & 
+    snow_pars, &
+    init_swe, &
     map, ptps, mat, etd, &
     tci, aet, uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, &
     swe, aesc, neghs, liqw, raim, psfall, prain)
 
 
     ! ! zone info 
-    ! latitude, elev, area, &
+    ! latitude, elev, &
     ! ! sac-sma params in a matrix, see the variable declaration
     ! sac_pars, &
     ! ! zone specific etd (peadj) and map (pxadj) adjustments 
@@ -29,13 +29,13 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
 
   implicit none
 
-  double precision, parameter:: pi=3.141592653589793238462643383279502884197
+  double precision, parameter:: pi=3.141592653589793238462643383279502884197d0
   double precision, parameter:: sec_day = 86400.     !seconds in a day
   double precision, parameter:: sec_hour = 3600.     !seconds in an hour
   integer, parameter:: sp = KIND(1.0)
   integer:: k
 
-  integer, intent(in):: n_hrus ! number of HRU areas in parameter files
+  integer, intent(in):: n_hrus ! number of zones
 
   ! sac pars matrix 
   ! uztwm, uzfwm, lztwm, lzfpm, lzfsm, adimp, uzk, lzpk, lzsk, zperc, rexp, pctim, pfree, riva, side, rserv, efc
@@ -108,6 +108,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
 
   ! date variables
   integer, dimension(sim_length), intent(in):: year, month, day, hour
+  integer:: houri
 
   ! atmospheric forcing variables
   !f2py intent(in,out) map, etd
@@ -171,9 +172,9 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
   ! write(*,*)'Timesteps per day:',ts_per_day
 
   ! this is not used, since ptps is input, but set it just so its not empty
-  pxtemp = 0
-  
-  ! ========================= HRU AREA LOOP ========================================================
+  pxtemp = 0 
+
+  ! ========================= ZONE AREA LOOP ========================================================
   !   loop through the zones, running the lumped model code for each
 
   do nh=1,n_hrus
@@ -239,7 +240,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
         map_step = map(i,nh) * pxadj(nh)
         etd_step = etd(i,nh) * peadj(nh)
 
-        call exsnow19(int(dt,4),int(dt/sec_hour,4),int(day(i),4),int(month(i),4),int(year(i),4),&
+        call exsnow19(int(dt/sec_hour,4),int(day(i),4),int(month(i),4),int(year(i),4),&
             !SNOW17 INPUT AND OUTPUT VARIABLES
             real(map_step), real(ptps(i,nh)), real(mat(i,nh)), &
             raim_sp, sneqv_sp, snow_sp, snowh_sp, psfall_sp, prain_sp, aesc_sp,&
@@ -259,7 +260,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
         ! Anderson calb manual pdf page 232
         etd_step = efc(nh)*etd_step+(1d0-efc(nh))*(1d0-dble(aesc_sp))*etd_step
     
-        call exsac(1, real(dt), raim_sp, real(mat(i,nh)), real(etd_step), &
+        call exsac(real(dt), raim_sp, real(etd_step), &
             !SAC PARAMETERS
             !UZTWM,UZFWM,UZK,PCTIM,ADIMP,RIVA,ZPERC, &
             !REXP,LZTWM,LZFSM,LZFPM,LZSK,LZPK,PFREE, &
@@ -334,11 +335,15 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
     ! =============== START SIMULATION TIME LOOP =====================================
     do i = 1,sim_length,1
 
+      ! dummy use of the hour variable to shut the compiler up, 
+      ! we may want to use the hour as an input in the future
+      if(i .eq. 1) houri = hour(i)
+
       ! apply adjustments (zone-wise) for the current timestep
       map_step = map(i,nh) * pxadj(nh)
       etd_step = etd(i,nh) * peadj(nh) 
 
-      call exsnow19(int(dt,4),int(dt/sec_hour,4),int(day(i),4),int(month(i),4),int(year(i),4),&
+      call exsnow19(int(dt/sec_hour,4),int(day(i),4),int(month(i),4),int(year(i),4),&
           !SNOW17 INPUT AND OUTPUT VARIABLES
           real(map_step), real(ptps(i,nh)), real(mat(i,nh)), &
           raim_sp, sneqv_sp, snow_sp, snowh_sp, psfall_sp, prain_sp, aesc_sp,&
@@ -359,7 +364,7 @@ subroutine sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
       ! Anderson calb manual pdf page 232
       etd_step = efc(nh)*etd_step+(1d0-efc(nh))*(1d0-dble(aesc_sp))*etd_step
   
-      call exsac(1, real(dt), raim_sp, real(mat(i,nh)), real(etd_step), &
+      call exsac(real(dt), raim_sp, real(etd_step), &
           !SAC PARAMETERS
           !UZTWM,UZFWM,UZK,PCTIM,ADIMP,RIVA,ZPERC, &
           !REXP,LZTWM,LZFSM,LZFPM,LZSK,LZPK,PFREE, &

@@ -5,10 +5,10 @@ C
 C
 C  MOVE NUM CHARACTERS STARTING WITH IN(1) INTO OUT(1)
 C
-      CHARACTER*4 IN(NUM),IOUT(NUM)
+      CHARACTER(len=4) IN(NUM),IOUT(NUM)
 C
 C    ================================= RCS keyword statements ==========
-      CHARACTER*68     RCSKW1,RCSKW2
+      CHARACTER(len=68)     RCSKW1,RCSKW2
       DATA             RCSKW1,RCSKW2 /                                 '
      .$Source: /fs/hseb/ob72/rfc/util/src/util_gen1/RCS/umemov.f,v $
      . $',                                                             '

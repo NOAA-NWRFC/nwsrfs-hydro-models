@@ -38,11 +38,14 @@ C
       !U1 = 0
 
       M = MM
-      IF(UN1) 8,9,9
-    8 U1(1)=1.
-      M = 1
-      GOTO 6
-    9 IF (K .EQ. 0) GOTO 6
+
+      IF(UN1 < 0)THEN
+        U1(1)=1.
+        M = 1
+        GOTO 6
+      ELSE
+        IF (K .EQ. 0) GOTO 6
+      END IF
       SP=0.
       TOC=GF(UN1)
       TOC=LOG(TOC*UT)
@@ -60,12 +63,14 @@ C
           GO TO 12
         END IF
       END IF
-    1 SP=SP+U1(I)
+      SP=SP+U1(I)
+    1 CONTINUE
    12 CONTINUE
       IF (SP .EQ. 0) SP=1.0E-5
       SP=1./SP
       DO 7 I=1,M
-    7 U1(I)=U1(I)*SP
+      U1(I)=U1(I)*SP
+    7 CONTINUE
       !do L=1,M
       !  if (U1(L)>0)write(*,*)'U1',L,U1(L)
       !end do 
@@ -81,7 +86,8 @@ C
       DO 3 J=A,B
       IOR=I-J+1
       !if(I.lt.10)write(*,*)QB(I)+U1(J)*Q(IOR)
-    3 QB(I)=QB(I)+Q(J)*U1(IOR)
+      QB(I)=QB(I)+Q(J)*U1(IOR)
+    3 CONTINUE
     2 CONTINUE
       GO TO 11
    10 DO 4 I=1,IOC
@@ -93,7 +99,8 @@ C
       DO 5 J=A,B
       IOR=I-J+1
       !if(I.lt.10)write(*,*)QB(I)+U1(J)*Q(IOR)
- 5    QB(I)=QB(I)+U1(J)*Q(IOR)
+      QB(I)=QB(I)+U1(J)*Q(IOR)
+ 5    CONTINUE
  4    CONTINUE
  11   RETURN
       END
@@ -105,6 +112,7 @@ C
       FUNCTION GF(Y)
       REAL, INTENT(IN)::Y
       REAL::X,H,GF
+      GF=0.0
       H=1
       X=Y
  38   IF(X.LE.0.)GO TO 39

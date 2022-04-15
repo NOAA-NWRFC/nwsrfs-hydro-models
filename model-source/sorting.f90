@@ -285,6 +285,7 @@ module sorting
   ! call stop_error("Invalid argument")
 
   character(len=*) :: msg ! Message to print on stdout
+  write(*,*)msg
   ! print *, msg
   ! stop 1
   end subroutine

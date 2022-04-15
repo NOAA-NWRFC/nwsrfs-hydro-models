@@ -347,7 +347,7 @@ class Model:
             p = self.p['chanloss']
             
             periods=np.array([p['cl_period_start'],p['cl_period_end']],dtype='int')
-            sim_sf_adj=s.chanloss(int(self.dt_seconds), self.year.astype('int'), self.month.astype('int'), self.day.astype('int'), self.hour.astype('int'),
+            sim_sf_adj=s.chanloss(int(self.dt_seconds), self.year.astype('int'), self.month.astype('int'), self.day.astype('int'),
                         p['cl_factor'],periods,
                         sim_sf.astype('double').to_numpy())
             sim_sf_adj=pd.Series(sim_sf_adj, index=self.dates)

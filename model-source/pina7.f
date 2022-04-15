@@ -2,7 +2,9 @@ C MODULE PINA7
 C-----------------------------------------------------------------------
 C
 CFC      SUBROUTINE PINA7 (P,LP,IP,C,LC,IC,IBUG,IER)
-      SUBROUTINE PINA7 (P,IP,C,IC,IBUG,IER)      
+CCB args C, IC and IBUG are no longer used
+CCB      SUBROUTINE PINA7 (P,IP,C,IC,IBUG,IER)      
+      SUBROUTINE PINA7 (P,IP,IER)      
 C.......................................................................
 C
 C     THIS SUBROUTINE COMPUTES THE 2*S/DT+O VS O AND 2*S/(DT/4)+O VS O
@@ -31,10 +33,11 @@ CGW      include 'flogm'
 CFC      COMMON/FDBUG/IODBUG,ITRACE,IDBALL,NDEBUG,IDEBUG(20)      
       COMMON/FATLGK/IATL,C1,C2
 C
-      DIMENSION P(1),C(1)
+CCB      DIMENSION P(500),C(100)
+      DIMENSION P(500)
 C
 C    ================================= RCS keyword statements ==========
-      CHARACTER*68     RCSKW1,RCSKW2
+      CHARACTER(len=68)     RCSKW1,RCSKW2
       DATA             RCSKW1,RCSKW2 /                                 '
      .$Source: /fs/hseb/ob72/rfc/ofs/src/fcinit_pntb/RCS/pina7.f,v $
      . $',                                                             '
@@ -50,7 +53,7 @@ CGW	call logfromfortran(DEBUG_LEVEL,MESSAGESTRING)
 CGW      END IF        
 C
       XITA=P(5)-0.01
-      IBK=P(18)
+      IBK=int(P(18))
       IBK1=IBK+1
       IPASS=1
 C
@@ -58,11 +61,11 @@ C
 CFC      CALL CHECKP(IP,LP,IER)
       IF(IER.EQ.1)GO TO 991
 C
-      IF(IPASS.EQ.1)IBOS=P(16)+1
+      IF(IPASS.EQ.1)IBOS=int(P(16)+1)
       IF(IPASS.EQ.2)IBOS=IP
       IBOS1=IBOS+1
 C
-      NPKQ=P(IBK)
+      NPKQ=int(P(IBK))
 C
       IF(NPKQ.GT.0)GO TO 10
 C
@@ -94,7 +97,7 @@ C
       DELQ=ABS(P(IBK+J*2) - P(IBK+I*2))
 C
       ISEGS=1
-      IF(DELK.NE.0)ISEGS=(DELQ+C1*DELK)/C2 + 1.5
+      IF(DELK.NE.0)ISEGS=int((DELQ+C1*DELK)/C2 + 1.5)
       IF(ISEGS.GT.20)ISEGS=20
 C
       IPART=0
@@ -191,16 +194,16 @@ CFC     1   I5,' ARE USED BY THIS OPERATION')
 C dws    P(16) was placed into an integer to replace it in the next
 C dws     couple of statements to avoid compiler warnings ... 2006-01-23
 
-         NUMP16 = P(16)
+         NUMP16 = int(P(16))
 
-         NPOS=P(NUMP16+1)
+         NPOS=int(P(NUMP16+1))
 CFC         WRITE (IODBUG,601) NPOS
 CGW      WRITE(MESSAGESTRING,601) NPOS
 CGW	 call logfromfortran(DEBUG_LEVEL,MESSAGESTRING)
 CGW  601 FORMAT (' NUMBER OF PAIRS OF O AND 2*S/DT+O VALUES = ',I3)
 CFC         CALL PROS7 (P(NUMP16+2),NPOS,IODBUG)
          IF (IPASS.EQ.2) THEN
-            NPOS=P(IBOS)
+            NPOS=int(P(IBOS))
 CFC            WRITE (IODBUG,602) NPOS
 CGW        WRITE(MESSAGESTRING,602) NPOS
 CGW	    call logfromfortran(DEBUG_LEVEL,MESSAGESTRING)	    

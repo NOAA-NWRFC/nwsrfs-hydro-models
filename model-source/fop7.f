@@ -29,7 +29,7 @@ CGW      include 'flogm'
       
 C
 C    ================================= RCS keyword statements ==========
-      CHARACTER*68     RCSKW1,RCSKW2
+      CHARACTER(len=68)     RCSKW1,RCSKW2
       DATA             RCSKW1,RCSKW2 /                                 '
      .$Source: /fs/hseb/ob72/rfc/ofs/src/fcst_lagk/RCS/fop7.f,v $
      . $',                                                             '

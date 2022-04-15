@@ -46,7 +46,7 @@ CEA      IF (TWE.GE.AEADJ) AEADJ=0.0
       AESC=SBAESC+((1.0-SBAESC)*((TWE-SB)/(SBWS-SB)))
       GO TO 120
   110 R=(TWE/AI)*10.0+1.0
-      N=R
+      N=int(R)
       FN=N
       R=R-FN
       AESC=ADC(N)+(ADC(N+1)-ADC(N))*R

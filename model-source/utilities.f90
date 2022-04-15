@@ -230,7 +230,7 @@ module utilities
     double precision, dimension(:), intent(in):: forcing
     integer, dimension(:), intent(in):: month
     double precision, dimension(12):: monthly_climo_mean, climo_counts
-    integer:: nts, i, j
+    integer:: nts, i
 
     nts = size(month)
 
@@ -253,7 +253,7 @@ module utilities
     double precision, dimension(:), intent(in):: forcing
     integer, dimension(:), intent(in):: month
     double precision, dimension(12):: monthly_climo_sum, month_year, month_count, month_sum
-    integer:: nts, i, j, current_month, prev_month
+    integer:: nts, i, current_month, prev_month
     double precision:: msum 
 
     nts = size(month)
@@ -262,6 +262,7 @@ module utilities
     month_year = 0
     month_sum = 0 
     msum = 0 
+    current_month = 0
 
     if(month(1) .eq. 1) then
       prev_month = 12

@@ -1,4 +1,5 @@
-      SUBROUTINE EXSAC(NSOLD,DTM,PCP,TMP,ETP,
+C      SUBROUTINE EXSAC(NSOLD,DTM,PCP,TMP,ETP,
+      SUBROUTINE EXSAC(DTM,PCP,ETP,
 C     SAC PARAMETERS
      &                 UZTWM,UZFWM,UZK,PCTIM,ADIMP,RIVA,ZPERC,
      &                 REXP,LZTWM,LZFSM,LZFPM,LZSK,LZPK,PFREE,
@@ -11,17 +12,17 @@ C     SAC OUTPUTS
 C      IMPLICIT NONE
 
 C     RCS Id string, for version control
-      CHARACTER*60 RCSID
+C      CHARACTER(len=60) RCSID
 C      DATA RCSID/"$Id: ex_sac1.f,v 1.1 2006/09/01 21:59:43 vicadmin Exp $"/
 
 
 C     ...THIS SUBROUTINE IS THE EXECUTION ROUTINE FOR SMFLX MODEL...
 C
 
-      INTEGER NSOLD
+C      INTEGER NSOLD
       REAL    DTM
       REAL    PCP
-      REAL    TMP
+C      REAL    TMP
       REAL    ETP
       REAL    QS
       REAL    QG

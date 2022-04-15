@@ -40,9 +40,10 @@ CGW      DIMENSION P(1),C(1),QB(1)
 CGW   Adding FTPY help
 CGW Cf2py intent(out) QC
 C
-      LOGICAL MEANQ,CONK,NOTCPU,LBUG
+C      LOGICAL MEANQ,CONK,NOTCPU,LBUG
+      LOGICAL MEANQ,CONK,NOTCPU
       CHARACTER *5 INDIMS
-      CHARACTER *5 IUNIT
+C      CHARACTER *5 IUNIT
 C
 C    ================================= RCS keyword statements ==========
       CHARACTER*68     RCSKW1,RCSKW2
@@ -54,8 +55,8 @@ C    ================================= RCS keyword statements ==========
 C    ===================================================================
 C
 C
-      DATA L3/4HL3  /
-      DATA ICPU/4HCPU /
+CCB      DATA L3/4HL3  /
+CCB      DATA ICPU/4HCPU /
 C
 Clc      LBUG=.FALSE.
 Clc      IF(IB.EQ.1)LBUG=.TRUE.
@@ -64,10 +65,10 @@ C
 CFC      IF(LBUG.AND.IFBUG(ICPU).EQ.1)NOTCPU=.FALSE.
 C
 CFC      IF(LBUG)WRITE(IODBUG,600)
-      IF(FEWSDEBUG .GE. 1) THEN
+CGW      IF(FEWSDEBUG .GE. 1) THEN
 CGW       WRITE(MESSAGESTRING,600)
 CGW        call logfromfortran(DEBUG_LEVEL,MESSAGESTRING)
-      END IF      
+CGW      END IF      
 CGW  600 FORMAT(1H0,10X,15H** FKA7 ENTERED)
 C
 CFC      IF(NOTCPU)GO TO 700
@@ -81,14 +82,22 @@ C
 CGW  Added varible
       IB=0
       COTIME=NDT*6      
+CCB  Added initilizations to prevent compiler warnings
+      Y2=0
+      FEWSDEBUG=0
+      XK24=0
+      XK2=0
+      XK14=0
+      XK1=0
 C
-700   IBOS=P(16)+1
+C700   IBOS=P(16)+1
+      IBOS=int(P(16)+1)
       IBOS1=IBOS+1
-      NPOS=P(IBOS)
+      NPOS=int(P(IBOS))
       IBOS4=IBOS+NPOS*2+1
       IBOS14=IBOS4+1
-      IBK=P(18)
-      NPKQ=P(IBK)
+      IBK=int(P(18))
+      NPKQ=int(P(IBK))
       IBK1=IBK+1
 C
       CONK=.FALSE.
@@ -100,7 +109,7 @@ C
       XK14=XK1
       XK24=XK1
 C
-    2 ITA=P(5)
+    2 ITA=int(P(5))
       XITA=ITA/4.
 C
       X2=C(2)
@@ -125,7 +134,7 @@ CGW      CALL getDimensionAndUnitInFortran(DTYPIN, INDIMS, IUNIT)
 !CP   WRITE(*,681)' DTYPIN = ', DTYPIN
 !CP   WRITE(*,681)'INDIMS =', IDIMS
 !CP   WRITE(*,681)'IUNIT=', IUNIT
-      IF ( FEWSDEBUG .GT. 3 ) THEN
+CGW      IF ( FEWSDEBUG .GT. 3 ) THEN
 CGW        WRITE(MESSAGESTRING, 681) ' DTYPIN = ', DTYPIN
 CGW        call logfromfortran(DEBUG_LEVEL,MESSAGESTRING)
 CGW WRITE(MESSAGESTRING, 681) 'INDIMS =', IDIMS
@@ -133,7 +142,7 @@ CGW        call logfromfortran(DEBUG_LEVEL,MESSAGESTRING)
 CGW WRITE(MESSAGESTRING, 681) 'IUNIT=', IUNIT
 CGW        call logfromfortran(DEBUG_LEVEL,MESSAGESTRING)
       
-      END IF
+CGW      END IF
 CGW  681 FORMAT(A25, A8) 
 CGW  682 FORMAT(A10, A8,A10, A8, A10, A8)  
       MEANQ=.FALSE.
@@ -182,7 +191,7 @@ CGW      call logfromfortran(DEBUG_LEVEL,MESSAGESTRING)
 CGW  615 FORMAT(1H0,10X,'THERE IS NO O VS 2*S/(DT/4)+O TABLE')
 CGW      GO TO 20
 C
-   15 NPOS4=P(IBOS4)
+   15 NPOS4=int(P(IBOS4))
       IEOS14=IBOS4+2*NPOS4
       DO 623 I=IBOS14,IEOS14
 CFC      WRITE(IODBUG,613)NPOS4,(P(I),I=IBOS14,IEOS14)
@@ -253,10 +262,10 @@ C
       Y2=X2
       IF(VALUE.LT.Y2)Y2=VALUE
 CFC      IF(LBUG)WRITE(IODBUG,604)Y2
-      IF(FEWSDEBUG .GE. 1) THEN
+CGW      IF(FEWSDEBUG .GE. 1) THEN
 CGW        WRITE(MESSAGESTRING,604)Y2
 CGW        call logfromfortran(DEBUG_LEVEL,MESSAGESTRING)
-      END IF      
+CGW      END IF      
 CGW  604 FORMAT(11X,17HK LT DT/2 - Y2 = ,G10.4)
 C
       GO TO 9
@@ -267,7 +276,7 @@ C     GET HERE IF K FOR Y1 GT DT/2 AND K FOR Y2 LE DT/2 OR VICE VERSA
 C     SOLVE EQUATIONS IN THIS LOOP WITH DT=ORIGINAL DT/4
 C.......................................................................
 C
-    4 NPOS4=P(IBOS4)
+    4 NPOS4=int(P(IBOS4))
       S2ODT=S2ODT*4.
       IF(S2ODT.LT.-0.5)IPWARN=IPWARN+1
       DX=X2-X1
@@ -318,10 +327,10 @@ C
       IF(S2ODT.LT.-0.5)IPWARN=IPWARN+1
 C
 CFC      IF(LBUG)WRITE(IODBUG,606)J,X14,X2,VALUE,Y2,S2ODT
-      IF(FEWSDEBUG .GE. 1) THEN
+CGW      IF(FEWSDEBUG .GE. 1) THEN
 CGW        WRITE(MESSAGESTRING,606)J,X14,X2,VALUE,Y2,S2ODT
 CGW        call logfromfortran(DEBUG_LEVEL,MESSAGESTRING)
-      END IF       
+CGW      END IF       
 CGW  606 FORMAT(11X,41HIN DO 5 LOOP - J,X14,X2,VALUE,Y2,S2ODT = ,
 CGW     1   I10,5G10.4)
 C
@@ -340,10 +349,10 @@ C
       FACT=1.
 C
 CFC      IF(LBUG)WRITE(IODBUG,607)Y2,S2ODT
-      IF(FEWSDEBUG .GE. 1) THEN
+CGW      IF(FEWSDEBUG .GE. 1) THEN
 CGW        WRITE(MESSAGESTRING,607)Y2,S2ODT
 CGW        call logfromfortran(DEBUG_LEVEL,MESSAGESTRING)
-      END IF      
+CGW      END IF      
 CGW  607 FORMAT(11X,27HIN DO 10 LOOP - Y2,S2ODT = ,2G10.4)
 C
       Y1=Y2
@@ -390,7 +399,8 @@ CFC      WRITE(IODBUG,705)ELAPSE,XICPUT
 CFC  705 FORMAT(1H0,10X,'**LEAVING FKA7 - ELAPSED CPU TIME = ',F13.2,
 CFC     1  ', TOTAL CPU TIME = ',F13.2)
 C
-  704 IF(IPWARN.LE.0)RETURN
+C  704 IF(IPWARN.LE.0)RETURN
+      IF(IPWARN.LE.0)RETURN
 C
 CFC      WRITE(IPR,610)IPWARN
 CGW      WRITE(MESSAGESTRING,610)IPWARN
