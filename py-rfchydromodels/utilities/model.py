@@ -1,6 +1,9 @@
+import warnings
 import pandas as pd
 import numpy as np
-import nwsrfs_models.main as s
+from scipy import optimize
+import utilities.model_src as s
+
 
 class Model:
 
@@ -21,7 +24,7 @@ class Model:
 
         n_zones = len(zones)
         sim_length = forcings[0].shape[0]
-        self.zones = zones
+        self.zones = np.sort(zones)
         self.n_zones = n_zones
         self.sim_length = sim_length
 
@@ -79,6 +82,9 @@ class Model:
         self.forcings=Forcings(forcings,self.pars)
         self.forcings.fa_ts(self.dt_seconds,self.dates)
 
+        #Calculate the UH using a dedicated model class
+        self.uh=UH(self.pars,self.dt_hours)
+        
         #format peadj for consuse calculation 
         self.peadj_cu = np.full([12, n_consuse], np.nan)
         for i in range(12):
@@ -146,49 +152,6 @@ class Model:
         
         return self.lagk_flow_cfs
 
-    def uh_run(self,tci,n=None,inst=False):
-        
-        if n is None:
-            n=list(range(self.n_zones))
-        elif isinstance(n, int):
-            n=[n]
-
-        p = self.p['uh']
-
-        m_uh = 1000  # max UH length
-        n_uh = self.sim_length + m_uh
-        sim_flow_inst_cfs = np.full([self.sim_length], 0)
-        
-        for y, z in zip(range(len(tci[0])),n):
-            
-            shape=p['unit_shape'][z]
-            toc=(p['unit_toc'][z]*p['unit_toc_adj'][z])
-            b = [0.255299308548535, -0.314173822659083,
-            0.0061508368818229, 0.0809339755573929,
-            1.42743463788263e-06, -0.00111691593640601]
-            scale=b[0] + b[1]*shape + b[2]*toc + b[3]*shape**2 + b[4]*toc**2 + b[5]*shape*toc
-
-            
-            flow_routed = s.duamel(tci[:, y], float(shape), float(scale),
-                                   float(self.dt_days), int(n_uh), int(m_uh), int(1), int(0))
-
-            # flow_routed units:  mm, zone_area units:  km2,  1000 is a combined conversion of km2->m2 and mm->m
-            # flow routed is depth of runoff over a basin for a time step. that with area converts it to a volume
-            # and dt.second (timestep in sec) is used to complete conversion of runoff to flow
-            # instantaneous routed flow weighted by zone area
-            sim_flow_inst_cfs = sim_flow_inst_cfs + flow_routed[0:self.sim_length] * 1000 * 3.28084 ** 3 / \
-                                self.dt_seconds * p['zone_area'][z]
-        
-        #return instantaneous or period avg depending on chosen option
-        if inst:
-            sim_flow_cfs = pd.Series(sim_flow_inst_cfs, index=self.dates)
-        else:
-            next_sim = pd.DataFrame(sim_flow_inst_cfs).shift(-1).to_numpy().flatten()
-            sim_flow_pavg_cfs = (sim_flow_inst_cfs + next_sim) / 2
-            sim_flow_cfs = pd.Series(sim_flow_pavg_cfs, index=self.dates)
-        
-        return sim_flow_cfs
-
     def sacsnow_run(self,inst=True):
 
         p = {**self.p['sac'],**(self.p['snow']),**(self.p['uh'])}
@@ -210,10 +173,10 @@ class Model:
                         self.forcings.map_fa, self.forcings.ptps_fa, self.forcings.mat_fa,self.forcings.etd)
 
         # channel routing
-        self.sacsnow_flow_cfs = self.uh_run(tci,inst=inst)
+        self.sacsnow_flow_cfs = self.uh.tci_2_cfs(tci,self.dates,inst=inst)
 
         #Recalculate FA forcing due to Map and ETD being modified
-        self.forcings.fa_ts(self.dt_seconds,self.dates)        
+        self.forcings.fa_ts(self.dt_seconds,self.dates)
 
         return self.sacsnow_flow_cfs
 
@@ -249,7 +212,7 @@ class Model:
             tci_zone=self.sacsnow_states['tci'][zone].astype('double').to_numpy()
             tci_zone=np.expand_dims(tci_zone,axis=1)
             tci_zone=np.asfortranarray(tci_zone)
-            sf_zones=self.uh_run(tci_zone,count,inst=inst).rename(zone)
+            sf_zones=self.uh.tci_2_cfs(tci_zone,self.dates,count,inst=inst).rename(zone)
             sf_df=pd.concat([sf_df,sf_zones],axis=1,ignore_index=True)
         sf_df.index=self.dates
         sf_df.columns=self.zones
@@ -387,13 +350,13 @@ class Forcings:
                  forcings: list,
                  pars: pd.DataFrame):
         
-        # fa adjustemnt parameters:  scale, p_redist, std, shift
-        
+        #Filter parmater table to only include those relevant to  FA 
         self.pars=pars.loc[(pars.type=='fa')|(pars.type=='fa_limit')|
                         (pars.name=='zone_area')|(pars.name=='alat')]
         
+        #Get number of zones and names
         zones = self.pars.loc[(self.pars['zone'].str.contains('-'))|(self.pars['zone'].str.contains('_'))].zone.unique()
-        self.zones=zones
+        self.zones=np.sort(zones)
         n_zones = len(zones)
         sim_length = forcings[0].shape[0]
 
@@ -403,6 +366,7 @@ class Forcings:
         # Extract vectors as numpy arrays for speed
         dates = forcings[0].index
 
+        # fa adjustemnt parameters:  scale, p_redist, std, shift 
         fa = {}
         for fa_par in self.pars.loc[self.pars['type'] == 'fa', 'name']:
             fa[fa_par] = self.pars[self.pars['name'] == fa_par]['value']
@@ -522,3 +486,184 @@ class Forcings:
             fac_df[col]=fac[i]
         
         return fac_df
+        
+
+class UH:
+
+    def __init__(self,
+                 pars: pd.DataFrame,
+                 dt_hrs: float):
+
+        ################### V Functions for caculating scale given shape and time of concentration V ###################
+        def gf(x):
+            h=1
+            if x <=0:
+                return(np.nan)
+            while(True):
+                if x>0 and x<2:
+                    h=h/x
+                    x=x+1
+                elif x==2:
+                    return(h)
+                elif x>2 and x<=3:
+                    x=x-2
+                    h=(((((((.0016063118*x+0.0051589951)*x+0.0044511400)*x+.0721101567)*x+
+                          .0821117404)*x+.4117741955)*x+.4227874605)*x+.9999999758)*h
+                    return(h)
+                else:
+                    x=x-1
+                    h=h*x
+                    
+        def uh2p(shape,scale, timestep,length=1000):
+            # this code needs timestep in days
+            timestep=timestep/24
+            uh=[0]*length
+            toc=np.log(gf(shape)*scale)
+
+            for i in range(1,length+1):
+                top=i*timestep/scale
+                tor=(shape-1)*np.log(top)-top-toc
+                uh[i-1]=0
+                if(tor > -8.0):
+                    uh[i-1]=np.exp(tor)
+                else:
+                    if i > 1:
+                        uh[i-1]=0
+                        length=i
+                        break
+            s= np.sum(uh)
+            if s==0:
+                s=1.0e-5
+            # turn it into a unit hydrograph (sums to 1)
+            uh=uh/s
+            # dont return all the trailing zero values
+            try:
+               first0 = next(x for x, val in enumerate(uh) if val == 0) 
+            except:
+                warnings.warn('UH may have been truncated, increase length')
+                return(uh)
+            return(uh[:first0].tolist())
+
+        def scale_uplimit(shape,dt_hours):
+            scale=0.10
+            len_1=0
+            len_2=len(uh2p(shape,scale,dt_hours))
+            while len_1<=len_2 and scale<5:
+                len_1 = len_2
+                scale=round(scale+0.10,1)
+                len_2=len(uh2p(shape,scale,dt_hours))
+            return round(scale-.1,1)
+
+        def uh2p_seek(x, shape, dt_hours, toc):
+          # add one to the length becuase the first ordinate is at time 0
+          uh_len = round(toc/dt_hours,0)+1
+          #len_dif = abs(len(uh2p(shape, scale, dt_hours)) - uh_len)
+          len_dif = abs(len(uh2p(shape, x, dt_hours)) - uh_len)
+          return len_dif
+
+        def uh2p_get_scale(shape, toc, dt_hours):
+            # find a reasonable upper limit for scale, some values are unstable
+            scale_lim = scale_uplimit(shape, dt_hours)
+            # optimization to find scale given shape and toc
+            scale=optimize.fminbound(uh2p_seek, 0.01,scale_lim, args=(shape,dt_hours,toc))
+            # bump up very small or negative values to prevent 0 length UH
+            return max(scale,0.02)
+        ################### ^Functions for caculating scale given shape and time of concentration^ ###################
+
+        #Filter paramter table to only inclue UH type
+        self.pars=pars.loc[(pars.type=='uh')]
+
+        #Get number of zones and names
+        zones = self.pars.zone.unique()
+        self.zones=np.sort(zones)
+        self.n_zones = len(zones)
+
+        #Get model timestep in hours
+        self.dt_hours=dt_hrs
+
+        #Get parameter values
+        self.p = {}
+        for par in self.pars.name.unique():
+            self.p[par] = self.pars.loc[self.pars['name'] == par].sort_values(by='zone')['value'].to_numpy()
+        
+        #Check if scale parameter is provide, if not calculate
+        if 'unit_scale' not in self.p.keys():
+            #populate the p instance
+            self.p['unit_scale']=np.zeros(self.n_zones)
+            for i in range(self.n_zones):
+                
+                shape=self.p['unit_shape'][i]
+                
+                toc_gis=self.p['unit_toc'][i]
+                toc_adj=self.p['unit_toc_adj'][i]
+                toc=toc_gis*toc_adj
+                
+                scale=uh2p_get_scale(shape, toc, self.dt_hours)
+                self.p['unit_scale'][i]=scale
+            #populate the pars instance
+            scale_df=self.pars.loc[self.pars.name=='unit_shape'].sort_values('zone').copy()
+            scale_df['value']=self.p['unit_scale']
+            scale_df.replace('shape','scale',regex=True,inplace=True)
+            self.pars=pd.concat([self.pars,scale_df],axis=0)
+        
+        #Calculate the UH for each zone
+        uh_df=pd.DataFrame()
+        for i in range(self.n_zones):
+            shape=self.p['unit_shape'][i]
+            scale=self.p['unit_scale'][i]
+            area=self.p['zone_area'][i]
+            #volume calcuation zone_area_km2 to mi2 (0.386102) to ft2 (0.386102*5280)
+            #multiplied by 1 inch (in ft) for a volume of ft3
+            total_uh_vol=area*0.386102*5280**2*1/12
+
+            #dimensionless uh
+            uh_dl=uh2p(shape,scale, self.dt_hours)
+            #Distribute volume
+            uh_vol= [ordinate * total_uh_vol for ordinate in uh_dl]
+            #Divide by model timestep in seconds
+            uh= [ordinate / (self.dt_hours*60**2) for ordinate in uh_vol]
+            #Assign to UH dataframe
+            uh_df=pd.concat([uh_df,pd.Series(uh,name=self.zones[i])],axis=1)
+        #modify and label index
+        uh_df.index=uh_df.index.to_series().multiply(self.dt_hours)
+        uh_df.index.rename('hours',inplace=True)
+        
+        #create unit_hydrograph instance
+        self.unit_hydrograph=uh_df
+        
+        
+    def tci_2_cfs(self,tci,dates,n=None,inst=True):
+        
+        if n is None:
+            n=list(range(self.n_zones))
+        elif isinstance(n, int):
+            n=[n]
+        
+        m_uh = 1000  # max UH length
+        n_uh = len(tci) + m_uh
+        sim_flow_inst_cfs = np.zeros(len(tci))
+        
+        for y, z in zip(range(len(tci[0])),n):
+            
+            shape=self.p['unit_shape'][z]
+            scale=self.p['unit_scale'][z]
+            
+            flow_routed = s.duamel(tci[:, y], float(shape), float(scale),
+                                   float(self.dt_hours/24), int(n_uh), int(m_uh), int(1), int(0))
+
+            # flow_routed units:  mm, zone_area units:  km2,  1000 is a combined conversion of km2->m2 and mm->m
+            # flow routed is depth of runoff over a basin for a time step. that with area converts it to a volume
+            # and dt.second (timestep in sec) is used to complete conversion of runoff to flow
+            # instantaneous routed flow weighted by zone area
+            sim_flow_inst_cfs = sim_flow_inst_cfs + flow_routed[0:len(tci)] * 1000 * 3.28084 ** 3 / \
+                                (self.dt_hours*60**2) * self.p['zone_area'][z]
+        
+        #return instantaneous or period avg depending on chosen option
+        if inst:
+            sim_flow_cfs = pd.Series(sim_flow_inst_cfs, index=dates)
+        else:
+            next_sim = pd.DataFrame(sim_flow_inst_cfs).shift(-1).to_numpy().flatten()
+            sim_flow_pavg_cfs = (sim_flow_inst_cfs + next_sim) / 2
+            sim_flow_cfs = pd.Series(sim_flow_pavg_cfs, index=dates)
+        
+        return sim_flow_cfs
