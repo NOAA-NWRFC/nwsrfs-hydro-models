@@ -5,12 +5,14 @@
 \title{Get the scale parameter from a 2 parameter gamma unit hydrograph given
 the shape parameter and time of concentration.}
 \usage{
-uh2p_get_scale(shape, toc)
+uh2p_get_scale(shape, toc, dt_hours)
 }
 \arguments{
 \item{shape}{gamma shape parameter}
 
 \item{toc}{time of concentration (hours)}
+
+\item{dt_hours}{UH timestep (hours)}
 }
 \value{
 stuff
