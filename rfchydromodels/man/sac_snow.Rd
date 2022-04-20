@@ -2,9 +2,9 @@
 % Please edit documentation in R/sac-snow-uh.R
 \name{sac_snow}
 \alias{sac_snow}
-\title{Execute SAC-SMA, SNOW17, return total channel inflow per zone}
+\title{Execute SAC-SMA, SNOW17, return total channel inflow per zone, and model states}
 \usage{
-sac_snow(dt_hours, forcing, pars)
+sac_snow(dt_hours, forcing, pars, return_states = FALSE)
 }
 \arguments{
 \item{dt_hours}{timestep in hours}
@@ -12,16 +12,20 @@ sac_snow(dt_hours, forcing, pars)
 \item{forcing}{data frame with with columns for forcing inputs}
 
 \item{pars}{sac parameters}
+
+\item{return_states}{logical value indicating if the states should be output as well as the tci}
 }
 \value{
-Matrix (1 column per zone) of unrouted channel inflow
+data.frame (1 column per zone) of unrouted channel inflow (tci), sac states
+uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, and snow water equivalent (swe),
+and adjusted forcing data.
 }
 \description{
-Execute SAC-SMA, SNOW17, return total channel inflow per zone
+Execute SAC-SMA, SNOW17, return total channel inflow per zone, and model states
 }
 \examples{
 data(forcing)
 data(pars)
 dt_hours = 6
-tci = sac_snow(dt_hours, forcing, pars)
+states = sac_snow_states(dt_hours, forcing, pars)
 }

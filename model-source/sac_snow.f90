@@ -5,13 +5,16 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
     snow_pars, &
     init_swe, &
     map, ptps, mat, etd, &
-    tci)
+    return_states, &
+    tci, aet, uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, &
+    swe, aesc, neghs, liqw, raim, psfall, prain)
+
 
     ! ! zone info 
     ! latitude, elev, &
     ! ! sac-sma params in a matrix, see the variable declaration
     ! sac_pars, &
-    ! ! zone specific mat (peadj) and map (pxadj) adjustments 
+    ! ! zone specific etd (peadj) and map (pxadj) adjustments 
     ! peadj, pxadj, &
     ! ! snow17 params in a matrix, see the variable declaration
     ! snow_pars, & 
@@ -19,8 +22,9 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
     ! init_swe, & 
     ! ! forcings 
     ! map, ptps, mat, etd, &
-    ! ! output total channel inflow
-    ! tci)
+    ! ! outputs
+    ! tci, aet, uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, &
+    ! swe, aesc, neghs, liqw, raim, psfall, prain)
 
   use utilities
 
@@ -32,7 +36,8 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   integer, parameter:: sp = KIND(1.0)
   integer:: k
 
-  ! initialization variables
+  logical:: return_states
+
   integer, intent(in):: n_hrus ! number of zones
 
   ! sac pars matrix 
@@ -74,7 +79,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   double precision, dimension(11) :: adc_x
 
   ! local variables
-  integer:: nh,i           ! AWW index for looping through areas
+  integer:: nh,i,j           ! AWW index for looping through areas
   integer:: sim_length   ! length of simulation (days)
 
   ! single precision sac-sma and snow variables
@@ -87,23 +92,51 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   real(sp):: taprev_sp    ! carry over variable
   real(sp), dimension(19):: cs       ! carry over variable array
 
+  !swe calculation varibles
+  double precision::  TEX
+
+  ! sac-sma state variables
+  double precision, dimension(sim_length ,n_hrus), intent(out):: uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc
+  ! snow state variables
+  double precision, dimension(sim_length ,n_hrus), intent(out):: swe, aesc, neghs, liqw, raim, psfall,prain
+  integer:: nexlag
+
+
   ! sac-sma output variables and channel inflow
   real(sp):: qs_sp, qg_sp, aet_sp, tci_sp
-  double precision, dimension(sim_length ,n_hrus), intent(out):: tci
+  double precision, dimension(sim_length ,n_hrus), intent(out):: tci, aet
 
   ! snow-17 output variables  
-  real(sp):: raim_sp, snowh_sp, sneqv_sp, snow_sp, aesc_sp, psfall_sp, prain_sp
+  real(sp):: raim_sp, snowh_sp, sneqv_sp, snow_sp, psfall_sp, prain_sp, aesc_sp
 
   ! date variables
   integer, dimension(sim_length), intent(in):: year, month, day, hour
   integer:: houri
 
   ! atmospheric forcing variables
-  double precision, dimension(sim_length, n_hrus), intent(in):: map, mat, etd, ptps 
+  !f2py intent(in,out) map, etd
+  double precision, dimension(sim_length, n_hrus), intent(inout):: map, etd
+  double precision, dimension(sim_length, n_hrus), intent(in):: ptps, mat
   double precision:: map_step, etd_step
 
   ! initilize outputs 
   tci = 0
+  if(return_states)then
+    aet = 0 
+    uztwc = 0 
+    uzfwc = 0 
+    lztwc = 0 
+    lzfsc = 0 
+    lzfpc = 0 
+    adimc = 0 
+    swe = 0
+    aesc = 0
+    neghs = 0
+    liqw = 0
+    raim = 0
+    psfall = 0
+    prain = 0
+  end if
 
   ! pull out sac params to separate variables
   uztwm = sac_pars(1,:)
@@ -173,7 +206,6 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
     ! get sfc_pressure (pa is estimate by subroutine, needed by snow17 call)
     pa = sfc_pressure(elev(nh))
   
-    
     ! =============== Spin up procedure =====================================
 
     ! starting values
@@ -271,7 +303,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
 
       spin_up_start_states = spin_up_end_states
 
-      ! write(*,'(1i5,7f10.3)')spin_up_counter, pdiff, spin_up_start_states
+      ! write(*,'(7f10.3)')pdiff, spin_up_start_states
 
     end do 
     ! write(*,*)
@@ -300,7 +332,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
     ! set the rest to zero
     cs(2:19) = 0.0
     taprev_sp = real(mat(1,nh))
-
+     
     psfall_sp = real(0)
     prain_sp = real(0)
     aesc_sp = real(0)
@@ -310,7 +342,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
 
       ! dummy use of the hour variable to shut the compiler up, 
       ! we may want to use the hour as an input in the future
-      if(i.eq.1) houri = hour(i)
+      if(i .eq. 1) houri = hour(i)
 
       ! apply adjustments (zone-wise) for the current timestep
       map_step = map(i,nh) * pxadj(nh)
@@ -328,6 +360,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
           real(elev(nh)), real(pa), real(adc), &
           !SNOW17 CARRYOVER VARIABLES
           cs, taprev_sp) 
+
 
       ! taprev does not get updated in place like cs does
       taprev_sp = real(mat(i,nh))
@@ -350,11 +383,53 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
           uztwc_sp, uzfwc_sp, lztwc_sp, lzfsc_sp, lzfpc_sp, adimc_sp, &
           !SAC OUTPUTS
           qs_sp, qg_sp, tci_sp, aet_sp)
-
     
-      ! only output is tci in this version, for speed
+      ! place state variables in output arrays
       tci(i,nh) = dble(tci_sp)
+
+      if(return_states)then
+        uztwc(i,nh) = dble(uztwc_sp)
+        uzfwc(i,nh) = dble(uzfwc_sp)
+        lztwc(i,nh) = dble(lztwc_sp)
+        lzfsc(i,nh) = dble(lzfsc_sp)
+        lzfpc(i,nh) = dble(lzfpc_sp)
+        adimc(i,nh) = dble(adimc_sp)
+        aet(i,nh) = dble(aet_sp)
+
+        ! inout forcings to capture the pe/pxadj and efc
+        map(i,nh) = map_step
+        etd(i,nh) = etd_step
+
+        raim(i,nh) = dble(raim_sp)
+        psfall(i,nh) = dble(psfall_sp)
+        prain(i,nh) = dble(prain_sp)
+        neghs(i,nh) = dble(cs(2))
+        liqw(i,nh) = dble(cs(3))
+        aesc(i,nh) = dble(aesc_sp)
+
+        nexlag = 5/int(dt/sec_hour) + 2
+
+        TEX = 0.0
+        DO j = 1,nexlag,1
+          TEX = TEX+dble(cs(10+j))
+        END DO
+
+        swe(i,nh) = dble(cs(1))+dble(cs(3))+dble(cs(9))+TEX
+      end if
+
       
+      ! PQNET
+      ! PRAIN
+      ! PROBG
+      ! PSNWRO
+      ! SNSG
+      ! TINDEX
+      ! SWE
+
+      ! SNOW=SXFALL
+      ! RAIM=RM(1)
+      ! SNEQV=TWE/1000.
+      ! SNOWH=SNDPT/100.
 
     end do  ! ============ end simulation time loop ====================
 

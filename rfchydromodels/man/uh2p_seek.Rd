@@ -7,7 +7,13 @@
 uh2p_seek(scale, shape, dt_hours, toc)
 }
 \arguments{
-\item{toc}{}
+\item{scale}{blah}
+
+\item{shape}{blah}
+
+\item{dt_hours}{blah}
+
+\item{toc}{blah}
 }
 \value{
 

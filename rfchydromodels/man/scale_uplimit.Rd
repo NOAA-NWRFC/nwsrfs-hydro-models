@@ -7,7 +7,9 @@
 scale_uplimit(shape, dt_hours)
 }
 \arguments{
-\item{dt_hours}{}
+\item{shape}{blah}
+
+\item{dt_hours}{blah}
 }
 \value{
 

@@ -45,103 +45,6 @@ sac_snow_uh_lagk <- function(dt_hours, forcing, uptribs, pars){
   total_flow_cfs
 }
 
-#' Execute SAC-SMA, SNOW17, return total channel inflow per zone
-#'
-#' @param dt_hours timestep in hours
-#' @param forcing data frame with with columns for forcing inputs
-#' @param pars sac parameters
-#' @return Matrix (1 column per zone) of unrouted channel inflow
-#' @export
-#'
-#' @examples
-#' data(forcing)
-#' data(pars)
-#' dt_hours = 6
-#' tci = sac_snow(dt_hours, forcing, pars)
-#' @useDynLib rfchydromodels sacsnow_
-#' @importFrom stats reshape
-sac_snow <- function(dt_hours, forcing, pars){
-
-  pars = as.data.frame(pars)
-
-  sec_per_day = 86400
-  dt_seconds = sec_per_day/(24/dt_hours)
-
-  n_zones = length(forcing)
-  sim_length = nrow(forcing[[1]])
-
-  sac_pars = rbind(pars[pars$name == 'uztwm',]$value,
-                   pars[pars$name == 'uzfwm',]$value,
-                   pars[pars$name == 'lztwm',]$value,
-                   pars[pars$name == 'lzfpm',]$value,
-                   pars[pars$name == 'lzfsm',]$value,
-                   pars[pars$name == 'adimp',]$value,
-                   pars[pars$name ==   'uzk',]$value,
-                   pars[pars$name ==  'lzpk',]$value,
-                   pars[pars$name ==  'lzsk',]$value,
-                   pars[pars$name == 'zperc',]$value,
-                   pars[pars$name ==  'rexp',]$value,
-                   pars[pars$name == 'pctim',]$value,
-                   pars[pars$name == 'pfree',]$value,
-                   pars[pars$name ==  'riva',]$value,
-                   pars[pars$name ==  'side',]$value,
-                   pars[pars$name == 'rserv',]$value,
-                   pars[pars$name ==   'efc',]$value)
-
-  snow_pars = rbind(pars[pars$name ==    'scf',]$value,
-                    pars[pars$name ==  'mfmax',]$value,
-                    pars[pars$name ==  'mfmin',]$value,
-                    pars[pars$name ==   'uadj',]$value,
-                    pars[pars$name ==     'si',]$value,
-                    pars[pars$name ==    'nmf',]$value,
-                    pars[pars$name ==   'tipm',]$value,
-                    pars[pars$name ==  'mbase',]$value,
-                    pars[pars$name ==  'plwhc',]$value,
-                    pars[pars$name ==  'daygm',]$value,
-                    pars[pars$name ==  'adc_a',]$value,
-                    pars[pars$name ==  'adc_b',]$value,
-                    pars[pars$name ==  'adc_c',]$value)
-
-  # sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
-  #           latitude, elev, &
-  #           sac_pars, &
-  #           peadj, pxadj, &
-  #           snow_pars, &
-  #           init_swe, &
-  #           map, ptps, mat, etd, &
-  #           tci)
-
-  x = .Fortran('sacsnow',
-               n_hrus = as.integer(n_zones),
-               dt = as.integer(dt_seconds),
-               sim_length = sim_length,
-               year = as.integer(forcing[[1]]$year)[1:sim_length],
-               month = as.integer(forcing[[1]]$month)[1:sim_length],
-               day = as.integer(forcing[[1]]$day)[1:sim_length],
-               hour = as.integer(forcing[[1]]$hour)[1:sim_length],
-               # zone info
-               latitude = pars[pars$name == 'alat',]$value,
-               elev = pars[pars$name == 'elev',]$value,
-               # sac parameters
-               sac_pars = sac_pars,
-               # pet and precp adjustments
-               peadj = pars[pars$name == 'peadj',]$value,
-               pxadj = pars[pars$name == 'pxadj',]$value,
-               # snow parameters
-               snow_pars = snow_pars,
-               # initial conditions
-               init_swe = pars[pars$name == 'init_swe',]$value,
-               # forcings
-               map = do.call('cbind',lapply(forcing,'[[','map_mm')),
-               ptps = do.call('cbind',lapply(forcing,'[[','ptps')),
-               mat = do.call('cbind',lapply(forcing,'[[','mat_degc')),
-               etd = do.call('cbind',lapply(forcing,'[[','etd_mm')),
-               # output
-               tci = matrix(0,nrow=sim_length,ncol=n_zones))
-
-  x$tci
-}
-
 #' Execute SAC-SMA, SNOW17, return total channel inflow per zone, and model states
 #'
 #' @param dt_hours timestep in hours
@@ -157,9 +60,30 @@ sac_snow <- function(dt_hours, forcing, pars){
 #' data(pars)
 #' dt_hours = 6
 #' states = sac_snow_states(dt_hours, forcing, pars)
-#' @useDynLib rfchydromodels sacsnowstates_
-#' @importFrom stats reshape
 sac_snow_states <- function(dt_hours, forcing, pars){
+
+  sac_snow(dt_hours, forcing, pars, return_states = TRUE)
+
+}
+
+#' Execute SAC-SMA, SNOW17, return total channel inflow per zone, and model states
+#'
+#' @param dt_hours timestep in hours
+#' @param forcing data frame with with columns for forcing inputs
+#' @param pars sac parameters
+#' @param return_states logical value indicating if the states should be output as well as the tci
+#' @return data.frame (1 column per zone) of unrouted channel inflow (tci), sac states
+#' uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, and snow water equivalent (swe),
+#' and adjusted forcing data.
+#' @export
+#'
+#' @examples
+#' data(forcing)
+#' data(pars)
+#' dt_hours = 6
+#' states = sac_snow_states(dt_hours, forcing, pars)
+#' @useDynLib rfchydromodels sacsnow_
+sac_snow <- function(dt_hours, forcing, pars, return_states = FALSE){
 
   pars = as.data.frame(pars)
 
@@ -210,10 +134,11 @@ sac_snow_states <- function(dt_hours, forcing, pars){
   #                 snow_pars, &
   #                 init_swe, &
   #                 map, ptps, mat, etd, &
+  #                 return_states,
   #                 tci, aet, uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, &
   #                 swe, aesc, neghs, liqw, raim, psfall, prain)
 
-  x = .Fortran('sacsnowstates',
+  x = .Fortran('sacsnow',
                n_hrus = as.integer(n_zones),
                dt = as.integer(dt_seconds),
                sim_length = sim_length,
@@ -238,6 +163,8 @@ sac_snow_states <- function(dt_hours, forcing, pars){
                ptps = do.call('cbind',lapply(forcing,'[[','ptps')),
                mat = do.call('cbind',lapply(forcing,'[[','mat_degc')),
                etd = do.call('cbind',lapply(forcing,'[[','etd_mm')),
+               # should the states be output
+               return_states = return_states,
                # output
                tci = output_matrix,
                aet = output_matrix,
@@ -255,18 +182,22 @@ sac_snow_states <- function(dt_hours, forcing, pars){
                psfall = output_matrix,
                prain = output_matrix)
 
-  return_vars = c('year','month','day','hour',
-                  'map','mat','ptps','etd','tci','aet',
-                  'uztwc','uzfwc','lztwc','lzfsc','lzfpc','adimc',
-                  'swe','aesc','neghs','liqw','raim','psfall', 'prain')
+  if(return_states){
+    return_vars = c('year','month','day','hour',
+                    'map','mat','ptps','etd','tci','aet',
+                    'uztwc','uzfwc','lztwc','lzfsc','lzfpc','adimc',
+                    'swe','aesc','neghs','liqw','raim','psfall', 'prain')
 
-  # if pet exists in the input forcings, output it as is
-  if(!is.null(forcing[[1]]$pet_mm)){
-    x[['pet']] = do.call('cbind',lapply(forcing,'[[','pet_mm'))
-    return_vars = c(return_vars,'pet')
+    # if pet exists in the input forcings, output it as is
+    if(!is.null(forcing[[1]]$pet_mm)){
+      x[['pet']] = do.call('cbind',lapply(forcing,'[[','pet_mm'))
+      return_vars = c(return_vars,'pet')
+    }
+
+    return(format_states(x[return_vars]))
+  }else{
+    return(x$tci)
   }
-
-  return(format_states(x[return_vars]))
 }
 
 
@@ -390,8 +321,8 @@ uh2p_get_scale <- function(shape, toc, dt_hours){
 
 #' Find a reasonable scale upper limit for optimization
 #'
-#' @param shape
-#' @param dt_hours
+#' @param shape blah
+#' @param dt_hours blah
 #'
 #' @return
 scale_uplimit <- function(shape, dt_hours){
@@ -408,10 +339,10 @@ scale_uplimit <- function(shape, dt_hours){
 
 #' Objective function for finding a scale parameter given shape and toc
 #'
-#' @param scale
-#' @param shape
-#' @param dt_hours
-#' @param toc
+#' @param scale blah
+#' @param shape blah
+#' @param dt_hours blah
+#' @param toc blah
 #'
 #' @return
 uh2p_seek <- function(scale, shape, dt_hours, toc){
