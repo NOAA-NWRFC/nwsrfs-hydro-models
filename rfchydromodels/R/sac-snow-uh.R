@@ -309,13 +309,36 @@ uh2p_cfs_in <- function(shape, scale, timestep, area){
 #'
 #' @examples
 #' uh2p_get_scale(2,50)
-uh2p_get_scale <- function(shape, toc, dt_hours){
+uh2p_get_scale_r <- function(shape, toc, dt_hours){
   # find a reasonable upper limit for scale, some values are unstable
   scale_lim = scale_uplimit(shape, dt_hours)
   # optimization to find scale given shape and toc
   scale = optimize(uh2p_seek, shape, dt_hours, toc, interval=c(.01,scale_lim))$minimum
   # bump up very small or negative values to prevent 0 length UH
   max(as.numeric(scale),0.02)
+}
+
+#' Get the scale parameter from a 2 parameter gamma unit hydrograph given
+#' the shape parameter and time of concentration.
+#'
+#' @param shape gamma shape parameter
+#' @param toc time of concentration (hours)
+#' @param dt_hours UH timestep (hours)
+#'
+#' @return stuff
+#' @export
+#'
+#' @examples
+#' uh2p_get_scale2(2,50,1)
+#' @useDynLib rfchydromodels uh2p_get_scale_root_
+uh2p_get_scale <- function(shape, toc, dt_hours){
+
+  scale = .Fortran('uh2p_get_scale_root',
+                   shape = shape,
+                   toc = toc,
+                   dt_hours = dt_hours,
+                   scale = 0)
+  scale$scale
 }
 
 
@@ -325,6 +348,7 @@ uh2p_get_scale <- function(shape, toc, dt_hours){
 #' @param dt_hours blah
 #'
 #' @return
+#' @export
 scale_uplimit <- function(shape, dt_hours){
   scale = 0.1
   len_1 = 0
@@ -345,10 +369,51 @@ scale_uplimit <- function(shape, dt_hours){
 #' @param toc blah
 #'
 #' @return
+#' @export
 uh2p_seek <- function(scale, shape, dt_hours, toc){
-  # add one to the length becuase the first ordinate is at time 0
+  # add one to the length because the first ordinate is at time 0
   uh_len = round(toc/dt_hours,0)+1
   len_dif = abs(length(uh2p(shape, scale, dt_hours)) - uh_len)
+  return(len_dif)
+}
+
+#' Objective function for finding a scale parameter given shape and toc
+#'
+#' @param scale blah
+#' @param shape blah
+#' @param dt_hours blah
+#' @param toc blah
+#'
+#' @return
+#' @export
+#' @examples
+#' uh2p_seek2(0.5,1.1,1,50)
+#' @useDynLib rfchydromodels uh2p_len_obj_root_test_
+uh2p_seek2 <- function(scale, shape, dt_hours, toc){
+  obj = .Fortran('uh2p_len_obj_root_test',
+                   scale = scale,
+                   shape = shape,
+                   toc = toc,
+                   dt_hours = dt_hours,
+                   obj=0)
+  obj$obj
+
+}
+
+
+#' root finding function for finding a scale parameter given shape and toc
+#'
+#' @param scale blah
+#' @param shape blah
+#' @param dt_hours blah
+#' @param toc blah
+#'
+#' @return
+#' @export
+uh2p_root <- function(scale, shape, dt_hours, toc){
+  # add one to the length because the first ordinate is at time 0
+  uh_len = round(toc/dt_hours,0)+1
+  len_dif = length(uh2p(shape, scale, dt_hours)) - uh_len
   return(len_dif)
 }
 
