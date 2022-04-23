@@ -1,7 +1,7 @@
 import warnings
 import pandas as pd
 import numpy as np
-from scipy import optimize
+from scipy.special import gamma
 import utilities.model_src as s
 
 
@@ -61,7 +61,7 @@ class Model:
         
         #Catalog CHANLOSS info if present
         if self.pars.zone.str.contains('_CL').any():
-            n_chanloss=len(self.pars.loc[self.pars.type=='consuse'].zone.unique())
+            n_chanloss=len(self.pars.loc[self.pars.type=='chanloss'].zone.unique())
         else:
             n_chanloss=0
         self.n_chanloss=n_chanloss
@@ -158,7 +158,7 @@ class Model:
 
         # simulates all zones
 
-        tci = s.sacsnow(int(self.dt_seconds), self.year.astype('int'), self.month.astype('int'), self.day.astype('int'), self.hour.astype('int'),
+        states = s.sacsnow(int(self.dt_seconds), self.year.astype('int'), self.month.astype('int'), self.day.astype('int'), self.hour.astype('int'),
                         # general pars
                         p['alat'].astype('double'), p['elev'].astype('double'),
                         # sac pars
@@ -170,8 +170,12 @@ class Model:
                         # initial swe
                         p['init_swe'].astype('double'),
                         # forcings
-                        self.forcings.map_fa, self.forcings.ptps_fa, self.forcings.mat_fa,self.forcings.etd)
-
+                        self.forcings.map_fa, self.forcings.ptps_fa, self.forcings.mat_fa,self.forcings.etd,
+                        #Pass states option
+                        int(0))
+        
+        tci=states[2]
+        
         # channel routing
         self.sacsnow_flow_cfs = self.uh.tci_2_cfs(tci,self.dates,inst=inst)
 
@@ -185,7 +189,7 @@ class Model:
         p = {**self.p['sac'],**(self.p['snow']),**(self.p['uh'])}
 
         # simulates all zones
-        states = s.sacsnowstates(int(self.dt_seconds), self.year.astype('int'), self.month.astype('int'), self.day.astype('int'), self.hour.astype('int'),
+        states = s.sacsnow(int(self.dt_seconds), self.year.astype('int'), self.month.astype('int'), self.day.astype('int'), self.hour.astype('int'),
                         # general pars
                         p['alat'].astype('double'), p['elev'].astype('double'),
                         # sac pars
@@ -197,7 +201,9 @@ class Model:
                         # initial swe
                         p['init_swe'].astype('double'),
                         # forcings
-                        self.forcings.map_fa, self.forcings.ptps_fa, self.forcings.mat_fa,self.forcings.etd)
+                        self.forcings.map_fa, self.forcings.ptps_fa, self.forcings.mat_fa,self.forcings.etd,
+                        #Pass states option
+                        int(1))
 
         state_param=['map_pxadj','etd_adj','tci','aet',
                         'uztwc','uzfwc','lztwc','lzfsc','lzfpc','adimc',
@@ -493,82 +499,8 @@ class UH:
     def __init__(self,
                  pars: pd.DataFrame,
                  dt_hrs: float):
+                 
 
-        ################### V Functions for caculating scale given shape and time of concentration V ###################
-        def gf(x):
-            h=1
-            if x <=0:
-                return(np.nan)
-            while(True):
-                if x>0 and x<2:
-                    h=h/x
-                    x=x+1
-                elif x==2:
-                    return(h)
-                elif x>2 and x<=3:
-                    x=x-2
-                    h=(((((((.0016063118*x+0.0051589951)*x+0.0044511400)*x+.0721101567)*x+
-                          .0821117404)*x+.4117741955)*x+.4227874605)*x+.9999999758)*h
-                    return(h)
-                else:
-                    x=x-1
-                    h=h*x
-                    
-        def uh2p(shape,scale, timestep,length=1000):
-            # this code needs timestep in days
-            timestep=timestep/24
-            uh=[0]*length
-            toc=np.log(gf(shape)*scale)
-
-            for i in range(1,length+1):
-                top=i*timestep/scale
-                tor=(shape-1)*np.log(top)-top-toc
-                uh[i-1]=0
-                if(tor > -8.0):
-                    uh[i-1]=np.exp(tor)
-                else:
-                    if i > 1:
-                        uh[i-1]=0
-                        length=i
-                        break
-            s= np.sum(uh)
-            if s==0:
-                s=1.0e-5
-            # turn it into a unit hydrograph (sums to 1)
-            uh=uh/s
-            # dont return all the trailing zero values
-            try:
-               first0 = next(x for x, val in enumerate(uh) if val == 0) 
-            except:
-                warnings.warn('UH may have been truncated, increase length')
-                return(uh)
-            return(uh[:first0].tolist())
-
-        def scale_uplimit(shape,dt_hours):
-            scale=0.10
-            len_1=0
-            len_2=len(uh2p(shape,scale,dt_hours))
-            while len_1<=len_2 and scale<5:
-                len_1 = len_2
-                scale=round(scale+0.10,1)
-                len_2=len(uh2p(shape,scale,dt_hours))
-            return round(scale-.1,1)
-
-        def uh2p_seek(x, shape, dt_hours, toc):
-          # add one to the length becuase the first ordinate is at time 0
-          uh_len = round(toc/dt_hours,0)+1
-          #len_dif = abs(len(uh2p(shape, scale, dt_hours)) - uh_len)
-          len_dif = abs(len(uh2p(shape, x, dt_hours)) - uh_len)
-          return len_dif
-
-        def uh2p_get_scale(shape, toc, dt_hours):
-            # find a reasonable upper limit for scale, some values are unstable
-            scale_lim = scale_uplimit(shape, dt_hours)
-            # optimization to find scale given shape and toc
-            scale=optimize.fminbound(uh2p_seek, 0.01,scale_lim, args=(shape,dt_hours,toc))
-            # bump up very small or negative values to prevent 0 length UH
-            return max(scale,0.02)
-        ################### ^Functions for caculating scale given shape and time of concentration^ ###################
 
         #Filter paramter table to only inclue UH type
         self.pars=pars.loc[(pars.type=='uh')]
@@ -598,7 +530,8 @@ class UH:
                 toc_adj=self.p['unit_toc_adj'][i]
                 toc=toc_gis*toc_adj
                 
-                scale=uh2p_get_scale(shape, toc, self.dt_hours)
+                scale=s.uh2p_get_scale_root(float(shape),float(toc),float(1))
+                
                 self.p['unit_scale'][i]=scale
             #populate the pars instance
             scale_df=self.pars.loc[self.pars.name=='unit_shape'].sort_values('zone').copy()
@@ -617,7 +550,10 @@ class UH:
             total_uh_vol=area*0.386102*5280**2*1/12
 
             #dimensionless uh
-            uh_dl=uh2p(shape,scale, self.dt_hours)
+            uh_dl=s.uh2p_call(float(shape),float(scale),float(self.dt_hours),int(1000))
+            first0 = next(x for x, val in enumerate(uh_dl) if val == 0)
+            uh_dl=uh_dl[:first0]
+            
             #Distribute volume
             uh_vol= [ordinate * total_uh_vol for ordinate in uh_dl]
             #Divide by model timestep in seconds

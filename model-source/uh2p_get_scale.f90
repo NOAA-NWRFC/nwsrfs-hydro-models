@@ -82,3 +82,16 @@ subroutine uh2p_len_obj_root_test(scale, shape, toc, dt_hours, obj)
   ! write(*,*)uh_len, shape, scale, dt_hours
   obj = dble(uh2p_len(shape, scale, dt_hours, m) - uh_len)
 end subroutine
+
+subroutine uh2p_call(shape, scale, timestep, max_len,uh)
+
+  use uh_optim
+  
+  double precision, intent(in):: shape, scale, timestep
+  integer, intent(in):: max_len
+
+  double precision, dimension(max_len), intent(out):: uh
+  
+  uh=uh2p(shape, scale, timestep, max_len)
+
+end subroutine

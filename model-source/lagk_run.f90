@@ -125,11 +125,11 @@ subroutine lagk(n_hrus, ita, itb, &
   ! ! output 
   double precision, dimension(sim_length ,n_hrus), intent(out):: lagk_out
 
-  ! ! Convert double precision to single precision 
-  ico=real(ico_in)
-  iinfl=real(iinfl_in)
-  ioutfl=real(ioutfl_in)
-  istor=real(istor_in)
+  ! ! Convert double precision to single precision.  Input is already in metric units
+  ico=real(ico_in)!*0.0283168e0
+  iinfl=real(iinfl_in)!*0.0283168e0
+  ioutfl=real(ioutfl_in)!*0.0283168e0
+  istor=real(istor_in)!*0.0283168e0
   
   lagtbl_a=real(lagtbl_a_in)
   lagtbl_b=real(lagtbl_b_in)
@@ -215,24 +215,31 @@ subroutine lagk(n_hrus, ita, itb, &
    end do
   end do
 
-  ! write(*,*)'lagtbl'
-  ! do i=1,22
-  !   write(*,*)lagtbl(i,:)
-  ! end do
+!   write(*,*)'lagtbl'
+!   do i=1,22
+!     write(*,*)lagtbl(i,:)
+!   end do
 
-  ! write(*,*)'ktbl'
-  ! do i=1,22
-  !   write(*,*)ktbl(i,:)
-  ! end do
+!   write(*,*)'ktbl'
+!   do i=1,22
+!     write(*,*)ktbl(i,:)
+!   end do
 
   ! return
   
   ! ! Get length of K and Lag Table
   do nh=1,n_hrus  
-   jlag(nh)=size(lagtbl,2)/2
-   jk(nh)=size(ktbl,2)/2
+   jlag(nh)=size(lagtbl)/2
+   jk(nh)=size(ktbl)/2
   end do
   
+!  write(*,*)'jlag'
+!  write(*,*)jlag
+
+!  write(*,*)'jk'
+!  write(*,*)jk
+
+
   ! ! Loop through each reach and calculate lag 
   do nh=1,n_hrus
     
