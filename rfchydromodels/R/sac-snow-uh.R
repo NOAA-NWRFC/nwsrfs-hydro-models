@@ -460,7 +460,7 @@ uh <- function(dt_hours, tci, pars, sum_zones = TRUE){
       scale = pars[pars$name == 'unit_scale',]$value[i]
     }else{
       toc = toc_gis * toc_adj
-      scale = uh2p_get_scale(shape, toc, dt_hours)
+      scale = uh2p_get_scale(shape, toc, 1)
     }
 
     routed = .Fortran('duamel',
