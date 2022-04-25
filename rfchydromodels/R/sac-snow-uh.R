@@ -308,7 +308,7 @@ uh2p_cfs_in <- function(shape, scale, timestep, area){
 #' @export
 #'
 #' @examples
-#' uh2p_get_scale(2,50)
+#' uh2p_get_scale_r(2,50)
 uh2p_get_scale_r <- function(shape, toc, dt_hours){
   # find a reasonable upper limit for scale, some values are unstable
   scale_lim = scale_uplimit(shape, dt_hours)
@@ -329,7 +329,7 @@ uh2p_get_scale_r <- function(shape, toc, dt_hours){
 #' @export
 #'
 #' @examples
-#' uh2p_get_scale2(2,50,1)
+#' uh2p_get_scale(2,50,1)
 #' @useDynLib rfchydromodels uh2p_get_scale_root_
 uh2p_get_scale <- function(shape, toc, dt_hours){
 

@@ -229,8 +229,8 @@ subroutine lagk(n_hrus, ita, itb, &
   
   ! ! Get length of K and Lag Table
   do nh=1,n_hrus  
-   jlag(nh)=size(lagtbl)/2
-   jk(nh)=size(ktbl)/2
+   jlag(nh)=size(lagtbl,1)/2
+   jk(nh)=size(ktbl,1)/2
   end do
   
 !  write(*,*)'jlag'
