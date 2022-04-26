@@ -12,7 +12,7 @@ scale_uplimit(shape, dt_hours)
 \item{dt_hours}{blah}
 }
 \value{
-
+numeric value indicating the upper limit for the scale
 }
 \description{
 Find a reasonable scale upper limit for optimization

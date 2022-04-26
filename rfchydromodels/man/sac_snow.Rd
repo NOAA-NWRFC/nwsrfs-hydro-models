@@ -27,5 +27,5 @@ Execute SAC-SMA, SNOW17, return total channel inflow per zone, and model states
 data(forcing)
 data(pars)
 dt_hours = 6
-states = sac_snow_states(dt_hours, forcing, pars)
+flow = sac_snow(dt_hours, forcing, pars)
 }

@@ -16,7 +16,7 @@ uh2p_seek(scale, shape, dt_hours, toc)
 \item{toc}{blah}
 }
 \value{
-
+objective function value
 }
 \description{
 Objective function for finding a scale parameter given shape and toc

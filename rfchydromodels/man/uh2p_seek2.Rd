@@ -16,11 +16,8 @@ uh2p_seek2(scale, shape, dt_hours, toc)
 \item{toc}{blah}
 }
 \value{
-
+function value for root finding
 }
 \description{
 Objective function for finding a scale parameter given shape and toc
-}
-\examples{
-uh2p_seek2(0.5,1.1,1,50)
 }

@@ -16,7 +16,7 @@ uh2p_root(scale, shape, dt_hours, toc)
 \item{toc}{blah}
 }
 \value{
-
+function value for root finding
 }
 \description{
 root finding function for finding a scale parameter given shape and toc

@@ -22,5 +22,5 @@ Get the scale parameter from a 2 parameter gamma unit hydrograph given
 the shape parameter and time of concentration.
 }
 \examples{
-uh2p_get_scale_r(2,50)
+uh2p_get_scale_r(2,50,1)
 }

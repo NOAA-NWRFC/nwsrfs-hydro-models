@@ -36,5 +36,5 @@ Conduct NWRFC style forcing adjustments
 data(forcing)
 data(pars)
 dt_hours = 6
-adj = fa_adj(dt_hours, forcing, pars)
+adj = fa_adj_nwrfc(dt_hours, forcing, pars)
 }

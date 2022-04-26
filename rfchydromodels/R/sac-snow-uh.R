@@ -81,7 +81,7 @@ sac_snow_states <- function(dt_hours, forcing, pars){
 #' data(forcing)
 #' data(pars)
 #' dt_hours = 6
-#' states = sac_snow_states(dt_hours, forcing, pars)
+#' flow = sac_snow(dt_hours, forcing, pars)
 #' @useDynLib rfchydromodels sacsnow_
 sac_snow <- function(dt_hours, forcing, pars, return_states = FALSE){
 
@@ -308,7 +308,8 @@ uh2p_cfs_in <- function(shape, scale, timestep, area){
 #' @export
 #'
 #' @examples
-#' uh2p_get_scale_r(2,50)
+#' uh2p_get_scale_r(2,50,1)
+#' @importFrom stats optimize
 uh2p_get_scale_r <- function(shape, toc, dt_hours){
   # find a reasonable upper limit for scale, some values are unstable
   scale_lim = scale_uplimit(shape, dt_hours)
@@ -347,8 +348,7 @@ uh2p_get_scale <- function(shape, toc, dt_hours){
 #' @param shape blah
 #' @param dt_hours blah
 #'
-#' @return
-#' @export
+#' @return numeric value indicating the upper limit for the scale
 scale_uplimit <- function(shape, dt_hours){
   scale = 0.1
   len_1 = 0
@@ -368,8 +368,7 @@ scale_uplimit <- function(shape, dt_hours){
 #' @param dt_hours blah
 #' @param toc blah
 #'
-#' @return
-#' @export
+#' @return objective function value
 uh2p_seek <- function(scale, shape, dt_hours, toc){
   # add one to the length because the first ordinate is at time 0
   uh_len = round(toc/dt_hours,0)+1
@@ -384,10 +383,7 @@ uh2p_seek <- function(scale, shape, dt_hours, toc){
 #' @param dt_hours blah
 #' @param toc blah
 #'
-#' @return
-#' @export
-#' @examples
-#' uh2p_seek2(0.5,1.1,1,50)
+#' @return function value for root finding
 #' @useDynLib rfchydromodels uh2p_len_obj_root_test_
 uh2p_seek2 <- function(scale, shape, dt_hours, toc){
   obj = .Fortran('uh2p_len_obj_root_test',
@@ -408,8 +404,7 @@ uh2p_seek2 <- function(scale, shape, dt_hours, toc){
 #' @param dt_hours blah
 #' @param toc blah
 #'
-#' @return
-#' @export
+#' @return function value for root finding
 uh2p_root <- function(scale, shape, dt_hours, toc){
   # add one to the length because the first ordinate is at time 0
   uh_len = round(toc/dt_hours,0)+1
@@ -1121,7 +1116,7 @@ fa_nwrfc <- function(dt_hours, forcing, pars, climo=NULL, dry_run=FALSE){
 #' data(forcing)
 #' data(pars)
 #' dt_hours = 6
-#' adj = fa_adj(dt_hours, forcing, pars)
+#' adj = fa_adj_nwrfc(dt_hours, forcing, pars)
 #' @useDynLib rfchydromodels fa_adj_
 #' @importFrom stats reshape
 fa_adj_nwrfc <- function(dt_hours, forcing, pars, climo = NULL, dry_run = FALSE, return_climo = FALSE){
