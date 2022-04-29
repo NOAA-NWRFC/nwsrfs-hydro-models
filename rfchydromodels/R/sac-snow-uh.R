@@ -963,6 +963,8 @@ forcing_adjust_mat <- function (climo, pars, ll=climo*ifelse(climo>0,0.9,1.1),
 #' @param pars sac parameters
 #' @param climo climotology matrix
 #' @param dry_run Do a run without any forcing adjustments, only compute pet and etd
+#' @param return_adj return monthly adjustment factors only
+#' @param return_climo return the computed monthly climo
 #' @return Matrix (1 column per zone) of unrouted channel inflow
 #' @export
 #'
@@ -973,7 +975,9 @@ forcing_adjust_mat <- function (climo, pars, ll=climo*ifelse(climo>0,0.9,1.1),
 #' forcing_adj = fa_nwrfc(dt_hours, forcing, pars)
 #' @useDynLib rfchydromodels fa_ts_
 #' @importFrom stats reshape
-fa_nwrfc <- function(dt_hours, forcing, pars, climo=NULL, dry_run=FALSE){
+fa_nwrfc <- function(dt_hours, forcing, pars, climo=NULL, dry_run=FALSE, return_adj=FALSE, return_climo=FALSE){
+
+  if(return_adj & return_climo) stop('Can only return adjustments or climo')
 
   pars = as.data.frame(pars)
 
@@ -1085,20 +1089,31 @@ fa_nwrfc <- function(dt_hours, forcing, pars, climo=NULL, dry_run=FALSE){
                ptps = do.call('cbind',lapply(forcing,'[[','ptps')),
                mat = do.call('cbind',lapply(forcing,'[[','mat_degc')),
                # output
+               map_adj = numeric(12),
+               mat_adj = numeric(12),
+               pet_adj = numeric(12),
+               ptps_adj = numeric(12),
                map_fa = output_matrix,
                mat_fa = output_matrix,
                ptps_fa = output_matrix,
                pet_fa = output_matrix,
                etd = output_matrix)
 
-  for(z in 1:n_zones){
-    forcing[[z]]$map_mm = x$map_fa[,z]
-    forcing[[z]]$mat_degc = x$mat_fa[,z]
-    forcing[[z]]$ptps = x$ptps_fa[,z]
-    forcing[[z]]$pet_mm = x$pet_fa[,z]
-    forcing[[z]]$etd_mm = x$etd[,z]
+  if(return_adj){
+    return(as.data.frame(do.call('cbind',x[c('map_adj','mat_adj','pet_adj','ptps_adj')])))
+  }else if(return_climo){
+    colnames(x$climo) = c('map','mat','pet','ptps')
+    return(as.data.frame(x$climo))
+  }else{
+    for(z in 1:n_zones){
+      forcing[[z]]$map_mm = x$map_fa[,z]
+      forcing[[z]]$mat_degc = x$mat_fa[,z]
+      forcing[[z]]$ptps = x$ptps_fa[,z]
+      forcing[[z]]$pet_mm = x$pet_fa[,z]
+      forcing[[z]]$etd_mm = x$etd[,z]
+    }
+    return(forcing)
   }
-  forcing
 }
 
 #' Conduct NWRFC style forcing adjustments
@@ -1117,125 +1132,13 @@ fa_nwrfc <- function(dt_hours, forcing, pars, climo=NULL, dry_run=FALSE){
 #' data(pars)
 #' dt_hours = 6
 #' adj = fa_adj_nwrfc(dt_hours, forcing, pars)
-#' @useDynLib rfchydromodels fa_adj_
 #' @importFrom stats reshape
 fa_adj_nwrfc <- function(dt_hours, forcing, pars, climo = NULL, dry_run = FALSE, return_climo = FALSE){
 
-  pars = as.data.frame(pars)
-
-  sec_per_day = 86400
-  dt_seconds = sec_per_day/(24/dt_hours)
-
-  n_zones = length(forcing)
-  sim_length = nrow(forcing[[1]])
-
-  # using base R here to avoid package dependency
-  map_lower = reshape(pars[grepl('map_lower',pars$name),c('name','zone','value')],
-                      timevar='zone',idvar='name',direction='wide')[,-1]
-  map_upper = reshape(pars[grepl('map_upper',pars$name),c('name','zone','value')],
-                      timevar='zone',idvar='name',direction='wide')[,-1]
-  mat_lower = reshape(pars[grepl('mat_lower',pars$name),c('name','zone','value')],
-                      timevar='zone',idvar='name',direction='wide')[,-1]
-  mat_upper = reshape(pars[grepl('mat_upper',pars$name),c('name','zone','value')],
-                      timevar='zone',idvar='name',direction='wide')[,-1]
-  pet_lower = reshape(pars[grepl('pet_lower',pars$name),c('name','zone','value')],
-                      timevar='zone',idvar='name',direction='wide')[,-1]
-  pet_upper = reshape(pars[grepl('pet_upper',pars$name),c('name','zone','value')],
-                      timevar='zone',idvar='name',direction='wide')[,-1]
-  ptps_lower = reshape(pars[grepl('ptps_lower',pars$name),c('name','zone','value')],
-                       timevar='zone',idvar='name',direction='wide')[,-1]
-  ptps_upper = reshape(pars[grepl('ptps_upper',pars$name),c('name','zone','value')],
-                       timevar='zone',idvar='name',direction='wide')[,-1]
-
-  # limits are applied basin wide
-  if(n_zones == 1){
-    map_limits = cbind(map_lower,map_upper)
-    mat_limits = cbind(mat_lower,mat_upper)
-    pet_limits = cbind(pet_lower,pet_upper)
-    ptps_limits = cbind(ptps_lower,ptps_upper)
-  }else{
-    map_limits = cbind(map_lower[,1],map_upper[,1])
-    mat_limits = cbind(mat_lower[,1],mat_upper[,1])
-    pet_limits = cbind(pet_lower[,1],pet_upper[,1])
-    ptps_limits = cbind(ptps_lower[,1],ptps_upper[,1])
-  }
-
-  if(dry_run){
-    map_fa_pars = mat_fa_pars = pet_fa_pars = ptps_fa_pars = c(1,0,10,0)
-  }else{
-    # limits are applied basin wide
-    map_fa_pars = c(pars[pars$name == 'map_scale',]$value[1],
-                    pars[pars$name == 'map_p_redist',]$value[1],
-                    pars[pars$name == 'map_std',]$value[1],
-                    pars[pars$name == 'map_shift',]$value[1])
-    mat_fa_pars = c(pars[pars$name == 'mat_scale',]$value[1],
-                    pars[pars$name == 'mat_p_redist',]$value[1],
-                    pars[pars$name == 'mat_std',]$value[1],
-                    pars[pars$name == 'mat_shift',]$value[1])
-    pet_fa_pars = c(pars[pars$name == 'pet_scale',]$value[1],
-                    pars[pars$name == 'pet_p_redist',]$value[1],
-                    pars[pars$name == 'pet_std',]$value[1],
-                    pars[pars$name == 'pet_shift',]$value[1])
-    ptps_fa_pars = c(pars[pars$name == 'ptps_scale',]$value[1],
-                     pars[pars$name == 'ptps_p_redist',]$value[1],
-                     pars[pars$name == 'ptps_std',]$value[1],
-                     pars[pars$name == 'ptps_shift',]$value[1])
-  }
-
-
-  if(is.null(climo)) climo = matrix(-9999,12,4)
-
-  output_matrix = matrix(0,nrow=sim_length,ncol=n_zones)
-
-  # fa_adj(n_hrus, dt, sim_length, year, month, day, hour, &
-  #          latitude, area, &
-  #          map_fa_pars, mat_fa_pars, pet_fa_pars, ptps_fa_pars, &
-  #          map_fa_limits_in, mat_fa_limits_in, pet_fa_limits_in, ptps_fa_limits_in, &
-  #          climo, &
-  #          map, ptps, mat, &
-  #          map_adj, mat_adj, pet_adj, ptps_adj)
-
-  # browser()
-
-  x = .Fortran('fa_adj',
-               n_hrus = as.integer(n_zones),
-               dt = as.integer(dt_seconds),
-               sim_length = as.integer(sim_length),
-               year = as.integer(forcing[[1]]$year),
-               month = as.integer(forcing[[1]]$month),
-               day = as.integer(forcing[[1]]$day),
-               hour = as.integer(forcing[[1]]$hour),
-               # zone info
-               latitude = pars[pars$name == 'alat',]$value,
-               area = pars[pars$name == 'zone_area',]$value,
-               # forcing adjust parameters
-               map_fa_pars = map_fa_pars,
-               mat_fa_pars = mat_fa_pars,
-               pet_fa_pars = pet_fa_pars,
-               ptps_fa_pars = ptps_fa_pars,
-               # forcing adjust limits
-               map_fa_limits_in = map_limits,
-               mat_fa_limits_in = mat_limits,
-               pet_fa_limits_in = pet_limits,
-               ptps_fa_limits_in = ptps_limits,
-               # externally specified climatology
-               # map, mat, pet, ptps
-               climo = climo,
-               # forcings
-               map = do.call('cbind',lapply(forcing,'[[','map_mm')),
-               ptps = do.call('cbind',lapply(forcing,'[[','ptps')),
-               mat = do.call('cbind',lapply(forcing,'[[','mat_degc')),
-               # output
-               map_adj = numeric(12),
-               mat_adj = numeric(12),
-               pet_adj = numeric(12),
-               ptps_adj = numeric(12))
-
   if(return_climo){
-    colnames(x$climo) = c('map','mat','pet','ptps')
-    as.data.frame(x$climo)
+    fa_nwrfc(dt_hours, forcing, pars, climo, dry_run, return_climo=TRUE)
   }else{
-    as.data.frame(do.call('cbind',x[c('map_adj','mat_adj','pet_adj','ptps_adj')]))
+    fa_nwrfc(dt_hours, forcing, pars, climo, dry_run, return_adj=TRUE)
   }
 }
 
