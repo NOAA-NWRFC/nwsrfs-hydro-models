@@ -274,7 +274,7 @@ class Model:
 
             consuse_ts_input=pd.concat([pet_daily,qnat_daily],axis=1)
             consuse_ts_input.columns=['pet','qnat']
-            consuse_ts_input[~consuse_ts_input.isna().any(axis=1)]
+            consuse_ts_input=consuse_ts_input[~consuse_ts_input.isna().any(axis=1)]\
             
             peadj=self.pars.loc[(self.pars.name=='peadj')&(self.pars.zone==cu_name),'value'].squeeze()
             
@@ -342,8 +342,12 @@ class Model:
         if self.n_consuse > 0:
             self.consuse_run()
             qnat_cu_adj=self.consuse_states['QDIV'].sum(axis=1)-self.consuse_states['QRF_out'].sum(axis=1)
+            #Shift forward a day so that the correct adjustement is applied  to the correct day
+            qnat_cu_adj.index=qnat_cu_adj.index+pd.Timedelta(1, unit='D')
             #Backfill to fill all values after 00:00 and forward fill to correct missing values at end of timeseries
             qnat_cu_adj=qnat_cu_adj.reindex(self.sim.index).backfill().ffill()
+            q_adj=self.sim - qnat_cu_adj
+            self.check=pd.concat([qnat_cu_adj.rename('qnetdiv'),self.sim.rename('sim_flow_csf'),q_adj.rename('sim_flow_cfs2')],axis=1)
             self.sim = self.sim - qnat_cu_adj
             #Replace any negative values with zero
             self.sim[self.sim < 0]=0
@@ -457,14 +461,14 @@ class Forcings:
                     self.map_fa_limits,self.mat_fa_limits,self.pet_fa_limits,self.ptps_fa_limits,
                     self.climo,
                     self.map,self.ptps,self.mat)
-        
-        self.map_fa,self.mat_fa,self.ptps_fa,self.pet,self.etd = fa
+
+        self.map_fa,self.mat_fa,self.ptps_fa,self.pet,self.etd = fa[5:]
         
         #Create a dictionary of dataframes for output purposes
         fa_param=['map_fa','mat_fa','ptps_fa','pet_fa','etd_fa']
         fa_dict={}
         for count, param in  enumerate(fa_param):
-            fa_dict[param]=pd.DataFrame(fa[count], index=dates,columns=self.zones)
+            fa_dict[param]=pd.DataFrame(fa[count+5], index=dates,columns=self.zones)
         return fa_dict
     
     def fa_fac(self,dt_sec,dates):
@@ -478,17 +482,19 @@ class Forcings:
         alat=self.pars.loc[self.pars.name.str.contains('alat')].sort_values(by='zone').value.to_numpy().astype('double')
         area=self.pars.loc[self.pars.name.str.contains('zone_area')].sort_values(by='zone').value.to_numpy().astype('double')
         
-        fac=s.fa_adj(dt,year,month,day,hour,
-            alat,area,
-            self.map_fa_pars,self.mat_fa_pars,self.pet_fa_pars,self.ptps_fa_pars,
-            self.map_fa_limits,self.mat_fa_limits,self.pet_fa_limits,self.ptps_fa_limits,
-            self.climo,
-            self.map,self.ptps,self.mat)
+        fac=s.fa_ts(dt,year,month,day,hour,
+                    alat,area,
+                    self.peadj_m,
+                    self.map_fa_pars,self.mat_fa_pars,self.pet_fa_pars,self.ptps_fa_pars,
+                    self.map_fa_limits,self.mat_fa_limits,self.pet_fa_limits,self.ptps_fa_limits,
+                    self.climo,
+                    self.map,self.ptps,self.mat)
+        fac=fac[1:5]
         
         #Create a dataframe for output return, ignore first output aray as it is climo not a fac adjustment
         fac_parameters=['map_fac','mat_fac','pet_fac','ptps_fac']
         fac_df=pd.DataFrame(columns=fac_parameters,index=range(1,13))
-        for i, col in enumerate(fac_parameters,1):
+        for i, col in enumerate(fac_parameters,0):
             fac_df[col]=fac[i]
         
         return fac_df

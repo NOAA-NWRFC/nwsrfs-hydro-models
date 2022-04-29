@@ -61,6 +61,7 @@ subroutine  fa_ts(n_hrus, dt, sim_length, year, month, day, hour, &
   double precision, dimension(12,n_hrus):: peadj_m_prev, peadj_m_next
 
   ! ! INOUT ARGUMENTS ! !  
+  !f2py intent(in,out) climo
   double precision, dimension(12, 4), intent(inout):: climo ! 4 columns, map, mat, pet, ptps
 
   ! ! OUTPUT ARGUMENTS ! !
