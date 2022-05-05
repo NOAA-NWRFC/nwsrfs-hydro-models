@@ -421,6 +421,9 @@ uh2p_root <- function(scale, shape, dt_hours, toc){
 #' @param pars parameters
 #' @param sum_zones should routed flows from multiple zones be added and returned as a vector, or
 #'                  kept separate and returned as a matrix
+#' @param start_of_timestep should the output flow data be shifted by one timestep to account for
+#'                          forcing data that uses beginning of timestep labeling
+#' @param backfill when start_of_timestep is TRUE, should the first value be duplicated
 #' @return Vector of routed flow in cfs
 #' @export
 #'
@@ -431,7 +434,7 @@ uh2p_root <- function(scale, shape, dt_hours, toc){
 #' tci = sac_snow(dt_hours,forcing, pars)
 #' flow_cfs = uh(dt_hours, tci, pars)
 #' @useDynLib rfchydromodels duamel_
-uh <- function(dt_hours, tci, pars, sum_zones = TRUE){
+uh <- function(dt_hours, tci, pars, sum_zones = TRUE, start_of_timestep = TRUE, backfill = TRUE){
 
   sec_per_day = 86400
   dt_seconds = sec_per_day/(24/dt_hours)
@@ -479,7 +482,21 @@ uh <- function(dt_hours, tci, pars, sum_zones = TRUE){
     }
   }
 
-  flow_cfs
+  # if the forcing data used was beginning of time step,
+  # then the instantaneous output occurs at the end of the timestep
+  # so we need to shift the output ahead by one timestep relative
+  # to the focings
+  if(start_of_timestep){
+    if(sum_zones){
+      c(if(backfill) flow_cfs[1] else NA,
+        flow_cfs[1:(sim_length-1)])
+    }else{
+      rbind(if(backfill) flow_cfs[1,] else NA,
+            flow_cfs[1:(sim_length-1),])
+    }
+  }else{
+    flow_cfs
+  }
 }
 
 #' Seasonal chanloss

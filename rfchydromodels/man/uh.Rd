@@ -4,7 +4,14 @@
 \alias{uh}
 \title{Two parameter unit hydrograph routing for one or more basin zones}
 \usage{
-uh(dt_hours, tci, pars, sum_zones = TRUE)
+uh(
+  dt_hours,
+  tci,
+  pars,
+  sum_zones = TRUE,
+  start_of_timestep = TRUE,
+  backfill = TRUE
+)
 }
 \arguments{
 \item{dt_hours}{timestep in hours}
@@ -15,6 +22,11 @@ uh(dt_hours, tci, pars, sum_zones = TRUE)
 
 \item{sum_zones}{should routed flows from multiple zones be added and returned as a vector, or
 kept separate and returned as a matrix}
+
+\item{start_of_timestep}{should the output flow data be shifted by one timestep to account for
+forcing data that uses beginning of timestep labeling}
+
+\item{backfill}{when start_of_timestep is TRUE, should the first value be duplicated}
 }
 \value{
 Vector of routed flow in cfs
