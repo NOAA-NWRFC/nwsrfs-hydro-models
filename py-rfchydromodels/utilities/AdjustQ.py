@@ -3,16 +3,16 @@
 
 #AdjustQ corrects the simulated discharges by using observed instantaneous discharges and observed mean dialy discharges. The procedure is actually a
 #combination of the transformations AdjustQUsingInstantaneousDischarge and AdjustQUsingMeanDailyDischarge. First the simulated discharged will be corrected 
-#by using the instantaneous discharges. If not all of the mean dialy discharges are within the error tolerance the simulated discharges will also be 
+#by using the instantaneous discharges. If not all of the mean daily discharges are within the error tolerance the simulated discharges will also be 
 #corrected with the AdjustQUsingMeanDailyDischarge procedure.  Any resultant negative values are set to zero
-
-#This procedure uses an observed instantaneous discharge to correct a simulated discharge. If there is an observed value for a certain time step then that
-#value will be used instead of the simulated value. If there is no observed data is available the correction procedure will calculate a value or in some cased
-#use the simulated value.
 
 import os, sys,tables
 import pandas as pd, numpy as np
 #interp_type='ratio' or 'difference'
+
+#This procedure uses an observed instantaneous discharge to correct a simulated discharge. If there is an observed value for a certain time step then that
+#value will be used instead of the simulated value. If there is no observed data is available the correction procedure will calculate a value or in some cases
+#use the simulated value.
 
 #When the ratio-option is selected the the simulated values will be corrected by multiplying the simulated value with a correction factor based on the 
 #ratio's between the observed and simulated discharge at the start of the gap and at the end of the gap. The correction factor will be linearly interpolated 
@@ -117,14 +117,16 @@ def adjustq_daily(obs_sim_working,daily_q,max_iterations,error_tol):
         #12z time has the correct daily weighted average flow
         daily_avg=daily_avg.loc[daily_avg.index.hour==12]
         daily_avg.rename(columns={'AdjustQ_Inst':'Daily_Sim'},inplace=True)
+        #Remove any Na values
+        daily_avg=daily_avg.loc[~daily_avg.Daily_Sim.isna()]
         #change timestep to daily
         daily_avg=daily_avg.resample('1D').sum()
         #Pull observed daily data
         daily_avg['Daily_Obs']=daily_q.loc[daily_avg.index]
         #Get the daily ratio to adjust the instanteous flow
         daily_avg['Daily_Ratio']=daily_avg.Daily_Obs.divide(daily_avg.Daily_Sim)
-        #Get the pbias to tack the tolerence
-        daily_avg['Pbias']=abs((daily_avg.Daily_Sim-daily_avg.Daily_Obs)/daily_avg.Daily_Obs)
+        #Get the pbias to track the tolerence
+        daily_avg['Pbias']=abs((daily_avg.Daily_Sim-daily_avg.Daily_Obs)/daily_avg.Daily_Sim)
         
         #Convet the index to a include a hour timestep.  
         daily_avg.index=daily_avg.index+pd.Timedelta(12, unit='H')
@@ -166,7 +168,7 @@ def adjustq(inst_q,daily_q,sim,interp_type='ratio',blend=10,error_tol=.01,max_it
     obs_6h=pd.DataFrame(index=pd.date_range(start=obs_6h_begin,end=obs_6h_end,freq='6h'))
     obs_6h.index.rename('datetime_local_tz',inplace=True)
     
-    obs_6h=pd.merge_asof(obs_6h,inst_q,left_index=True,right_index=True,tolerance=pd.Timedelta('2H'),direction='nearest')
+    obs_6h=pd.merge_asof(obs_6h,inst_q,left_index=True,right_index=True,tolerance=pd.Timedelta('15m'),direction='nearest')
     #Remove any values below zero
     obs_6h=obs_6h[obs_6h.observed>0]
 
@@ -227,7 +229,9 @@ def inst_mean_q_merge(inst_q,daily_q,error_tol=.01,max_iterations=15):
     ###############PREP Data################################
     
     #Format the daily observed flow
+    #Shifting forward 1 timestep to have 00:00 be part of previous day average
     daily_q_6h=daily_q.resample('6h').pad()
+    daily_q_6h.index=daily_q_6h.index+pd.Timedelta(6, unit='H')
     daily_q_6h.index.rename('datetime_local_tz',inplace=True)
     daily_q_6h.rename('Inst_Streamflow_cfs',inplace=True)
       
@@ -242,7 +246,7 @@ def inst_mean_q_merge(inst_q,daily_q,error_tol=.01,max_iterations=15):
     inst_q_6h.index.rename('datetime_local_tz',inplace=True)
     
     #Grab the nearest available the instananeous data within two hours of the 6hr timesteps
-    inst_q_6h=pd.merge_asof(inst_q_6h,inst_q,left_index=True,right_index=True,tolerance=pd.Timedelta('2H'),direction='nearest')
+    inst_q_6h=pd.merge_asof(inst_q_6h,inst_q,left_index=True,right_index=True,tolerance=pd.Timedelta('15m'),direction='nearest')
     #Remove any values below zero
     inst_q_6h=inst_q_6h[inst_q_6h.Inst_Streamflow_cfs>0]
     
@@ -250,7 +254,7 @@ def inst_mean_q_merge(inst_q,daily_q,error_tol=.01,max_iterations=15):
     inst_q_6h_merge=pd.DataFrame({'AdjustQ_Inst':inst_q_6h.Inst_Streamflow_cfs.combine_first(daily_q_6h)})
     
     ####################AdjustQ Mean Daily#################
-    inst_q_6h_merge=adjustq_daily(inst_q_6h_merge,daily_q,error_tol,max_iterations)
+    inst_q_6h_merge=adjustq_daily(inst_q_6h_merge,daily_q,max_iterations,error_tol)
     
     #Replace any negative flow value with zero
     inst_q_6h_merge['AdjustQ_Inst']=inst_q_6h_merge.AdjustQ_Inst.clip(lower=0)

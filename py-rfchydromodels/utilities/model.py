@@ -329,7 +329,7 @@ class Model:
         
         #If there are sac/snow zone, calculate runoff
         if self.n_zones > 0:
-            self.sim = self.sim+self.sacsnow_run(inst=inst)
+            self.sim = self.sim+self.sacsnow_run(inst=True)
         
         #If there are upstream reaches to route, add them to the total flow
         if self.n_uptribs > 0:
@@ -347,10 +347,16 @@ class Model:
             #Backfill to fill all values after 00:00 and forward fill to correct missing values at end of timeseries
             qnat_cu_adj=qnat_cu_adj.reindex(self.sim.index).backfill().ffill()
             q_adj=self.sim - qnat_cu_adj
-            self.check=pd.concat([qnat_cu_adj.rename('qnetdiv'),self.sim.rename('sim_flow_csf'),q_adj.rename('sim_flow_cfs2')],axis=1)
             self.sim = self.sim - qnat_cu_adj
             #Replace any negative values with zero
             self.sim[self.sim < 0]=0
+
+        #return instantaneous or period avg depending on chosen option
+        if not inst:
+            current_sim=self.sim.to_numpy().flatten()
+            next_sim = pd.DataFrame(self.sim).shift(-1).to_numpy().flatten()
+            sim_flow_pavg_cfs = (current_sim + next_sim) / 2
+            self.sim = pd.Series(sim_flow_pavg_cfs, index=self.dates)
 
         return self.sim
         
@@ -607,5 +613,14 @@ class UH:
             next_sim = pd.DataFrame(sim_flow_inst_cfs).shift(-1).to_numpy().flatten()
             sim_flow_pavg_cfs = (sim_flow_inst_cfs + next_sim) / 2
             sim_flow_cfs = pd.Series(sim_flow_pavg_cfs, index=dates)
+        
+        #UH output needs to be shifted forward 6 hrs because of how forcings are treated in AutoCalb
+        #Repeat the first flow data point and append to the beginning of the ts, so there is no loss in a timestep
+        sim_flow_cfs.loc[sim_flow_cfs.index[0] - pd.offsets.Hour(int(self.dt_hours))]=sim_flow_cfs[0]
+        sim_flow_cfs.sort_index(inplace=True)
+        #Shift the data forward 6hrs
+        sim_flow_cfs.index=sim_flow_cfs.index+pd.Timedelta(self.dt_hours, unit='H')
+        #Cutting off the last data point to keep the same length as prior
+        sim_flow_cfs=sim_flow_cfs[:-1]
         
         return sim_flow_cfs
