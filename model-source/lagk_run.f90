@@ -50,9 +50,9 @@ subroutine lagk(n_hrus, ita, itb, &
     ! !              python code I used to chop the unused lines after executing the
     ! !              subroutine. This is not necessary for flagk, and fka subroutines to
     ! !              properly run.  I used this document, pg 1-3, as reference:
-    ! !              https://www.nws.noaa.gov/ohd/hrl/nwsrfs/users_manual/part8/_pdf/833lagk.pdf
+    ! !              https://www.weather.gov/media/owp/oh/hrl/docs/833lagk.pdf
     ! !               k_start=int(p[17])
-    ! !               k_len=int(p[k_start-1])SAKW1
+    ! !               k_len=int(p[k_start-1])
     ! !               pina7_len=int(p[k_start+2*k_len])
     ! !               p_end=k_start+2*(k_len+pina7_len)+1
     ! !               p=p[:p_end]
@@ -93,12 +93,14 @@ subroutine lagk(n_hrus, ita, itb, &
     ! !            UNITS CONVERSION
     ! !             1 CFS to 0.0283168 CMS
     ! !             1 CMS to 35.3147 CFS
+    ! !             1 CFD to 0.0283168 CMD
 
   implicit none
 
   ! ! inputs
   integer, intent(in):: n_hrus, ita, itb, sim_length
   character(len = 4), parameter:: meteng = 'METR'
+  !character(len = 4), parameter:: meteng = 'ENGL'
   double precision, dimension(n_hrus), intent(in):: ico_in, iinfl_in, ioutfl_in, istor_in
   double precision, dimension(n_hrus), intent(in):: lagtbl_a_in, lagtbl_b_in, lagtbl_c_in, lagtbl_d_in  
   double precision, dimension(n_hrus), intent(in):: ktbl_a_in, ktbl_b_in, ktbl_c_in, ktbl_d_in
@@ -125,11 +127,12 @@ subroutine lagk(n_hrus, ita, itb, &
   ! ! output 
   double precision, dimension(sim_length ,n_hrus), intent(out):: lagk_out
 
-  ! ! Convert double precision to single precision.  Input is already in metric units
-  ico=real(ico_in)!*0.0283168e0
-  iinfl=real(iinfl_in)!*0.0283168e0
-  ioutfl=real(ioutfl_in)!*0.0283168e0
-  istor=real(istor_in)!*0.0283168e0
+  ! ! Convert double precision to single precision.
+  !NEED TO COMMENT OUT UNIT CONVERSION BELOW IF USING ENGL
+  ico=real(ico_in)*0.0283168e0
+  iinfl=real(iinfl_in)*0.0283168e0
+  ioutfl=real(ioutfl_in)*0.0283168e0
+  istor=real(istor_in)*0.0283168e0
   
   lagtbl_a=real(lagtbl_a_in)
   lagtbl_b=real(lagtbl_b_in)
@@ -141,12 +144,14 @@ subroutine lagk(n_hrus, ita, itb, &
   ktbl_d=real(ktbl_d_in)
   lagk_kmax=real(lagk_kmax_in)
   lagk_lagmax=real(lagk_lagmax_in)
+  !NEED TO COMMENT OUT UNIT CONVERSION BELOW IF USING ENGL
   lagk_qmax=real(lagk_qmax_in)*0.0283168e0
   lagk_kmin=real(lagk_kmin_in)
   lagk_lagmin=real(lagk_lagmin_in) 
+  !NEED TO COMMENT OUT UNIT CONVERSION BELOW IF USING ENGL
   lagk_qmin=real(lagk_qmin_in)*0.0283168e0
   
-  qa=real(qa_in)*0.0283168
+  qa=real(qa_in)*0.0283168e0
 
   ! write(*,*)'qa_in'
   ! do i=1,100
@@ -227,10 +232,20 @@ subroutine lagk(n_hrus, ita, itb, &
 
   ! return
   
-  ! ! Get length of K and Lag Table
+  ! ! Get length of K and Lag Table.  If the lag or k table max value equals its min value,
+  ! ! then pass a table size of 0 specifiying constant lag, otherwise get the true size of the table
+  ! ! (this check is to prevent a bug in flag7.f from occuring:  passing a all zero lag table causes a return ts of zeros)
   do nh=1,n_hrus  
-   jlag(nh)=size(lagtbl,1)/2
-   jk(nh)=size(ktbl,1)/2
+    if (MAXVAL(lagtbl(::2,nh))==MINVAL(lagtbl(::2,nh))) then
+      jlag(nh)=0
+    else
+      jlag(nh)=size(lagtbl,1)/2
+    end if
+    if (MAXVAL(ktbl(::2,nh))==MINVAL(ktbl(::2,nh))) then
+      jk(nh)=0
+    else
+      jk(nh)=size(ktbl,1)/2
+    end if
   end do
   
 !  write(*,*)'jlag'
