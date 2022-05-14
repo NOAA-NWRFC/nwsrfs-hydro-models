@@ -2,7 +2,7 @@ C MODULE FLAG7
 C-----------------------------------------------------------------------
 C
 CGW      SUBROUTINE FLAG7 (P,C,QA,QB,QT,NDT,COTIME,IB)
-      SUBROUTINE FLAG7 (P,C,QA,QB,NDT)
+      SUBROUTINE FLAG7 (P,C,QA,QB,NDT,CO_ST,CO_TIME)
 C.......................................................................
 C
 C     THIS SUBROUTINE CONTROLS THE LAG OPERATION.
@@ -42,8 +42,11 @@ CGW      DIMENSION P(1),C(1),QA(1),QB(1),QT(1),CONLQ(2)
       INTEGER NDT, IB
       REAL QB(NDT),QA(NDT),QT(NDT*3)
       DIMENSION P(*),C(*),CONLQ(2)
+CGW   ADDING ARRAYS TO TRACK CARRY OVER AND CARRY OVER TIME
+      REAL, DIMENSION(NDT) :: CO_ST,CO_TIME
+
 CGW   Adding FTPY help
-CGW Cf2py intent(out) QB
+CGW Cf2py intent(out) QB,CO_ST,CO_TIME
 C
       LOGICAL CONLAG,ADD,DBLBK,NOTCPU
 C
@@ -177,6 +180,11 @@ C
       IF(CONLAG)TIME=FSERC7(LXXXX,QA(I),NPLQ,CONLQ)
       IF(.NOT.CONLAG)TIME=FSERC7(LXXXX,QA(I),NPLQ,P(20))
       IF(IGAGE.GE.1) TLAG(IGAGE)=TIME
+
+CGW   GET CARRY OVER STATES
+      CO_ST(I)=QA(I)
+      CO_TIME(I)=TIME
+
 C
       IF(TIME+CURENT.GT.COTIME)GO TO 120
       IF(LQT.LT.(MXLCO+NDT)*2)GO TO 115

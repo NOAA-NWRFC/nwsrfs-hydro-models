@@ -138,15 +138,15 @@ class Model:
             
         p = self.p['lagk']
                 
-        lagk_route=s.lagk(int(self.dt_hours),int(self.dt_hours),
+        lagk=s.lagk(int(self.dt_hours),int(self.dt_hours),
                     p['lagtbl_a'][n], p['lagtbl_b'][n], p['lagtbl_c'][n], p['lagtbl_d'][n],
                     p['ktbl_a'][n], p['ktbl_b'][n], p['ktbl_c'][n], p['ktbl_d'][n],
                     p['lagk_lagmax'][n], p['lagk_kmax'][n], p['lagk_qmax'][n],
                     p['lagk_lagmin'][n], p['lagk_kmin'][n], p['lagk_qmin'][n],
                     p['init_co'][n], p['init_if'][n], p['init_of'][n], p['init_stor'][n],
-                    self.uptribs[:,n])
+                    self.uptribs[:,n],int(0))
 
-        sim_flow_cfs = np.sum(lagk_route,axis=1)
+        sim_flow_cfs = np.sum(lagk[0],axis=1)
         
         self.lagk_flow_cfs = pd.Series(sim_flow_cfs, index=self.dates)
         

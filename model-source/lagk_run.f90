@@ -4,7 +4,10 @@ subroutine lagk(n_hrus, ita, itb, &
     lagk_lagmax_in, lagk_kmax_in, lagk_qmax_in, &
     lagk_lagmin_in, lagk_kmin_in, lagk_qmin_in, &
     ico_in, iinfl_in, ioutfl_in, istor_in, &
-    qa_in, sim_length,lagk_out)
+    qa_in, sim_length, &
+    return_states, &
+    lagk_out, co_st_out, co_time_out,&
+    inflow_st_out,outflow_st_out,storage_st_out)
     
     ! !There are three subroutines to execute:  pin7, flag7, fka7
     ! !subroutines should be ran in the order presented
@@ -101,6 +104,7 @@ subroutine lagk(n_hrus, ita, itb, &
   integer, intent(in):: n_hrus, ita, itb, sim_length
   character(len = 4), parameter:: meteng = 'METR'
   !character(len = 4), parameter:: meteng = 'ENGL'
+  logical:: return_states
   double precision, dimension(n_hrus), intent(in):: ico_in, iinfl_in, ioutfl_in, istor_in
   double precision, dimension(n_hrus), intent(in):: lagtbl_a_in, lagtbl_b_in, lagtbl_c_in, lagtbl_d_in  
   double precision, dimension(n_hrus), intent(in):: ktbl_a_in, ktbl_b_in, ktbl_c_in, ktbl_d_in
@@ -120,12 +124,16 @@ subroutine lagk(n_hrus, ita, itb, &
   real, dimension(100,n_hrus):: c
   real, dimension(100):: c_cpy
   real, dimension(sim_length ,n_hrus):: qb, qc
+  real, dimension(sim_length ,n_hrus):: inflow_st, outflow_st, storage_st
+  real, dimension(sim_length ,n_hrus):: co_st,co_time
   integer, dimension(n_hrus):: jlag, jk
   integer:: nh, i
   real::  ndq, lag_entry, k_entry
   
   ! ! output 
   double precision, dimension(sim_length ,n_hrus), intent(out):: lagk_out
+  double precision, dimension(sim_length ,n_hrus), intent(out):: inflow_st_out, outflow_st_out, storage_st_out
+  double precision, dimension(sim_length ,n_hrus), intent(out):: co_st_out, co_time_out
 
   ! ! Convert double precision to single precision.
   !NEED TO COMMENT OUT UNIT CONVERSION BELOW IF USING ENGL
@@ -163,11 +171,16 @@ subroutine lagk(n_hrus, ita, itb, &
   ktbl = 0
   lag_entry = 0
   k_entry = 0
-  p = 0 
+  p = 0
   c = 0
   c_cpy = 0
-  qb = 0 
+  qb = 0
   qc = 0
+  inflow_st = 0
+  outflow_st = 0
+  storage_st = 0
+  co_st = 0
+  co_time = 0
 
   ! write(*,*) 'n_hrus',n_hrus
   ! write(*,*) 'ita',ita
@@ -278,17 +291,26 @@ subroutine lagk(n_hrus, ita, itb, &
     !   write(*,*)qa(i,:)
     ! end do
 
-    call flag7(p(:,nh),c_cpy,qa(:,nh),qb(:,nh),int(sim_length,4))
+    call flag7(p(:,nh),c_cpy,qa(:,nh),qb(:,nh),int(sim_length,4), &
+       co_st(:,nh),co_time(:,nh))
 
     ! write(*,*)'qb'
     ! do i=1,100
     !   write(*,*)qb(i,:)
     ! end do
     
-    call fka7(p(:,nh),c_cpy,qb(:,nh),qc(:,nh),int(sim_length,4))
+    call fka7(p(:,nh),c_cpy,qb(:,nh),qc(:,nh),int(sim_length,4), &
+       inflow_st(:,nh), outflow_st(:,nh), storage_st(:,nh))
     
   end do
   
   lagk_out=dble(qc)*35.3147d0
-  
+
+  if(return_states)then
+    inflow_st_out=dble(inflow_st)*35.3147d0
+    outflow_st_out=dble(outflow_st)*35.3147d0
+    storage_st_out=dble(storage_st)*35.3147d0
+    co_st_out=dble(co_st)*35.3147d0
+    co_time_out=dble(co_time)
+  end if
 end subroutine
