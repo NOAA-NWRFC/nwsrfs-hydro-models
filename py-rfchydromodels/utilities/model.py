@@ -152,6 +152,32 @@ class Model:
         
         return self.lagk_flow_cfs
 
+    def lagk_states_run(self): 
+        
+        #if n is None:
+        #    n=list(range(self.n_uptribs))
+        #elif isinstance(n, int):
+        #    n=[n]
+        #    
+        p = self.p['lagk']
+                
+        states=s.lagk(int(self.dt_hours),int(self.dt_hours),
+                    p['lagtbl_a'], p['lagtbl_b'], p['lagtbl_c'], p['lagtbl_d'],
+                    p['ktbl_a'], p['ktbl_b'], p['ktbl_c'], p['ktbl_d'],
+                    p['lagk_lagmax'], p['lagk_kmax'], p['lagk_qmax'],
+                    p['lagk_lagmin'], p['lagk_kmin'], p['lagk_qmin'],
+                    p['init_co'], p['init_if'], p['init_of'], p['init_stor'],
+                    self.uptribs,int(1))
+
+        state_param=['routed','lag_time','k_inflow','k_outflow','k_storage']
+        
+        self.lagk_states={}
+        for count, param in  enumerate(state_param):
+            self.lagk_states[param]=pd.DataFrame(states[count], index=self.dates,columns=self.uptribs_name)
+        
+        return self.lagk_states
+
+
     def sacsnow_run(self,inst=True):
 
         p = {**self.p['sac'],**(self.p['snow']),**(self.p['uh'])}

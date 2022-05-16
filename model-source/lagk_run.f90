@@ -6,7 +6,7 @@ subroutine lagk(n_hrus, ita, itb, &
     ico_in, iinfl_in, ioutfl_in, istor_in, &
     qa_in, sim_length, &
     return_states, &
-    lagk_out, co_st_out, co_time_out,&
+    lagk_out, co_st_out, &
     inflow_st_out,outflow_st_out,storage_st_out)
     
     ! !There are three subroutines to execute:  pin7, flag7, fka7
@@ -125,7 +125,7 @@ subroutine lagk(n_hrus, ita, itb, &
   real, dimension(100):: c_cpy
   real, dimension(sim_length ,n_hrus):: qb, qc
   real, dimension(sim_length ,n_hrus):: inflow_st, outflow_st, storage_st
-  real, dimension(sim_length ,n_hrus):: co_st,co_time
+  real, dimension(sim_length ,n_hrus):: co_st
   integer, dimension(n_hrus):: jlag, jk
   integer:: nh, i
   real::  ndq, lag_entry, k_entry
@@ -133,7 +133,7 @@ subroutine lagk(n_hrus, ita, itb, &
   ! ! output 
   double precision, dimension(sim_length ,n_hrus), intent(out):: lagk_out
   double precision, dimension(sim_length ,n_hrus), intent(out):: inflow_st_out, outflow_st_out, storage_st_out
-  double precision, dimension(sim_length ,n_hrus), intent(out):: co_st_out, co_time_out
+  double precision, dimension(sim_length ,n_hrus), intent(out):: co_st_out
 
   ! ! Convert double precision to single precision.
   !NEED TO COMMENT OUT UNIT CONVERSION BELOW IF USING ENGL
@@ -176,12 +176,13 @@ subroutine lagk(n_hrus, ita, itb, &
   c_cpy = 0
   qb = 0
   qc = 0
-  inflow_st = 0
-  outflow_st = 0
-  storage_st = 0
-  co_st = 0
-  co_time = 0
-
+  if(return_states)then
+    inflow_st = 0
+    outflow_st = 0
+    storage_st = 0
+    co_st = 0
+  end if
+  
   ! write(*,*) 'n_hrus',n_hrus
   ! write(*,*) 'ita',ita
   ! write(*,*) 'itb',itb
@@ -292,7 +293,7 @@ subroutine lagk(n_hrus, ita, itb, &
     ! end do
 
     call flag7(p(:,nh),c_cpy,qa(:,nh),qb(:,nh),int(sim_length,4), &
-       co_st(:,nh),co_time(:,nh))
+       co_st(:,nh))
 
     ! write(*,*)'qb'
     ! do i=1,100
@@ -310,7 +311,6 @@ subroutine lagk(n_hrus, ita, itb, &
     inflow_st_out=dble(inflow_st)*35.3147d0
     outflow_st_out=dble(outflow_st)*35.3147d0
     storage_st_out=dble(storage_st)*35.3147d0
-    co_st_out=dble(co_st)*35.3147d0
-    co_time_out=dble(co_time)
+    co_st_out=dble(co_st)
   end if
 end subroutine
