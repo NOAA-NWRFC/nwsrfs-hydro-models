@@ -169,7 +169,7 @@ class Model:
                     p['init_co'], p['init_if'], p['init_of'], p['init_stor'],
                     self.uptribs,int(1))
 
-        state_param=['routed','lag_time','k_inflow','k_outflow','k_storage']
+        state_param=['routed','lag_time','k_inflow','k_storage']
         
         self.lagk_states={}
         for count, param in  enumerate(state_param):
