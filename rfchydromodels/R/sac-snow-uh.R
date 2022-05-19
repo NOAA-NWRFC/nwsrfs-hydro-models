@@ -617,13 +617,14 @@ consuse <- function(input, pars, cfs=TRUE){
 #' @param uptribs a matrix where each column contains flow data (in cfs) for an upstream point
 #' @param pars parameters
 #' @param sum_routes add all routed values together or leave separate
+#' @param return_states return the lagk states
 #'
 #' @return vector of routed flows
 #' @export
 #'
 #' @examples NULL
 #' @useDynLib rfchydromodels lagk_
-lagk <- function(dt_hours, uptribs, pars, sum_routes = TRUE){
+lagk <- function(dt_hours, uptribs, pars, sum_routes = TRUE, return_states = FALSE){
 
   sec_per_day = 86400
   dt_seconds = sec_per_day/(24/dt_hours)
@@ -632,35 +633,57 @@ lagk <- function(dt_hours, uptribs, pars, sum_routes = TRUE){
   n_uptribs = length(uptribs)
   sim_length = nrow(uptribs[[1]])
 
+  # lagk(n_hrus, ita, itb, &
+  #      lagtbl_a_in, lagtbl_b_in, lagtbl_c_in, lagtbl_d_in,&
+  #      ktbl_a_in, ktbl_b_in, ktbl_c_in, ktbl_d_in, &
+  #      lagk_lagmax_in, lagk_kmax_in, lagk_qmax_in, &
+  #      lagk_lagmin_in, lagk_kmin_in, lagk_qmin_in, &
+  #      ico_in, iinfl_in, ioutfl_in, istor_in, &
+  #      qa_in, sim_length, &
+  #      return_states, &
+  #      lagk_out, co_st_out, &
+  #      inflow_st_out,storage_st_out)
 
   lagk_out = matrix(0,sim_length,n_uptribs)
+
   routed = .Fortran('lagk',
                     n_hrus = as.integer(n_uptribs),
                        ita = as.integer(dt_hours),
                        itb = as.integer(dt_hours),
                     #meteng = as.character('METR'),
-                  lagtbl_a = pars[pars$name == 'lagtbl_a',]$value,
-                  lagtbl_b = pars[pars$name == 'lagtbl_b',]$value,
-                  lagtbl_c = pars[pars$name == 'lagtbl_c',]$value,
-                  lagtbl_d = pars[pars$name == 'lagtbl_d',]$value,
-                    ktbl_a = pars[pars$name == 'ktbl_a',]$value,
-                    ktbl_b = pars[pars$name == 'ktbl_b',]$value,
-                    ktbl_c = pars[pars$name == 'ktbl_c',]$value,
-                    ktbl_d = pars[pars$name == 'ktbl_d',]$value,
-               lagk_lagmax = pars[pars$name == 'lagk_lagmax',]$value,
-                 lagk_kmax = pars[pars$name == 'lagk_kmax',]$value,
-                 lagk_qmax = pars[pars$name == 'lagk_qmax',]$value,
-               lagk_lagmin = pars[pars$name == 'lagk_lagmin',]$value,
-                 lagk_kmin = pars[pars$name == 'lagk_kmin',]$value,
-                 lagk_qmin = pars[pars$name == 'lagk_qmin',]$value,
-                   init_co = pars[pars$name == 'init_co',]$value,
-                   init_if = pars[pars$name == 'init_if',]$value,
-                   init_of = pars[pars$name == 'init_of',]$value,
-                 init_stor = pars[pars$name == 'init_stor',]$value,
+               lagtbl_a_in = pars[pars$name == 'lagtbl_a',]$value,
+               lagtbl_b_in = pars[pars$name == 'lagtbl_b',]$value,
+               lagtbl_c_in = pars[pars$name == 'lagtbl_c',]$value,
+               lagtbl_d_in = pars[pars$name == 'lagtbl_d',]$value,
+                 ktbl_a_in = pars[pars$name == 'ktbl_a',]$value,
+                 ktbl_b_in = pars[pars$name == 'ktbl_b',]$value,
+                 ktbl_c_in = pars[pars$name == 'ktbl_c',]$value,
+                 ktbl_d_in = pars[pars$name == 'ktbl_d',]$value,
+            lagk_lagmax_in = pars[pars$name == 'lagk_lagmax',]$value,
+              lagk_kmax_in = pars[pars$name == 'lagk_kmax',]$value,
+              lagk_qmax_in = pars[pars$name == 'lagk_qmax',]$value,
+            lagk_lagmin_in = pars[pars$name == 'lagk_lagmin',]$value,
+              lagk_kmin_in = pars[pars$name == 'lagk_kmin',]$value,
+              lagk_qmin_in = pars[pars$name == 'lagk_qmin',]$value,
+                    ico_in = pars[pars$name == 'init_co',]$value,
+                  iinfl_in = pars[pars$name == 'init_if',]$value,
+                 ioutfl_in = pars[pars$name == 'init_of',]$value,
+                  istor_in = pars[pars$name == 'init_stor',]$value,
                      qa_in = do.call("cbind", lapply(uptribs, function(x)as.numeric(x[['flow_cfs']]))),
                 sim_length = as.integer(sim_length),
-                  lagk_out = lagk_out)
+             return_states = as.logical(return_states),
+                  lagk_out = lagk_out,
+                 co_st_out = lagk_out,
+             inflow_st_out = lagk_out,
+            storage_st_out = lagk_out)
 
+  if(isTRUE(return_states)){
+    return_vars = c('lagk_out','co_st_out','inflow_st_out','storage_st_out')
+    df = as.data.frame(do.call('cbind',routed[return_vars]))
+    names(df) = paste0(gsub('_out','',return_vars),'_',1:n_uptribs)
+
+    return(cbind(upflow[[1]][,c('year','month','day','hour')],df))
+  }
   if(sum_routes & n_uptribs>1){
     return(apply(routed$lagk_out,1,sum))
   }else if(n_uptribs > 1){

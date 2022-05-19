@@ -2,7 +2,7 @@ C MEMBER FKA7
 C  (from old member FCEX7)
 C
 CGW      SUBROUTINE FKA7(P,C,QB,NDT,COTIME,IB)
-      SUBROUTINE FKA7(P,C,QB,QC,NDT)
+      SUBROUTINE FKA7(P,C,QB,QC,NDT,STOR_ST)
 C
 C.......................................................................
 C
@@ -36,9 +36,11 @@ C
 CGW      DIMENSION P(1),C(1),QB(1)
       INTEGER NDT, IB
       REAL QC(NDT),QB(NDT)
+CGW   ADDING ARRAYS TO TRACK STORAGE STATE
+      REAL, DIMENSION(NDT) :: STOR_ST
       DIMENSION P(*),C(*)
 CGW   Adding FTPY help
-CGW Cf2py intent(out) QC
+CGW Cf2py intent(out) QC,STOR_ST
 C
 C      LOGICAL MEANQ,CONK,NOTCPU,LBUG
       LOGICAL MEANQ,CONK,NOTCPU
@@ -357,6 +359,11 @@ CGW  607 FORMAT(11X,27HIN DO 10 LOOP - Y2,S2ODT = ,2G10.4)
 C
       Y1=Y2
 C
+CGW   STORE STORAGE STATE FOR TIMESTEP
+      STOR_ST(I)=S2ODT*ITA/2.
+CGW   PREVENT STORAGE STATE FROM BEING LESS THAN ZERO
+      IF(STOR_ST(I).LT.0.0)STOR_ST(I)=0.0
+
    10 CONTINUE
 C.......................................................................
 C

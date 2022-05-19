@@ -4,7 +4,10 @@ subroutine lagk(n_hrus, ita, itb, &
     lagk_lagmax_in, lagk_kmax_in, lagk_qmax_in, &
     lagk_lagmin_in, lagk_kmin_in, lagk_qmin_in, &
     ico_in, iinfl_in, ioutfl_in, istor_in, &
-    qa_in, sim_length,lagk_out)
+    qa_in, sim_length, &
+    return_states, &
+    lagk_out, co_st_out, &
+    inflow_st_out,storage_st_out)
     
     ! !There are three subroutines to execute:  pin7, flag7, fka7
     ! !subroutines should be ran in the order presented
@@ -59,7 +62,7 @@ subroutine lagk(n_hrus, ita, itb, &
     ! !               c=c[:int(c[0])]
     ! !
     ! !flag7:  Controls the Lag Operation
-    ! !             flag7(p,c,qa,qb[ndt])
+    ! !             flag7(p,c,qa,qb,CO_ST,[ndt])
     ! !
     ! !            qb: downstream streamflow values (single column array) with only
     ! !                lag applied, time step is assumed to correspond to itb.  
@@ -73,9 +76,11 @@ subroutine lagk(n_hrus, ita, itb, &
     ! !                assumed to correspond to ita
     ! !            ntd:  Optional variable, total number to time steps to process.
     ! !                  if less than full qa array is desired 
+    ! !           CO_ST:  Lagk state used for a warm start.  This is a timeseries of lag
+    ! !                   time for flow input
     ! !
     ! !fka7:    Perform the attenuation (K) computations 
-    ! !             flag7(p,c,qb,qc [ndt])
+    ! !             flag7(p,c,qb,qc,STOR_ST,[ndt])
     ! !
     ! !            qc: downstream streamflow values (single column array) with both
     ! !                lag and attenuation applied, time step is assumed to correspond
@@ -89,6 +94,12 @@ subroutine lagk(n_hrus, ita, itb, &
     ! !                lag applied, time step is assumed to correspond to itb
     ! !            ntd: Optional variable, total number to time steps to process.
     ! !                  if less than full qa array is desired 
+    ! !           STOR_ST:  Lagk state used for a warm start.  This is a timeseries of attenuation
+    ! !                   storage
+
+    ! !Wrapper varible:
+    ! !            return_states:  Binary option to return co_st_out, inflow_st_out,storage_st_out.
+    ! !                            1:  Return states, 0: Return only routed flows
 
     ! !            UNITS CONVERSION
     ! !             1 CFS to 0.0283168 CMS
@@ -101,6 +112,7 @@ subroutine lagk(n_hrus, ita, itb, &
   integer, intent(in):: n_hrus, ita, itb, sim_length
   character(len = 4), parameter:: meteng = 'METR'
   !character(len = 4), parameter:: meteng = 'ENGL'
+  logical:: return_states
   double precision, dimension(n_hrus), intent(in):: ico_in, iinfl_in, ioutfl_in, istor_in
   double precision, dimension(n_hrus), intent(in):: lagtbl_a_in, lagtbl_b_in, lagtbl_c_in, lagtbl_d_in  
   double precision, dimension(n_hrus), intent(in):: ktbl_a_in, ktbl_b_in, ktbl_c_in, ktbl_d_in
@@ -120,12 +132,14 @@ subroutine lagk(n_hrus, ita, itb, &
   real, dimension(100,n_hrus):: c
   real, dimension(100):: c_cpy
   real, dimension(sim_length ,n_hrus):: qb, qc
+  real, dimension(sim_length ,n_hrus):: storage_st, co_st
   integer, dimension(n_hrus):: jlag, jk
   integer:: nh, i
   real::  ndq, lag_entry, k_entry
   
   ! ! output 
   double precision, dimension(sim_length ,n_hrus), intent(out):: lagk_out
+  double precision, dimension(sim_length ,n_hrus), intent(out):: inflow_st_out, storage_st_out, co_st_out
 
   ! ! Convert double precision to single precision.
   !NEED TO COMMENT OUT UNIT CONVERSION BELOW IF USING ENGL
@@ -163,12 +177,17 @@ subroutine lagk(n_hrus, ita, itb, &
   ktbl = 0
   lag_entry = 0
   k_entry = 0
-  p = 0 
+  p = 0
   c = 0
   c_cpy = 0
-  qb = 0 
+  qb = 0
   qc = 0
-
+  ! Only initialize these array if states output is selected to be on
+  if(return_states)then
+    storage_st = 0
+    co_st = 0
+  end if
+  
   ! write(*,*) 'n_hrus',n_hrus
   ! write(*,*) 'ita',ita
   ! write(*,*) 'itb',itb
@@ -278,17 +297,24 @@ subroutine lagk(n_hrus, ita, itb, &
     !   write(*,*)qa(i,:)
     ! end do
 
-    call flag7(p(:,nh),c_cpy,qa(:,nh),qb(:,nh),int(sim_length,4))
+    call flag7(p(:,nh),c_cpy,qa(:,nh),qb(:,nh),int(sim_length,4), &
+       co_st(:,nh))
 
     ! write(*,*)'qb'
     ! do i=1,100
     !   write(*,*)qb(i,:)
     ! end do
     
-    call fka7(p(:,nh),c_cpy,qb(:,nh),qc(:,nh),int(sim_length,4))
+    call fka7(p(:,nh),c_cpy,qb(:,nh),qc(:,nh),int(sim_length,4), &
+       storage_st(:,nh))
     
   end do
   
   lagk_out=dble(qc)*35.3147d0
-  
+  ! populate states arrays, if turned on
+  if(return_states)then
+    inflow_st_out=dble(qb)*35.3147d0
+    storage_st_out=dble(storage_st)*35.3147d0
+    co_st_out=dble(co_st)
+  end if
 end subroutine
