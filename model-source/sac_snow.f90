@@ -7,6 +7,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
     map, ptps, mat, etd, &
     return_states, &
     tci, aet, uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, &
+    roimp, sdro, ssur, sif, bfs, bfp, &
     swe, aesc, neghs, liqw, raim, psfall, prain)
 
 
@@ -86,7 +87,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   ! these are single precision so as to be supplied to 
   ! NWS f77 models 
   real(sp):: uztwc_sp, uzfwc_sp, lztwc_sp, lzfsc_sp, lzfpc_sp, adimc_sp
-
+  real(sp):: roimp_sp, sdro_sp, ssur_sp, sif_sp, bfs_sp, bfp_sp
   ! snow-17 carry over variables
   double precision:: pa       ! snow-17 surface pressure
   real(sp):: taprev_sp    ! carry over variable
@@ -97,13 +98,14 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
 
   ! sac-sma state variables
   double precision, dimension(sim_length ,n_hrus), intent(out):: uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc
+  double precision, dimension(sim_length ,n_hrus), intent(out):: roimp, sdro, ssur, sif, bfs, bfp
   ! snow state variables
   double precision, dimension(sim_length ,n_hrus), intent(out):: swe, aesc, neghs, liqw, raim, psfall,prain
   integer:: nexlag
 
 
   ! sac-sma output variables and channel inflow
-  real(sp):: qs_sp, qg_sp, aet_sp, tci_sp
+  real(sp):: aet_sp, tci_sp
   double precision, dimension(sim_length ,n_hrus), intent(out):: tci, aet
 
   ! snow-17 output variables  
@@ -129,6 +131,12 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
     lzfsc = 0 
     lzfpc = 0 
     adimc = 0 
+    roimp = 0
+    sdro = 0
+    ssur = 0
+    sif = 0 
+    bfs = 0 
+    bfp =0
     swe = 0
     aesc = 0
     neghs = 0
@@ -174,6 +182,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
 
   ts_per_day = 86400/dt
   dt_hours = dt/3600
+  
   ! write(*,*)'Timesteps per day:',ts_per_day
 
   ! this is not used, since ptps is input, but set it just so its not empty
@@ -237,6 +246,13 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
       psfall_sp = real(0)
       prain_sp = real(0)
       aesc_sp = real(0)
+      roimp_sp = real(0)
+      sdro_sp = real(0)
+      ssur_sp = real(0)
+      sif_sp = real(0)
+      bfs_sp = real(0)
+      bfp_sp = real(0)
+      
 
       ! run for 1 year 
       do i = 1,ts_per_year
@@ -277,8 +293,10 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
             real(side(nh)), real(rserv(nh)), &
             !SAC State variables
             uztwc_sp, uzfwc_sp, lztwc_sp, lzfsc_sp, lzfpc_sp, adimc_sp, &
+            !SAC Runoff variables
+            roimp_sp,sdro_sp,ssur_sp,sif_sp,bfs_sp,bfp_sp, &
             !SAC OUTPUTS
-            qs_sp, qg_sp, tci_sp, aet_sp)
+            tci_sp, aet_sp)
 
       end do  ! spin up 1 year loop 
 
@@ -336,6 +354,12 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
     psfall_sp = real(0)
     prain_sp = real(0)
     aesc_sp = real(0)
+    roimp_sp = real(0)
+    sdro_sp = real(0)
+    ssur_sp = real(0)
+    sif_sp = real(0)
+    bfs_sp = real(0)
+    bfp_sp = real(0)
     
     ! =============== START SIMULATION TIME LOOP =====================================
     do i = 1,sim_length,1
@@ -381,8 +405,10 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
           real(side(nh)), real(rserv(nh)), &
           !SAC State variables
           uztwc_sp, uzfwc_sp, lztwc_sp, lzfsc_sp, lzfpc_sp, adimc_sp, &
+          !SAC Runoff variables
+          roimp_sp,sdro_sp,ssur_sp,sif_sp,bfs_sp,bfp_sp, &
           !SAC OUTPUTS
-          qs_sp, qg_sp, tci_sp, aet_sp)
+          tci_sp, aet_sp)
     
       ! place state variables in output arrays
       tci(i,nh) = dble(tci_sp)
@@ -394,6 +420,12 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
         lzfsc(i,nh) = dble(lzfsc_sp)
         lzfpc(i,nh) = dble(lzfpc_sp)
         adimc(i,nh) = dble(adimc_sp)
+        roimp(i,nh)=dble(roimp_sp)
+        sdro(i,nh)=dble(sdro_sp)
+        ssur(i,nh)=dble(ssur_sp)
+        sif(i,nh)=dble(sif_sp)
+        bfs(i,nh)=dble(bfs_sp)
+        bfp(i,nh)=dble(bfp_sp)
         aet(i,nh) = dble(aet_sp)
 
         ! inout forcings to capture the pe/pxadj and efc

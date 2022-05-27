@@ -6,9 +6,11 @@ C     SAC PARAMETERS
      &                 SIDE,RSERV,
 C     SAC State variables  ',
      &                 UZTWC,UZFWC,LZTWC,LZFSC,LZFPC,ADIMC,
+CGW  SAC Runoff variables  ',
+     &                  ROIMP,SDRO,SSUR,SIF,BFS,BFP,
 C     SAC OUTPUTS
-     &                 QS,QG,Q,ETA)
-
+CGW     &                 QS,QG,Q,ETA)
+     &                 Q,ETA)
 C      IMPLICIT NONE
 
 C     RCS Id string, for version control
@@ -31,6 +33,7 @@ C      REAL    TMP
 
 
       REAL    LZTWM,LZFSM,LZFPM,LZSK,LZPK,LZTWC,LZFSC,LZFPC
+      REAL    ROIMP,SDRO,SSUR,SIF,BFS,BFP
       REAL    TOTAL_S1, TOTAL_S2
       REAL    DT
       REAL    DS

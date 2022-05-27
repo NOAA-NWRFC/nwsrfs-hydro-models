@@ -233,6 +233,7 @@ class Model:
 
         state_param=['map_pxadj','etd_adj','tci','aet',
                         'uztwc','uzfwc','lztwc','lzfsc','lzfpc','adimc',
+                        'roimp', 'sdro', 'ssur', 'sif', 'bfs', 'bfp',
                         'swe','aesc','neghs','liqw','raim','psfall','prain']
         self.sacsnow_states={}
         for count, param in  enumerate(state_param):
