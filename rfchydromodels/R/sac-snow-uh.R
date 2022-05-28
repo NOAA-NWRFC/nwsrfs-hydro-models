@@ -127,16 +127,17 @@ sac_snow <- function(dt_hours, forcing, pars, return_states = FALSE){
                     pars[pars$name == 'adc_b',]$value,
                     pars[pars$name == 'adc_c',]$value)
 
-  # sacsnowstates(n_hrus, dt, sim_length, year, month, day, hour, &
-  #                 latitude, elev, &
-  #                 sac_pars, &
-  #                 peadj, pxadj, &
-  #                 snow_pars, &
-  #                 init_swe, &
-  #                 map, ptps, mat, etd, &
-  #                 return_states,
-  #                 tci, aet, uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, &
-  #                 swe, aesc, neghs, liqw, raim, psfall, prain)
+  # sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
+  #           latitude, elev, &
+  #           sac_pars, &
+  #           peadj, pxadj, &
+  #           snow_pars, &
+  #           init_swe, &
+  #           map, ptps, mat, etd, &
+  #           return_states, &
+  #           tci, aet, uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, &
+  #           roimp, sdro, ssur, sif, bfs, bfp, &
+  #           swe, aesc, neghs, liqw, raim, psfall, prain)
 
   x = .Fortran('sacsnow',
                n_hrus = as.integer(n_zones),
@@ -174,6 +175,12 @@ sac_snow <- function(dt_hours, forcing, pars, return_states = FALSE){
                lzfsc = output_matrix,
                lzfpc = output_matrix,
                adimc = output_matrix,
+               roimp = output_matrix,
+               sdro = output_matrix,
+               ssur = output_matrix,
+               sif = output_matrix,
+               bfs = output_matrix,
+               bfp = output_matrix,
                swe = output_matrix,
                aesc = output_matrix,
                neghs = output_matrix,
@@ -186,6 +193,7 @@ sac_snow <- function(dt_hours, forcing, pars, return_states = FALSE){
     return_vars = c('year','month','day','hour',
                     'map','mat','ptps','etd','tci','aet',
                     'uztwc','uzfwc','lztwc','lzfsc','lzfpc','adimc',
+                    'roimp', 'sdro', 'ssur', 'sif', 'bfs', 'bfp',
                     'swe','aesc','neghs','liqw','raim','psfall', 'prain')
 
     # if pet exists in the input forcings, output it as is
