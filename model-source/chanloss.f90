@@ -1,5 +1,5 @@
 subroutine chanloss(n_clmods, dt, sim_length, year, month, day, &
-    factor, period, &
+    factor, period, cl_type, &
     sim, sim_adj)
 
 ! !     Subroutine Description
@@ -33,6 +33,7 @@ subroutine chanloss(n_clmods, dt, sim_length, year, month, day, &
 ! !     hour:  The hour associated with each time step (integer array)
 ! !     factor:  The adjustment factor for each module (double array)
 ! !     period:  The beginning and ending month that the factor is applied for each module (integer array)
+! !     cl_type:  logical operator.  1=varp, 0=varc
 ! !     sim:  Simulated streamflow (double array)
 ! !     OUTPUTS
 ! !     sim_ad j:  Simulated streamflow adjusted by the factors/periods of all the Chanloss modules (double array)
@@ -43,6 +44,7 @@ subroutine chanloss(n_clmods, dt, sim_length, year, month, day, &
   integer, dimension(sim_length), intent(in):: year, month, day
   double precision, dimension(n_clmods), intent(in):: factor
   integer, dimension(2,n_clmods), intent(in):: period
+  logical:: cl_type
   double precision, dimension(sim_length), intent(in):: sim
 
   ! ! Local varible
@@ -100,8 +102,13 @@ subroutine chanloss(n_clmods, dt, sim_length, year, month, day, &
   !   write(*,'(12i2)') cl_adj_lookup(:,i)
   ! end do
   
-  !! 1b) Create adjustment tableI
-  cl_adj_m=1
+  !! 1b) Create adjustment table
+  !!if cl_type==1 set the default to 1 for varp, otherwise set to 0 for varc
+  if(cl_type)then
+    cl_adj_m=1
+  else
+    cl_adj_m=0
+  end if
   
   !! This loop ensures that for modules which share months, the average factor is used amongst the modules
   !! Loop through each month
@@ -164,7 +171,12 @@ subroutine chanloss(n_clmods, dt, sim_length, year, month, day, &
     end if 
     
     !! 2b) Apply the adjustment factor
-    sim_adj(i)=sim(i)*cl_adj_step
-    
+    !!if cl_type==1 then use a varp adjustment, otherwise use a varc adjustment
+    if(cl_type)then
+      sim_adj(i) = sim(i)*cl_adj_step
+    else
+      sim_adj(i) = sim(i)-cl_adj_step
+    end if
+
   end do
 end subroutine
