@@ -33,18 +33,17 @@ subroutine chanloss(n_clmods, dt, sim_length, year, month, day, &
 ! !     hour:  The hour associated with each time step (integer array)
 ! !     factor:  The adjustment factor for each module (double array)
 ! !     period:  The beginning and ending month that the factor is applied for each module (integer array)
-! !     cl_type:  logical operator.  1=varp, 0=varc
+! !     cl_type:  integer.  1=varp, 2=varc
 ! !     sim:  Simulated streamflow (double array)
 ! !     OUTPUTS
 ! !     sim_ad j:  Simulated streamflow adjusted by the factors/periods of all the Chanloss modules (double array)
 ! !        1         2         3         4         5         6         7
 
   ! ! Inputs
-  integer, intent(in):: n_clmods, dt, sim_length
+  integer, intent(in):: n_clmods, dt, sim_length, cl_type
   integer, dimension(sim_length), intent(in):: year, month, day
   double precision, dimension(n_clmods), intent(in):: factor
   integer, dimension(2,n_clmods), intent(in):: period
-  logical:: cl_type
   double precision, dimension(sim_length), intent(in):: sim
 
   ! ! Local varible
@@ -104,9 +103,9 @@ subroutine chanloss(n_clmods, dt, sim_length, year, month, day, &
   
   !! 1b) Create adjustment table
   !!if cl_type==1 set the default to 1 for varp, otherwise set to 0 for varc
-  if(cl_type)then
+  if(cl_type==1)then
     cl_adj_m=1
-  else
+  else if(cl_type==2) then
     cl_adj_m=0
   end if
   
@@ -172,9 +171,9 @@ subroutine chanloss(n_clmods, dt, sim_length, year, month, day, &
     
     !! 2b) Apply the adjustment factor
     !!if cl_type==1 then use a varp adjustment, otherwise use a varc adjustment
-    if(cl_type)then
+    if(cl_type==1)then
       sim_adj(i) = sim(i)*cl_adj_step
-    else
+    else if(cl_type==2) then
       sim_adj(i) = sim(i)-cl_adj_step
     end if
 

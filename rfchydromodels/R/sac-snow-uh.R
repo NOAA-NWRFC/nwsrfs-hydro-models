@@ -522,10 +522,12 @@ chanloss <- function(flow, forcing, dt_hours, pars){
   sim_length = nrow(forcing[[1]])
 
   # chanloss(n_clmods, dt, sim_length, year, month, day, hour, &
-  #            factor, period, &
+  #            factor, period, cl_type, &
   #            sim, sim_adj)
 
   n_clmods = pars[pars$name == 'n_clmods',]$value[1]
+  cl_type = pars[pars$name == 'cl_type',]$value[1]
+  if(is.na(cl_type))cl_type=1
 
   if(is.na(n_clmods) | n_clmods <= 0){
     return(flow)
@@ -549,6 +551,7 @@ chanloss <- function(flow, forcing, dt_hours, pars){
                       day = as.integer(forcing[[1]]$day)[1:sim_length],
                       factor = cl_factors,
                       period = cl_periods,
+                      cl_type = as.integer(cl_type),
                       sim = flow[1:sim_length],
                       sim_adj = numeric(sim_length))
     return(cl_flow$sim_adj)
