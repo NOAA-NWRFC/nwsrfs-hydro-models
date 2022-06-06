@@ -52,12 +52,14 @@ class Model:
         #Rename Zones for each CL Module
         self.pars.loc[self.pars.type=='chanloss',['zone']]=self.pars.loc[self.pars.type=='chanloss'].zone + \
                                 '_CL'+ self.pars.loc[self.pars.type=='chanloss'].name.str.split('_').str[-1]
-
+        
         #n_clmods pars row now unnecessary
         self.pars.drop(self.pars.loc[self.pars.name=='n_clmods'].index,inplace=True)
 
         #Remove the CL module name from the name columns
         self.pars.loc[self.pars.type=='chanloss',['name']]=self.pars.loc[self.pars.type=='chanloss'].name.str.split('_').str[:-1].str.join('_')
+        #Correct the cl_type name
+        self.pars.loc[self.pars.p_name.str.contains('cl_type'),['name']]='cl_type'
         
         #Catalog CHANLOSS info if present
         if self.pars.zone.str.contains('_CL').any():
