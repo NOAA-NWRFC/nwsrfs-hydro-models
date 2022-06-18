@@ -1193,3 +1193,73 @@ fa_adj_nwrfc <- function(dt_hours, forcing, pars, climo = NULL, dry_run = FALSE,
   }
 }
 
+#' Replace ptps column with ptps derived using rain snow line code (lapse rate + MAT)
+#'
+#' @param forcing data frame with columns for forcing inputs
+#' @param pars rsnwelev and snow17 parameters
+#' @param ae_tbl data.table with col1 containing quantile info and subsequent col with elev for each zone
+#'
+#' @return Matrix (1 column per zone) of the forcing input argument with ptps replaced with that derived from rsnwelev model
+#' @export
+#'
+#' @examples
+#' data(forcing)
+#' data(pars)
+#' data(area_elev_curve)
+#' forcing_adj = rsnwelev(forcing, pars,area_elev_curv)
+#' @useDynLib rfchydromodels rsnwelev_
+#' @importFrom reshape2 melt
+rsnwelev <- function(forcing, pars,ae_tbl){
+  #rsnwelev(n_hrus,sim_length, &
+  # taelev_in, talr_in, pxtemp_in, &
+  # aetbl_len, aetbl, &
+  # mat_in, &
+  # ptps_out)
+
+  n_zones=length(forcing)
+  sim_length=nrow(forcing[[1]])
+
+  fortran_tbl = matrix(NA,nrow(ae_tbl)*2,n_zones)
+  ae_tbl$id = 1:nrow(ae_tbl)
+  for(i in 1:n_zones){
+    long = reshape::melt(ae_tbl[,c(1,i+1,n_zones+2)],id='id')
+    long = long[order(long$id),]
+    fortran_tbl[,i] = long$value
+  }
+
+  output_matrix = matrix(0,nrow=sim_length,ncol=n_zones)
+
+  ptps = .Fortran('rsnwelev',
+                  n_hrus = as.integer(n_zones),
+                  sim_length = as.integer(sim_length),
+                  # model parameters
+                  taelev_in = pars[pars$name == 'elev',]$value,
+                  talr_in = pars[pars$name == 'talr',]$value,
+                  pxtemp_in = pars[pars$name == 'pxtemp',]$value,
+                  aetbl_len = as.integer(nrow(ae_tbl)),
+                  aetbl = as.double(fortran_tbl),
+                  # forcings
+                  mat_in = do.call('cbind',lapply(forcing,'[[','mat_degc')),
+                  # output
+                  ptps_out = output_matrix)
+
+  forcing_rsnwelev = forcing
+
+  for(j in 1:n_zones)
+    forcing_rsnwelev[[j]]$ptps=ptps$ptps_out[,j]
+
+  return(forcing_rsnwelev)
+}
+
+#' @param dt_hours timestep in hours
+#' @param uptribs a matrix where each column contains flow data (in cfs) for an upstream point
+#' @param pars parameters
+#' @param sum_routes add all routed values together or leave separate
+#' @param return_states return the lagk states
+#'
+#' @return vector of routed flows
+#' @export
+#'
+#' @examples NULL
+#' @useDynLib rfchydromodels lagk_
+

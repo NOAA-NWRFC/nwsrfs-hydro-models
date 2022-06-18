@@ -3,22 +3,22 @@
 \docType{data}
 \name{pars}
 \alias{pars}
-\title{Parameters for a model of CHTO3}
+\title{Parameters for a model of SFLN2}
 \format{
 A data.frame (or data.table if you have that loaded) with
-43823 rows and 4 columns:
+517 rows and 4 columns:
 \describe{
 \item{name}{The parameter name}
 \item{zone}{the zone name, matching the names of the forcing list elements}
 \item{value}{parameter value}
-\item{type}{The parameter type (model), either 'sac', 'snow', or 'uh'}
+\item{type}{The parameter type (model)}
 }
 }
 \usage{
 pars
 }
 \description{
-A dataset containing parameters for a 2 zone SAC-SMA/SNOW17/UNITHG
-model of the basin CHTO3 (6 hour timestep).
+A dataset containing parameters for a 2 zone NWSRFS model
+model of the basin SFLN2 (6 hour timestep).
 }
 \keyword{datasets}

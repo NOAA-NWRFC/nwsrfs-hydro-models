@@ -4,7 +4,7 @@
 \alias{lagk}
 \title{Lag-K Routing for any number of upstream points}
 \usage{
-lagk(dt_hours, uptribs, pars, sum_routes = TRUE)
+lagk(dt_hours, uptribs, pars, sum_routes = TRUE, return_states = FALSE)
 }
 \arguments{
 \item{dt_hours}{timestep in hours}
@@ -14,6 +14,8 @@ lagk(dt_hours, uptribs, pars, sum_routes = TRUE)
 \item{pars}{parameters}
 
 \item{sum_routes}{add all routed values together or leave separate}
+
+\item{return_states}{return the lagk states}
 }
 \value{
 vector of routed flows
