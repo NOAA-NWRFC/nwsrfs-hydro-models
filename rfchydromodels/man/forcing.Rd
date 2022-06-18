@@ -3,7 +3,7 @@
 \docType{data}
 \name{forcing}
 \alias{forcing}
-\title{Forcing data for 2 zone model of CHTO3}
+\title{Forcing data for 2 zone model of SFLN2}
 \format{
 A list containing two data.frames (or data.table if you have that loaded).
 each data frame has 43823 rows and 7 columns:
@@ -18,6 +18,6 @@ each data frame has 43823 rows and 7 columns:
 forcing
 }
 \description{
-A dataset containing 6 hour forcing data for the basin CHTO3 using 2 zones.
+A dataset containing 6 hour forcing data for the basin SFLN2 using 2 zones.
 }
 \keyword{datasets}

@@ -2,7 +2,7 @@ subroutine rsnwelev(n_hrus,sim_length, &
     taelev_in, talr_in, pxtemp_in, &
     aetbl_len, aetbl, &
     mat_in, &
-    rsel_out, ptps_out)
+    ptps_out)
 
 ! !     Subroutine Description
 ! !     -----------------------------------
@@ -48,7 +48,7 @@ subroutine rsnwelev(n_hrus,sim_length, &
   real::  co, ptps_ts,rsel_ts, ae_interp
 
   ! ! output 
-  double precision, dimension(sim_length ,n_hrus), intent(out):: rsel_out, ptps_out
+  double precision, dimension(sim_length ,n_hrus), intent(out):: ptps_out
 
   ! ! Convert double precision to single precision.
   mat=real(mat_in)
@@ -93,7 +93,4 @@ subroutine rsnwelev(n_hrus,sim_length, &
     
     end do
   end do
-
-  rsel_out=dble(rsel)
-
 end subroutine
