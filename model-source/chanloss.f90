@@ -48,7 +48,7 @@ subroutine chanloss(n_clmods, dt, sim_length, year, month, day, &
 
   ! ! Local varible
   integer:: dt_hours, n, i, j, mo, first_period, second_period, num_fa
-  double precision::  sum_fa, interp_day, decimal_day,cl_adj_step, dayn, dayi
+  double precision::  sum_fa, interp_day, decimal_day,cl_adj_step, dayn, dayi,q_adj
   integer, dimension(12):: mdays, mdays_prev
   double precision, dimension(12):: cl_adj_m,cl_adj_m_prev,cl_adj_m_next
   integer, dimension(12,n_clmods):: cl_adj_lookup
@@ -172,10 +172,17 @@ subroutine chanloss(n_clmods, dt, sim_length, year, month, day, &
     !! 2b) Apply the adjustment factor
     !!if cl_type==1 then use a varp adjustment, otherwise use a varc adjustment
     if(cl_type==1)then
-      sim_adj(i) = sim(i)*cl_adj_step
+      q_adj = sim(i)*cl_adj_step
     else if(cl_type==2) then
-      sim_adj(i) = sim(i)-cl_adj_step
+      q_adj = sim(i)-cl_adj_step
     end if
-
+    
+    !!if the adjusted flow is less than zero, then set output to near zero
+    if(q_adj>=0)then
+      sim_adj(i) = q_adj
+    else
+      sim_adj(i) = 0.000001d0
+    end if
+    
   end do
 end subroutine

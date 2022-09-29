@@ -49,9 +49,10 @@ class Model:
         self.uptribs_name=uptribs_name
         self.n_uptribs=n_uptribs
 
-        #Rename Zones for each CL Module
-        self.pars.loc[self.pars.type=='chanloss',['zone']]=self.pars.loc[self.pars.type=='chanloss'].zone + \
-                                '_CL'+ self.pars.loc[self.pars.type=='chanloss'].name.str.split('_').str[-1]
+        #Rename Zones for each CL Module.  But do not rename cl_type or n_clmods
+        cl_logic=(pars.type=='chanloss')&((pars.name!='cl_type')&(pars.name!='n_clmods'))
+        self.pars.loc[cl_logic,['zone']]=self.pars.loc[cl_logic].zone + \
+                                '_CL'+ self.pars.loc[cl_logic].name.str.split('_').str[-1]
         
         #n_clmods pars row now unnecessary
         self.pars.drop(self.pars.loc[self.pars.name=='n_clmods'].index,inplace=True)
