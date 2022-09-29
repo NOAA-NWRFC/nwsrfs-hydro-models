@@ -175,6 +175,8 @@ subroutine chanloss(n_clmods, dt, sim_length, year, month, day, &
       q_adj = sim(i)*cl_adj_step
     else if(cl_type==2) then
       q_adj = sim(i)-cl_adj_step
+    else
+      q_adj = sim(i)
     end if
     
     !!if the adjusted flow is less than zero, then set output to near zero
