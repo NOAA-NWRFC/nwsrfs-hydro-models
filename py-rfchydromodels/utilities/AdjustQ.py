@@ -162,7 +162,7 @@ def adjustq(inst_q,daily_q,sim,interp_type='ratio',blend=10,error_tol=.01,max_it
     inst_q.index.rename('datetime_local_tz',inplace=True)
     inst_q.rename('observed',inplace=True)
       
-    #Grab the nearest instanteous value, within 2hours, to each 6hr timestep
+    #Grab the nearest instanteous value, within 15min, to each 6hr timestep
     obs_6h_begin=inst_q.index[0].floor(freq='D')
     obs_6h_end=inst_q.index[-1].ceil(freq='D')
     obs_6h=pd.DataFrame(index=pd.date_range(start=obs_6h_begin,end=obs_6h_end,freq='6h'))
@@ -245,7 +245,7 @@ def inst_mean_q_merge(inst_q,daily_q,error_tol=.01,max_iterations=15):
     inst_q_6h=pd.DataFrame(index=pd.date_range(start=inst_q_6h_begin,end=inst_q_6h_end,freq='6h'))
     inst_q_6h.index.rename('datetime_local_tz',inplace=True)
     
-    #Grab the nearest available the instananeous data within two hours of the 6hr timesteps
+    #Grab the nearest available the instananeous data within 15min of the 6hr timesteps
     inst_q_6h=pd.merge_asof(inst_q_6h,inst_q,left_index=True,right_index=True,tolerance=pd.Timedelta('15m'),direction='nearest')
     #Remove any values below zero
     inst_q_6h=inst_q_6h[inst_q_6h.Inst_Streamflow_cfs>0]
