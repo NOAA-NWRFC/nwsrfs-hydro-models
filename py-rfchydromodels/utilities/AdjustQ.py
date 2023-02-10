@@ -6,8 +6,9 @@
 #by using the instantaneous discharges. If not all of the mean daily discharges are within the error tolerance the simulated discharges will also be 
 #corrected with the AdjustQUsingMeanDailyDischarge procedure.  Any resultant negative values are set to zero
 
-import os, sys,tables
+import os, sys
 import pandas as pd, numpy as np
+
 #interp_type='ratio' or 'difference'
 
 #This procedure uses an observed instantaneous discharge to correct a simulated discharge. If there is an observed value for a certain time step then that

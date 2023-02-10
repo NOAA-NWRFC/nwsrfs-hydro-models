@@ -32,7 +32,7 @@ def nwsrfs_prep(autocalb_dir, results_dir_name='results_01'):
     flow_df=autocalb_files.loc[(autocalb_files.file_name.str.startswith('flow_'))].squeeze()
     flow=pd.read_csv(os.path.join(flow_df.path,flow_df.file_name))
     flow.index=pd.to_datetime(flow[['year', 'month', 'day']])
-    flow=flow.resample('6h').pad()
+    flow=flow.resample('6h').ffill()
 
     forcing=[]
 

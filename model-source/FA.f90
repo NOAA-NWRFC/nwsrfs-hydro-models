@@ -30,7 +30,7 @@ subroutine  fa_ts(n_hrus, dt, sim_length, year, month, day, hour, &
   double precision, dimension(n_hrus), intent(in):: area       ! km2
   ! forcing adjustment parameter vectors: mult, p_redist, std, shift 
   double precision, dimension(4), intent(in):: map_fa_pars, mat_fa_pars, pet_fa_pars, ptps_fa_pars
-  ! climo fa limits, static set by external data 
+  ! fa limits, static set by external data 
   double precision, dimension(12,2), intent(in):: map_fa_limits_in, mat_fa_limits_in, pet_fa_limits_in, ptps_fa_limits_in
   ! static pet adjustment
   double precision, dimension(12, n_hrus), intent(in):: peadj_m
@@ -41,7 +41,7 @@ subroutine  fa_ts(n_hrus, dt, sim_length, year, month, day, hour, &
   integer:: dt_hours, ts_per_day, ts_in_day    ! model timestep in hours and number of timesteps per day
   ! area weighted forcings for climo calculations
   double precision, dimension(sim_length):: map_aw, ptps_aw, mat_aw, pet_aw
-  ! climo fa limits, static set by external data 
+  ! fa limits, static set by external data 
   double precision, dimension(12,2):: map_fa_limits, mat_fa_limits, pet_fa_limits, ptps_fa_limits
   double precision:: dr, rho, omega_s, Ra ! pet calculation varible
   integer, dimension(sim_length):: jday ! julian day for pet calculations
