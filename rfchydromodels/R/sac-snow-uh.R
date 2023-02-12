@@ -689,11 +689,20 @@ lagk <- function(dt_hours, uptribs, pars, sum_routes = TRUE, return_states = FAL
             storage_st_out = lagk_out)
 
   if(isTRUE(return_states)){
-    return_vars = c('lagk_out','co_st_out','inflow_st_out','storage_st_out')
-    df = as.data.frame(do.call('cbind',routed[return_vars]))
-    names(df) = paste0(gsub('_out','',return_vars),'_',1:n_uptribs)
 
-    return(cbind(upflow[[1]][,c('year','month','day','hour')],df))
+    return_vars = c('lagk_out','co_st_out','inflow_st_out','storage_st_out')
+    df = upflow[[1]][,c('year','month','day','hour')]
+
+    for(i in 1:n_uptribs){
+      for(name in return_vars){
+        df[[paste0(name,'_',i)]] = routed[[name]][,i]
+      }
+    }
+    return(df)
+    #df = as.data.frame(do.call('cbind',routed[return_vars]))
+    #names(df) = paste0(gsub('_out','',return_vars),'_',1:n_uptribs)
+
+    #return(cbind(upflow[[1]][,c('year','month','day','hour')],df))
   }
   if(sum_routes & n_uptribs>1){
     return(apply(routed$lagk_out,1,sum))
