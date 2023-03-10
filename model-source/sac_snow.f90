@@ -75,12 +75,12 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
   double precision, dimension(n_hrus), intent(in):: elev       ! m
   double precision, dimension(n_hrus):: scf, mfmax, mfmin, uadj, si, nmf, tipm, mbase, plwhc, daygm
   double precision, dimension(n_hrus):: pxtemp ! not used, set to zero
-  double precision, dimension(11):: adc  ! different for each hru
   double precision, dimension(n_hrus):: adc_a, adc_b, adc_c ! areal depletion curve parameters ax^b+(1-a)x^c
-  double precision, dimension(11) :: adc_x
+  double precision, dimension(11) :: adc_y, adc_x ! different for each hru
+  double precision::  adc_x_crawl, adc_y_crawl, adc_step_crawl, adc_sf
 
   ! local variables
-  integer:: nh,i,j           ! AWW index for looping through areas
+  integer:: nh,i,j          ! AWW index for looping through areas
   integer:: sim_length   ! length of simulation (days)
 
   ! single precision sac-sma and snow variables
@@ -203,15 +203,28 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
     ! if b < 1 & c < 1 curve is concave up
     ! if b > 1 & c > 1 curve is concave up
     ! if b < 1 & c > 1 OR b > 1 & c < 1 curve is s-shaped
-    adc_x = (/ 0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0 /)
-    adc = adc_a(nh)*adc_x**adc_b(nh)+(1.-adc_a(nh))*adc_x**adc_c(nh)
     ! "A value of As = 0.05 is used for a W/Ai = 0.0 ratio so that small amounts of snow
     ! don’t continue to exist well past the time when all the snow is gone in nature."
-    ! - snow 17 manual 
-    do i=1,11
-      if(adc(i) < 0.05) adc(i) = 0.05
+    ! - snow 17 manual
+    ! adc = adc_a(nh)*adc_y**adc_b(nh)+(1.-adc_a(nh))*adc_y**adc_c(nh)
+    ! do i=1,11
+    !   if(adc(i) < 0.05) adc(i) = 0.05
+    ! end do
+    
+    adc_y = (/ 0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0 /)
+    adc_step_crawl = .0001
+    adc_sf = 1/adc_step_crawl
+    adc_x_crawl = 1+adc_step_crawl
+    adc_y_crawl = 1+adc_step_crawl
+    do i = 11,1,-1
+      do while (int(adc_y_crawl*adc_sf) > int(adc_y(i)*adc_sf) .and. int(adc_x_crawl*adc_sf) > int(.05*adc_sf))
+        adc_x_crawl = adc_x_crawl - adc_step_crawl
+        adc_y_crawl = adc_a(nh)*adc_x_crawl**adc_b(nh)+(1.-adc_a(nh))*adc_x_crawl**adc_c(nh)
+      end do
+      ! write(*,*) adc_x_crawl, adc_y_crawl
+      adc_x(i) = adc_x_crawl
     end do
-  
+    
     ! get sfc_pressure (pa is estimate by subroutine, needed by snow17 call)
     pa = sfc_pressure(elev(nh))
   
@@ -270,7 +283,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
             real(latitude(nh)), real(scf(nh)), real(mfmax(nh)), real(mfmin(nh)), &
             real(uadj(nh)), real(si(nh)), real(nmf(nh)), &
             real(tipm(nh)), real(mbase(nh)), real(pxtemp(nh)), real(plwhc(nh)), real(daygm(nh)),&
-            real(elev(nh)), real(pa), real(adc), &
+            real(elev(nh)), real(pa), real(adc_x), &
             !SNOW17 CARRYOVER VARIABLES
             cs, taprev_sp) 
 
@@ -381,7 +394,7 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
           real(latitude(nh)), real(scf(nh)), real(mfmax(nh)), real(mfmin(nh)), &
           real(uadj(nh)), real(si(nh)), real(nmf(nh)), &
           real(tipm(nh)), real(mbase(nh)), real(pxtemp(nh)), real(plwhc(nh)), real(daygm(nh)),&
-          real(elev(nh)), real(pa), real(adc), &
+          real(elev(nh)), real(pa), real(adc_x), &
           !SNOW17 CARRYOVER VARIABLES
           cs, taprev_sp) 
 
