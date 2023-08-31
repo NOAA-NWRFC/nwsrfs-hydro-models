@@ -29,7 +29,7 @@ def nwsrfs_prep(autocalb_dir, results_dir_name='results_01'):
     pars_df=autocalb_files.loc[autocalb_files.file_name=='pars_optimal.csv'].squeeze()
     pars=pd.read_csv(os.path.join(pars_df.path,pars_df.file_name))
 
-    flow_df=autocalb_files.loc[(autocalb_files.file_name.str.startswith('flow_'))].squeeze()
+    flow_df=autocalb_files.loc[(autocalb_files.file_name.str.startswith('flow_daily'))].squeeze()
     flow=pd.read_csv(os.path.join(flow_df.path,flow_df.file_name))
     flow.index=pd.to_datetime(flow[['year', 'month', 'day']])
     flow=flow.resample('6h').ffill()
@@ -46,7 +46,7 @@ def nwsrfs_prep(autocalb_dir, results_dir_name='results_01'):
 
     upflow=[]
 
-    upflow_df=autocalb_files.loc[(autocalb_files.file_name.str.contains('upflow_por'))].copy()
+    upflow_df=autocalb_files.loc[(autocalb_files.file_name.str.contains('upflow_'))].copy()
     upflow_df.sort_values(by='file_name',inplace=True)
 
     for index, row in upflow_df.iterrows():
