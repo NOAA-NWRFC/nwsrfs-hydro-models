@@ -690,12 +690,14 @@ lagk <- function(dt_hours, uptribs, pars, sum_routes = TRUE, return_states = FAL
 
   if(isTRUE(return_states)){
 
-    return_vars = c('lagk_out','co_st_out','inflow_st_out','storage_st_out')
+    return_vars = c('lagk_out'='routed','co_st_out'='lag_time',
+      'inflow_st_out'='k_inflow','storage_st_out'='k_storage')
+
     df = upflow[[1]][,c('year','month','day','hour')]
 
     for(i in 1:n_uptribs){
-      for(name in return_vars){
-        df[[paste0(name,'_',i)]] = routed[[name]][,i]
+      for(name in names(return_vars)){
+        df[[paste0(return_vars[name],'_',i)]] = routed[[name]][,i]
       }
     }
     return(df)
