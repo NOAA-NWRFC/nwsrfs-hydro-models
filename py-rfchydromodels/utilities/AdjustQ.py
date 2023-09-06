@@ -213,7 +213,6 @@ def adjustq(inst_q,daily_q,sim,interp_type='ratio',blend=10,error_tol=.01,max_it
     #For any rows that haven't been filled (didn't meet critera to use inst data), use simulation data directly
     working.loc[working.AdjustQ_Inst.isna(),['AdjustQ_Inst']]=working.loc[working.AdjustQ_Inst.isna(),['simulated']].values
     
-    
     ####################AdjustQ Mean Daily#################
     working=adjustq_daily(working,daily_q,max_iterations,error_tol)
     
