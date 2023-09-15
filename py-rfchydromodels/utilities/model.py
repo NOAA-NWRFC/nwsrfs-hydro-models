@@ -13,10 +13,6 @@ class Model:
                  route: list=None,
                  obs: pd.DataFrame=None):
 
-        #This step may become unnessary, but right now the R preprocessor is very verbose with
-        #CU zone name.  If that changes, this line can be removed
-        pars.loc[pars.zone.str.contains('CU'),['zone']]=pars.loc[pars.zone.str.contains('CU')].zone.str.split('-').str[-1]
-
         self.pars = pars.sort_values(['name', 'zone'])
         self.obs = obs
         
@@ -29,8 +25,8 @@ class Model:
         self.sim_length = sim_length
 
         #Catalog CONSUSE info if present
-        if self.pars.zone.str.contains('_CU').any():
-            consuse_name=pd.Series(self.pars.loc[self.pars.type=='consuse'].zone.unique()).str.split('-').str[-1].values
+        if self.pars.zone.str.contains('-CU').any():
+            consuse_name=pd.Series(self.pars.loc[self.pars.type=='consuse'].zone.unique()).values
             n_consuse=len(consuse_name)
         else:
             consuse_name=['None']

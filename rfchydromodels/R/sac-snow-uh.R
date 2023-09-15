@@ -494,6 +494,8 @@ uh <- function(dt_hours, tci, pars, sum_zones = TRUE, start_of_timestep = TRUE, 
   # then the instantaneous output occurs at the end of the timestep
   # so we need to shift the output ahead by one timestep relative
   # to the focings
+  # !!CONSIDER REMOVING THE FORCING DATA BEGINNNING OF TIMESTEP ADJUSTMENT, SO THIS 
+  # STOP CAN REMOVED AS WELL!!
   if(start_of_timestep){
     if(sum_zones){
       c(if(backfill) flow_cfs[1] else NA,
@@ -573,7 +575,7 @@ consuse <- function(input, pars, cfs=TRUE){
 
   input = as.data.frame(input)
   zones = unique(pars$zone)
-  cu_zones = grep('_CU',zones,value = T)
+  cu_zones = grep('-CU',zones,value = T)
   cu_pars = pars[pars$type=='consuse',]
   sim_length = as.integer(nrow(input))
 

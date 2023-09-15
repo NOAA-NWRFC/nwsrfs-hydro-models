@@ -6,6 +6,6 @@ options	=--quiet
 
 all:
 	find . -name "$(name)*" -delete
-	cd ../model-source
-	f2py $(options) -m $(name) -c $(ffile)
-	mv $(name)* ../py-rfchydromodels/utilities
+	cd ../model-source; \
+	f2py $(options) -m $(name) -c $(ffile); \
+	mv $(name)* ../py-rfchydromodels/utilities;
