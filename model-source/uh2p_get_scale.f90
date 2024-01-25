@@ -1,5 +1,19 @@
 subroutine uh2p_get_scale_root(shape, toc, dt_hours, scale)
 
+! !     Subroutine Description
+! !     -----------------------------------
+! !     The uh2p_get_scale_root wrapper subroutine finds the
+! !     scale gamma unit hydrograph parameter given the
+! !     shape and toc parameter
+! !     Arguments
+! !     -----------------------------------
+! !     INPUTS
+! !     shape:  gamma distribution shape parameter (double)
+! !     toc:  the total length of the UH  (double)
+! !     dt_hours:  time step in hours (double)
+! !     OUTPUTS
+! !     scale:  gamma distribution scale parameter (double)
+
   use uh_optim
 
   implicit none
@@ -84,6 +98,22 @@ subroutine uh2p_len_obj_root_test(scale, shape, toc, dt_hours, obj)
 end subroutine
 
 subroutine uh2p_call(shape, scale, timestep, max_len,uh)
+
+! !     Subroutine Description
+! !     -----------------------------------
+! !     The uh2p_call subroutine is a wrapper that calculates
+! !     a gamma distibution shaped unit hydrograph given the shape
+! !     and scale parameter
+! !     Arguments
+! !     -----------------------------------
+! !     INPUTS
+! !     shape:  gamma distribution shape parameter (double)
+! !     scale:  gamma distribution scale parameter (double)
+! !     timestep:  time step in hours (double)
+! !     dt_hours:  time step in hours (double)
+! !     max_len:  Maximum length of the integer (integer)
+! !     OUTPUTS
+! !     uh:  gamma distribution shapped unit hydrograph (double array)
 
   use uh_optim
   

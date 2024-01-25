@@ -54,33 +54,38 @@ subroutine consuse(sim_length, year, month, day, &
 
 ! !        1         2         3         4         5         6         7
 
-! !     VARIABLE DEFINITIONS
+! !    Arguments
+! !     -----------------------------------
 
-! !     OPTION    - ET ESTIMATION OPTION: TEMPERATURE OR POTENTIAL ET (ALWAYS 1)
-
-! !     PET(*)     - PET TIME SERIES (MM)
-! !     QNAT(*)   - NATURAL FLOW TIME SERIES (CFSD)
-! !     QADJ(*)   - ADJUSTED FLOW TIMER SERIES (CFSD)
-! !     QDIV(*)   - DIVERSION FLOW TIME SERIES (CFSD)
-! !     QRFIN(*)  - RETURN FLOW IN TIME SERIES (CFSD)
-! !     QRFOUT(*) - RETURN FLOW OUT TIME SERIES (CFSD)
-! !     QOL(*)    - OTHER LOSSES TIME SERIES (CFSD)
-! !     QCD(*)    - CROP DEMAND TIME SERIES (CFSD)
-! !     CE(*)     - CROP EVAPOTRANSPIRATION (MM)
-! !     RFSTOR(*) - RETURN FLOW STORAGE ARRAY
-
-! !     ETD(*)     - ET DEMAND TIME SERIES (MM)
-! !     A         - CONVERSION FACTOR FROM (MM*KM^2/DAY) TO CMSD
-! !     AREA      - IRRIGATED AREA (KM^2)
-! !     EFF       - IRRIGATION EFFICIENCY (NONDIMENSIONAL)
-! !     ACCUM     - RETURN FLOW ACCUMULATION RATE (NONDIMENSIONAL)
-! !     DECAY     - RETURN FLOW DECAY RATE (NONDIMENSIONAL)
-! !     QSUM      - SUM OF NATURAL FLOW AND RETURN FLOW OUT
-! !     QADD      - SUM OF DIVERSION FLOW AND MINIMUM STREAMFLOW
-! !     MFLOW     - MINIMUM FLOW (CFSD)
-
-! !     peadj_m   - Monthly PEadj table
-! !     peadj     - PET scale factor
+! !     INPUTS
+! !     sim_length:  The number of time steps of the simulation (integer)
+! !     year: The year associated with each time step (integer array)
+! !     month:  The month associated with each time step (integer array)
+! !     day:  The day associated with each time step (integer array)
+! !     AREA_in:  Irrigated area in KM^2 (double) 
+! !     EFF_in:  Irrigation Efficiency (double)
+! !     MFLOW_in:  Minimum flow in CFSD (double)
+! !     ACCUM_in:  Return flow accumulation rate (double)
+! !     DECAY_in:  Return flow decay rate (double)
+! !     peadj:  PET scale factor (double)
+! !     PET_in:  PET Time Series in mm (double array)
+! !     QNAT_in:   Natural Flow Time Series in CFSD (double array)
+! !     peadj_m:  Monthly PEadj table (double array with length 12)
+! !     OUTPUTS
+! !     QADJ_out: Adjusted Flow Time Series in CFSD (double array)
+! !     QDIV_out:  Diversion Flow Time Series in CFSD (double array)
+! !     QRFIN_out:  Return Flow Time Series in CFSD (double array)  
+! !     QRFOUT_out:  Return Flow Time Series in CFSD (double array)
+! !     QOL_out:  Other Losses Time Series in CFSD (double array)
+! !     QCD_out: Crop Demand Time Series in CFSD (double array)
+! !     CE_out:  Crop Evapotranspiration in CFSD (double array)
+! !     RFSTOR_out:  Return Flow Storage (double array)
+! !     INTERNAL
+! !     OPTION:  ET ESTIMATION OPTION: TEMPERATURE OR POTENTIAL ET (ALWAYS 1)
+! !     ETD(*): ET DEMAND TIME SERIES (MM)
+! !     A:  CONVERSION FACTOR FROM (MM*KM^2/DAY) TO CMSD
+! !     QSUM:  SUM OF NATURAL FLOW AND RETURN FLOW OUT
+! !     QADD:  SUM OF DIVERSION FLOW AND MINIMUM STREAMFLOW
 
 
   ! ! inputs
@@ -134,7 +139,6 @@ subroutine consuse(sim_length, year, month, day, &
   QNAT=real(QNAT_in)*0.0283168
   
   ! ! Calculate daily PE_adj from monthly values
-
   peadj_m_prev(1) = peadj_m(12)
   peadj_m_prev(2:12) = peadj_m(1:11)
   peadj_m_next(12) = peadj_m(1)
@@ -173,7 +177,8 @@ subroutine consuse(sim_length, year, month, day, &
       
   end do
 
-  ! ! IRFSTOR spin-up proceedure
+  ! ! IRFSTOR spin-up proceedure.  Run Consuse for one year, searching for a stable starting starting return flow storage
+  ! ! which results in a net zero change over the year.  
 
     ! starting values
     IRFSTOR_su_start = dble(1) ! avoid divide by zero 

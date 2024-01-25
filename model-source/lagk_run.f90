@@ -16,12 +16,12 @@ subroutine lagk(n_hrus, ita, itb, &
     ! !
     ! !         pin7(p,c,ita,itb,jlag,jk,meteng,lagtbl,ktbl,ico,iinfl,ioutfl,istor)
     ! !          p:  output from pin7 subroutine.  Contains lag/q, k/q, and 
-    ! !              2*S/(DT/4)+O, O tables.  Also specifies the timestep of 
+    ! !              2*S/(DT/4)+O, O tables.  Also specifies the timestep of
     ! !              Input output
-    ! !          c:   output from pin7 subroutine. Contains initial, inflow, 
+    ! !          c:   output from pin7 subroutine. Contains initial, inflow,
     ! !               utflow, storage, and carryover values
-    ! !         ita:  Data time interval of the inflow time series (HR)
-    ! !         itb:  Data time interval of the outflow time series (HR)
+    ! !         ita:  Data time interval of the inflow time series in HR (integer)
+    ! !         itb:  Data time interval of the outflow time series HR (integer)
     ! !         jlag: If > 0 - number of pairs of Lag and Q values used to define the
     ! !               variable Lag vs Q curve.  If = 0 - constant Lag will be used
     ! !         jk:   If > 0 - number of pairs of K and Q values used to define the
@@ -43,16 +43,16 @@ subroutine lagk(n_hrus, ita, itb, &
     ! !         istor:  Initial storage
     ! !
     ! !  !!Notes: 
-    ! !           1) This routine handles all the variables which would be optimized:  
+    ! !           1) This routine handles all the variables which would be optimized:
     ! !              lagtbl, ktble, ico, iinfl, ioutfl, istor
-    ! !           2) %EDIT% This wrapper Fortran code uses parameters:  a, b c, d to develop 
+    ! !           2) %EDIT% This wrapper Fortran code uses parameters:  a, b c, d to develop
     ! !              lagtbl and ktbl.  The equation is lag/k_table_entry=a*(Q-d)**2+b*Q+c
     ! !              Q is the flow table entry
     ! !           3) The pin7.f subroutine was edited to start with a empty c/p array
-    ! !              far larger than which should be needed [p(500),c(100)].  Below is 
-    ! !              python code I used to chop the unused lines after executing the
-    ! !              subroutine. This is not necessary for flagk, and fka subroutines to
-    ! !              properly run.  I used this document, pg 1-3, as reference:
+    ! !              far larger than which should be needed [p(500),c(100)].  For anyone
+    ! !              interestd below is python code I used to chop the unused lines after
+    ! !              executing the subroutine. This is not necessary for flagk, and fka
+    ! !              subroutines to properly run.  I used this document, pg 1-3, as reference:
     ! !              https://www.weather.gov/media/owp/oh/hrl/docs/833lagk.pdf
     ! !               k_start=int(p[17])
     ! !               k_len=int(p[k_start-1])
@@ -65,9 +65,9 @@ subroutine lagk(n_hrus, ita, itb, &
     ! !             flag7(p,c,qa,qb,CO_ST,[ndt])
     ! !
     ! !            qb: downstream streamflow values (single column array) with only
-    ! !                lag applied, time step is assumed to correspond to itb.  
-    ! !            p:  output from pin7 subroutine.  Contains lag/q, k/q, and 
-    ! !                2*S/(DT/4)+O, O tables.  Also specifies the timestep of 
+    ! !                lag applied, time step is assumed to correspond to itb.
+    ! !            p:  output from pin7 subroutine.  Contains lag/q, k/q, and
+    ! !                2*S/(DT/4)+O, O tables.  Also specifies the timestep of
     ! !                Input output
     ! !            c:  output from pin7 subroutine. Contains initial, inflow, 
     ! !                outflow, storage, and carryover values.  !!NOTE!! use a copy of
@@ -85,10 +85,10 @@ subroutine lagk(n_hrus, ita, itb, &
     ! !            qc: downstream streamflow values (single column array) with both
     ! !                lag and attenuation applied, time step is assumed to correspond
     ! !                to itb.  
-    ! !            p:  output from pin7 subroutine.  Contains lag/q, k/q, and 
-    ! !                2*S/(DT/4)+O, O tables.  Also specifies the timestep of 
+    ! !            p:  output from pin7 subroutine.  Contains lag/q, k/q, and
+    ! !                2*S/(DT/4)+O, O tables.  Also specifies the timestep of
     ! !                Input output
-    ! !            c:  output from pin7 subroutine. Contains initial, inflow, 
+    ! !            c:  output from pin7 subroutine. Contains initial, inflow,
     ! !                outflow, storage, and carryover values
     ! !            qb: downstream streamflow values (single column array) with only
     ! !                lag applied, time step is assumed to correspond to itb
@@ -100,6 +100,7 @@ subroutine lagk(n_hrus, ita, itb, &
     ! !Wrapper varible:
     ! !            return_states:  Binary option to return co_st_out, inflow_st_out,storage_st_out.
     ! !                            1:  Return states, 0: Return only routed flows
+    ! !            n_hrus:  The number of time steps of the simulation (integer)
 
     ! !            UNITS CONVERSION
     ! !             1 CFS to 0.0283168 CMS

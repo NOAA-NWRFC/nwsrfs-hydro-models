@@ -4,16 +4,16 @@ subroutine chanloss(n_clmods, dt, sim_length, year, month, day, &
 
 ! !     Subroutine Description
 ! !     -----------------------------------
-! !     The Chanloss subroutine uses a modular approach for adjustment.  Each chanloss module has two primary parameters: 
+! !     The Chanloss subroutine uses a modular approach for adjustment.  Each chanloss module has two primary parameters:
 ! !     "factor" and "period".  The "factor" parameter is the adjustment to be applied to the simulation and the "period"
-! !     parameter is an 2d array which specifies the beginning and ending span of month(s) to apply the factor  The 
+! !     parameter is an 2d array which specifies the beginning and ending span of month(s) to apply the factor  The
 ! !     adjustment "factors" and "periods" for all of the chanloss modules are combined to form a single monthly adjustment
 ! !     table.  This adjustment table is applied to the flow sim input argument.  The output is the adjusted simulation.
 
 ! !     NOTE
 ! !     -----------------------------------
-! !     - The first value in the "period" argument array is the beginning of the period and the second is the end of the 
-! !       period.  If the first value is greater than the second (EX:  [11,2]), the period will cross a year (EX CONT: 
+! !     - The first value in the "period" argument array is the beginning of the period and the second is the end of the
+! !       period.  If the first value is greater than the second (EX:  [11,2]), the period will cross a year (EX CONT:
 ! !       factor will be applied to Nov, Dec, Jan, Feb)
 ! !     -If more than one Chanloss modules periods share months, the average factor between the modules are used for those
 ! !      months.
@@ -29,14 +29,14 @@ subroutine chanloss(n_clmods, dt, sim_length, year, month, day, &
 ! !     sim_length:  The number of time steps of the simulation (integer)
 ! !     year:  The year associated with each time step (integer array)
 ! !     month:  The month associated with each time step (integer array)
-! !     day:  The day associatede with each time step (integer array)
+! !     day:  The day associated with each time step (integer array)
 ! !     hour:  The hour associated with each time step (integer array)
 ! !     factor:  The adjustment factor for each module (double array)
 ! !     period:  The beginning and ending month that the factor is applied for each module (integer array)
 ! !     cl_type:  integer.  1=varp, 2=varc
 ! !     sim:  Simulated streamflow (double array)
 ! !     OUTPUTS
-! !     sim_ad j:  Simulated streamflow adjusted by the factors/periods of all the Chanloss modules (double array)
+! !     sim_adj:  Simulated streamflow adjusted by the factors/periods of all the Chanloss modules (double array)
 ! !        1         2         3         4         5         6         7
 
   ! ! Inputs
@@ -53,13 +53,13 @@ subroutine chanloss(n_clmods, dt, sim_length, year, month, day, &
   double precision, dimension(12):: cl_adj_m,cl_adj_m_prev,cl_adj_m_next
   integer, dimension(12,n_clmods):: cl_adj_lookup
 
-  ! ! Output 
+  ! ! Output
   double precision, dimension(sim_length), intent(out):: sim_adj
 
   ! ! Lookup Tables
-  mdays =      (/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /) 
-  mdays_prev = (/ 31, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30 /) 
-  
+  mdays =      (/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /)
+  mdays_prev = (/ 31, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30 /)
+
   dt_hours = dt/3600
 
   ! do i=1,2
@@ -67,18 +67,18 @@ subroutine chanloss(n_clmods, dt, sim_length, year, month, day, &
   ! end do
 
   !! 1) Create monthly adjustment table
-  
+
   !! 1a) Create adjustment table lookup
-  
+
   !! Initially set all value in lookup table to 0
   cl_adj_lookup=0
 
   !! Loop through each chanloss module and switch the appropriate row in the lookup table from 0 to 1 to designate
   !! it as a month to apply that module's factor
   do n = 1, n_clmods
-    
-    !! Grab the beginning and ending month for the period 
-    !! If either of those parameter values are outside a value of 1-12 
+
+    !! Grab the beginning and ending month for the period
+    !! If either of those parameter values are outside a value of 1-12
     !! Set it to the closest value
     first_period=int(period(1,n))
     second_period=int(period(2,n))
@@ -87,7 +87,7 @@ subroutine chanloss(n_clmods, dt, sim_length, year, month, day, &
     if(first_period > 12) first_period = 12
     if(second_period < 1) second_period = 1
     if(second_period > 12) second_period = 12
-    
+
     !! If first_period>second_period then have the adjustment span across a year
     if (first_period<=second_period) then
       cl_adj_lookup(first_period:second_period,n)=1
@@ -100,7 +100,7 @@ subroutine chanloss(n_clmods, dt, sim_length, year, month, day, &
   ! do i=1,n_clmods
   !   write(*,'(12i2)') cl_adj_lookup(:,i)
   ! end do
-  
+
   !! 1b) Create adjustment table
   !!if cl_type==1 set the default to 1 for varp, otherwise set to 0 for varc
   if(cl_type==1)then
@@ -108,7 +108,7 @@ subroutine chanloss(n_clmods, dt, sim_length, year, month, day, &
   else if(cl_type==2) then
     cl_adj_m=0
   end if
-  
+
   !! This loop ensures that for modules which share months, the average factor is used amongst the modules
   !! Loop through each month
   do j = 1, 12
@@ -126,9 +126,9 @@ subroutine chanloss(n_clmods, dt, sim_length, year, month, day, &
     if (num_fa>=1) then
       cl_adj_m(j)=sum_fa/dble(num_fa)
     end if
-  end do    
+  end do
 
-  ! write(*,'(12f6.3)') cl_adj_m 
+  ! write(*,'(12f6.3)') cl_adj_m
 
   !! 2) Use monthly adjustment table to interpolate the adjustment factor for each time step
 
@@ -161,14 +161,14 @@ subroutine chanloss(n_clmods, dt, sim_length, year, month, day, &
     !! the equation for interpolation depends on if the time step is before or after the 16th
     if(decimal_day >= interp_day)then
       dayn = dble(mdays(mo))
-      dayi = decimal_day - interp_day 
+      dayi = decimal_day - interp_day
       cl_adj_step = cl_adj_m(mo) + dayi/dayn*(cl_adj_m_next(mo)-cl_adj_m(mo))
-    else 
+    else
       dayn = dble(mdays_prev(mo))
-      dayi = decimal_day - interp_day + mdays_prev(mo) 
+      dayi = decimal_day - interp_day + mdays_prev(mo)
       cl_adj_step = cl_adj_m_prev(mo) + dayi/dayn*(cl_adj_m(mo)-cl_adj_m_prev(mo))
-    end if 
-    
+    end if
+
     !! 2b) Apply the adjustment factor
     !!if cl_type==1 then use a varp adjustment, otherwise use a varc adjustment
     if(cl_type==1)then
@@ -178,13 +178,13 @@ subroutine chanloss(n_clmods, dt, sim_length, year, month, day, &
     else
       q_adj = sim(i)
     end if
-    
+
     !!if the adjusted flow is less than zero, then set output to near zero
     if(q_adj>=0)then
       sim_adj(i) = q_adj
     else
       sim_adj(i) = 0.000001d0
     end if
-    
+
   end do
 end subroutine

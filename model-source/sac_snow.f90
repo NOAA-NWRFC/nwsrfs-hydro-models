@@ -10,6 +10,39 @@ subroutine sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
     roimp, sdro, ssur, sif, bfs, bfp, &
     swe, aesc, neghs, liqw, raim, psfall, prain)
 
+! !     Subroutine Description
+! !     -----------------------------------
+! !     The sacsnow subroutine is a wrapper to run SNOW17 and
+! !     SAC-SMA models, returning total channel inflow and
+! !     optionally model states
+! !
+! !     Arguments
+! !     -----------------------------------
+! !     INPUTS
+! !     n_hrus:  Number of zones(integer)
+! !     dt:  model timestep in seconds (integer)
+! !     sim_length: length of simulation in days (integer)
+! !     year:  The year associated with each time step (integer array)
+! !     month:  The month associated with each time step (integer array)
+! !     day:  The day associated with each time step (integer array)
+! !     hour:  The hour associated with each time step (integer array)
+! !     latitude: centroid latitude for each zone in decimal degrees (double array)
+! !     elev:  mean elevation for each zone in meters (double array)
+! !     sac_pars: (double array): SAC-SMA parameters for each zone.  See line below for order of parameters (double array)
+! !     uztwm, uzfwm, lztwm, lzfpm, lzfsm, adimp, uzk, lzpk, lzsk, zperc, rexp, pctim, pfree, riva, side, rserv, efc
+! !     peadj, pxadj: (double array):  zone specific etd (peadj) and map (pxadj) multiplication factor
+! !     init_swe: (double array):  zone specific initial SWE in mm (double array)
+! !     snow_pars:  (double array): Snow17 parameters for each zone.  See line below for order of parameters (double array)
+! !     scf, mfmax, mfmin, uadj, si, nmf, tipm, mbase, plwhc, daygm, adc_a, adc_b, adc_c,
+! !     map, ptps, mat,etd: (double array):  precipitation as mm, precent precipitation as snow as decimal,
+! !                                          temperature as DegC, and evaporation demand as mm (double array)
+! !     return_states: option to return SNOW17 and SAC-SMA states array or return TCI only(logical)
+! !     OUTPUTS
+! !     tci:  total channel inflow for each zone in mm (double array)
+! !     aet:  actual evapotranspiration for each zone as mm (double array)
+! !     uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc:  SAC-SMA content or state for each zone as mm (double array)
+! !     roimp, sdro, ssur, sif, bfs, bfp:  tci contribution from each SAC-SMA runoff source form each zone
+! !     swe, aesc, neghs, liqw, raim, psfall, prain:  Snow17 state for each zone (double array)
 
     ! ! zone info 
     ! latitude, elev, &
