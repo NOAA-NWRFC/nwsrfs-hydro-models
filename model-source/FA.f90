@@ -7,15 +7,32 @@ subroutine  fa_ts(n_hrus, dt, sim_length, year, month, day, hour, &
     map, ptps, mat, &
     map_adj, mat_adj, pet_adj, ptps_adj, &
     map_fa, mat_fa, ptps_fa, pet_fa, etd)
-  
+
   !! Calculates a forcing adjusted timeseries for MAP, MAT, PTPS, and PET
-  
+  !! For each forcing type, 12 monthly adjustment factors are derived for each month
+  !! The adjustment factor is applied to the 16th of each month, and days in between
+  !! are interpolated using the neighboring months factors.  The same monthly adjustement
+  !! is applied to all zones for a forcing type.
+
+  !! To establish the adjustment limits, the monthly basin climo is calculated using the provided 
+  !! input forcing datasets.  Alternatively, the climo can be provided as an input.  
+  !! For each forcing type, the monthly climo is then adjusted using the following 4 parameters.  
+  !! px_adj:  Multiplication factor to apply direction to the climo
+  !! p_redist:  The percentage of the annual forcing to redistribute
+  !! std:  Controls the weighting factor on how the p_redist is partioned
+  !!       out to each month.  Larger number means it is evenly distributed to all months.
+  !!       Smaller number means the distribution is favored to months with larger monthly totals
+  !! shift:  shift the climatological curve by x numbers of days in the positive or negative direction.
+
+  !! Monthly adjustement limits are also provided as input for each forcing type.  The adjusted monthly climo
+  !! using the 4 parameters described above cannot exceed those limits.
+
   use utilities
   implicit none
 
-  ! this code is currently not set up to do any timestep less than 1 hour, 
+  ! this code is currently not set up to do any timestep less than 1 hour,
   ! nor could it do fractional hour timesteps.
-  
+
   ! ! PARAMETERS ! !
   double precision, parameter:: pi=3.141592653589793238462643383279502884197d0
   double precision, parameter:: sec_hour = 3600.     !seconds in an hour
