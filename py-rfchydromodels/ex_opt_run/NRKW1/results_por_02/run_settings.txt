@@ -1,0 +1,110 @@
+Basin: NRKW1
+Input Directory: runs/NWWASH/2zone
+Objective Function: nse_lognse
+Optimizer: dds
+Cores Utilized for Parallelization: 22
+Cross-Validation: FALSE
+Period of Record Run: TRUE
+Run Time: 30.2min
+
+ --PARAMETER LIMITS-- 
+[90m# A tibble: 97 x 4[39m
+   name                 zone        lower     upper
+   [3m[90m<chr>[39m[23m                [3m[90m<chr>[39m[23m       [3m[90m<dbl>[39m[23m     [3m[90m<dbl>[39m[23m
+[90m 1[39m init_co_MFNW1        MFNW1   105.       419.    
+[90m 2[39m init_if_MFNW1        MFNW1   105.       419.    
+[90m 3[39m init_of_MFNW1        MFNW1   105.       419.    
+[90m 4[39m init_stor_MFNW1      MFNW1   105.       419.    
+[90m 5[39m ktbl_a_MFNW1         MFNW1    -[31m1[39m          1     
+[90m 6[39m ktbl_b_MFNW1         MFNW1    -[31m1[39m          1     
+[90m 7[39m ktbl_c_MFNW1         MFNW1     0.3        0.7   
+[90m 8[39m ktbl_d_MFNW1         MFNW1     0          1     
+[90m 9[39m lagtbl_a_MFNW1       MFNW1    -[31m1[39m          0     
+[90m10[39m lagtbl_b_MFNW1       MFNW1    -[31m1[39m          0     
+[90m11[39m lagtbl_c_MFNW1       MFNW1     0.1        1     
+[90m12[39m init_co_NFNW1        NFNW1   161.       644.    
+[90m13[39m init_if_NFNW1        NFNW1   161.       644.    
+[90m14[39m init_of_NFNW1        NFNW1   161.       644.    
+[90m15[39m init_stor_NFNW1      NFNW1   161.       644.    
+[90m16[39m ktbl_a_NFNW1         NFNW1    -[31m1[39m          1     
+[90m17[39m ktbl_b_NFNW1         NFNW1    -[31m1[39m          1     
+[90m18[39m ktbl_c_NFNW1         NFNW1     0.3        0.7   
+[90m19[39m ktbl_d_NFNW1         NFNW1     0          1     
+[90m20[39m lagtbl_a_NFNW1       NFNW1    -[31m1[39m          0     
+[90m21[39m lagtbl_b_NFNW1       NFNW1    -[31m1[39m          0     
+[90m22[39m lagtbl_c_NFNW1       NFNW1     0.1        1     
+[90m23[39m map_p_redist_NRKW1   NRKW1     0          0.5   
+[90m24[39m map_scale_NRKW1      NRKW1     0.5        1.5   
+[90m25[39m map_shift_NRKW1      NRKW1   -[31m15[39m         15     
+[90m26[39m map_std_NRKW1        NRKW1     0.1       20     
+[90m27[39m mat_p_redist_NRKW1   NRKW1     0          0.5   
+[90m28[39m mat_scale_NRKW1      NRKW1     0.5        1.5   
+[90m29[39m mat_shift_NRKW1      NRKW1   -[31m15[39m         15     
+[90m30[39m mat_std_NRKW1        NRKW1     0.1       20     
+[90m31[39m pet_p_redist_NRKW1   NRKW1     0          0.5   
+[90m32[39m pet_scale_NRKW1      NRKW1     0.5        1.5   
+[90m33[39m pet_shift_NRKW1      NRKW1   -[31m15[39m         15     
+[90m34[39m pet_std_NRKW1        NRKW1     0.1       20     
+[90m35[39m ptps_p_redist_NRKW1  NRKW1     0          0.5   
+[90m36[39m ptps_scale_NRKW1     NRKW1     0.5        1.5   
+[90m37[39m ptps_shift_NRKW1     NRKW1   -[31m15[39m         15     
+[90m38[39m ptps_std_NRKW1       NRKW1     0.1       20     
+[90m39[39m adc_a_NRKW1-1        NRKW1-1   0          0.25  
+[90m40[39m adc_b_NRKW1-1        NRKW1-1   0.05      50     
+[90m41[39m adc_c_NRKW1-1        NRKW1-1   0.5       50     
+[90m42[39m adimp_NRKW1-1        NRKW1-1   0          0.2   
+[90m43[39m lzfpm_NRKW1-1        NRKW1-1  78.5      552.    
+[90m44[39m lzfsm_NRKW1-1        NRKW1-1  31.2      114.    
+[90m45[39m lzpk_NRKW1-1         NRKW1-1   0.004[4m6[24m[4m5[24m    0.012[4m4[24m
+[90m46[39m lzsk_NRKW1-1         NRKW1-1   0.074      0.206 
+[90m47[39m lztwm_NRKW1-1        NRKW1-1  74        206     
+[90m48[39m mfmax_NRKW1-1        NRKW1-1   0.5        1.04  
+[90m49[39m mfmin_NRKW1-1        NRKW1-1   0.1        0.35  
+[90m50[39m pctim_NRKW1-1        NRKW1-1   0          0.05  
+[90m51[39m pfree_NRKW1-1        NRKW1-1   0.2        0.6   
+[90m52[39m rexp_NRKW1-1         NRKW1-1   1.1        3.9   
+[90m53[39m riva_NRKW1-1         NRKW1-1   0          0.2   
+[90m54[39m scf_NRKW1-1          NRKW1-1   0.7        1.5   
+[90m55[39m si_NRKW1-1           NRKW1-1   1       [4m5[24m000     
+[90m56[39m uadj_NRKW1-1         NRKW1-1   0.05       0.2   
+[90m57[39m unit_shape_NRKW1-1   NRKW1-1   1.01       3.3   
+[90m58[39m unit_toc_adj_NRKW1-1 NRKW1-1   0.75       1.25  
+[90m59[39m uzfwm_NRKW1-1        NRKW1-1  17.2       77.8   
+[90m60[39m uzk_NRKW1-1          NRKW1-1   0.24       0.46  
+[90m61[39m uztwm_NRKW1-1        NRKW1-1  25         66.8   
+[90m62[39m zperc_NRKW1-1        NRKW1-1   1         91.2   
+[90m63[39m adc_a_NRKW1-2        NRKW1-2   0          0.25  
+[90m64[39m adc_b_NRKW1-2        NRKW1-2   0.05      50     
+[90m65[39m adc_c_NRKW1-2        NRKW1-2   0.5       50     
+[90m66[39m adimp_NRKW1-2        NRKW1-2   0          0.2   
+[90m67[39m lzfpm_NRKW1-2        NRKW1-2  78.5      552.    
+[90m68[39m lzfsm_NRKW1-2        NRKW1-2  31.2      114.    
+[90m69[39m lzpk_NRKW1-2         NRKW1-2   0.004[4m6[24m[4m5[24m    0.012[4m4[24m
+[90m70[39m lzsk_NRKW1-2         NRKW1-2   0.074      0.206 
+[90m71[39m lztwm_NRKW1-2        NRKW1-2  74        206     
+[90m72[39m mfmax_NRKW1-2        NRKW1-2   0.5        1.04  
+[90m73[39m mfmin_NRKW1-2        NRKW1-2   0.1        0.35  
+[90m74[39m pctim_NRKW1-2        NRKW1-2   0          0.05  
+[90m75[39m pfree_NRKW1-2        NRKW1-2   0.2        0.6   
+[90m76[39m rexp_NRKW1-2         NRKW1-2   1.1        3.9   
+[90m77[39m riva_NRKW1-2         NRKW1-2   0          0.2   
+[90m78[39m scf_NRKW1-2          NRKW1-2   0.7        1.5   
+[90m79[39m si_NRKW1-2           NRKW1-2   1       [4m5[24m000     
+[90m80[39m uadj_NRKW1-2         NRKW1-2   0.05       0.2   
+[90m81[39m unit_shape_NRKW1-2   NRKW1-2   1.01       3.3   
+[90m82[39m unit_toc_adj_NRKW1-2 NRKW1-2   0.75       1.25  
+[90m83[39m uzfwm_NRKW1-2        NRKW1-2  17.2       77.8   
+[90m84[39m uzk_NRKW1-2          NRKW1-2   0.24       0.46  
+[90m85[39m uztwm_NRKW1-2        NRKW1-2  25         66.8   
+[90m86[39m zperc_NRKW1-2        NRKW1-2   1         91.2   
+[90m87[39m init_co_NSSW1        NSSW1    66.3      265.    
+[90m88[39m init_if_NSSW1        NSSW1    66.3      265.    
+[90m89[39m init_of_NSSW1        NSSW1    66.3      265.    
+[90m90[39m init_stor_NSSW1      NSSW1    66.3      265.    
+[90m91[39m ktbl_a_NSSW1         NSSW1    -[31m1[39m          1     
+[90m92[39m ktbl_b_NSSW1         NSSW1    -[31m1[39m          1     
+[90m93[39m ktbl_c_NSSW1         NSSW1     0.3        0.7   
+[90m94[39m ktbl_d_NSSW1         NSSW1     0          1     
+[90m95[39m lagtbl_a_NSSW1       NSSW1    -[31m1[39m          0     
+[90m96[39m lagtbl_b_NSSW1       NSSW1    -[31m1[39m          0     
+[90m97[39m lagtbl_c_NSSW1       NSSW1     0.1        1     

@@ -1,0 +1,126 @@
+Objective Function Score: -189.692
+ 
+ --STATISTICS--  
+             [,1]
+ME         -43.28
+MAE        382.47
+MSE     521662.57
+RMSE       722.26
+NRMSE %     24.50
+PBIAS %     -1.20
+RSR          0.24
+rSD          0.94
+NSE          0.94
+mNSE         0.80
+rNSE         0.97
+d            0.98
+md           0.90
+rd           0.99
+cp           0.86
+r            0.97
+R2           0.94
+bR2          0.90
+KGE          0.93
+VE           0.89
+
+ --OPTIMAL PARAMETERS--  
+# A tibble: 97 x 2
+   `names(p_optimal)`     p_optimal
+   <chr>                      <dbl>
+ 1 adc_a_NRKW1-1           0.106   
+ 2 adc_a_NRKW1-2           0.0375  
+ 3 adc_b_NRKW1-1          44.5     
+ 4 adc_b_NRKW1-2           0.252   
+ 5 adc_c_NRKW1-1           3.82    
+ 6 adc_c_NRKW1-2           1.13    
+ 7 adimp_NRKW1-1           0.0232  
+ 8 adimp_NRKW1-2           0.0116  
+ 9 init_co_MFNW1         247.      
+10 init_co_NFNW1         637.      
+11 init_co_NSSW1         265.      
+12 init_if_MFNW1         112.      
+13 init_if_NFNW1         184.      
+14 init_if_NSSW1         205.      
+15 init_of_MFNW1         392.      
+16 init_of_NFNW1         310.      
+17 init_of_NSSW1         249.      
+18 init_stor_MFNW1       114.      
+19 init_stor_NFNW1       387.      
+20 init_stor_NSSW1        75.1     
+21 ktbl_a_MFNW1           -0.716   
+22 ktbl_a_NFNW1           -0.680   
+23 ktbl_a_NSSW1           -0.817   
+24 ktbl_b_MFNW1           -0.151   
+25 ktbl_b_NFNW1           -0.558   
+26 ktbl_b_NSSW1           -0.660   
+27 ktbl_c_MFNW1            0.369   
+28 ktbl_c_NFNW1            0.412   
+29 ktbl_c_NSSW1            0.576   
+30 ktbl_d_MFNW1            0.845   
+31 ktbl_d_NFNW1            0.894   
+32 ktbl_d_NSSW1            0.963   
+33 lagtbl_a_MFNW1         -0.354   
+34 lagtbl_a_NFNW1         -0.353   
+35 lagtbl_a_NSSW1         -0.852   
+36 lagtbl_b_MFNW1         -0.527   
+37 lagtbl_b_NFNW1         -0.354   
+38 lagtbl_b_NSSW1         -0.964   
+39 lagtbl_c_MFNW1          0.132   
+40 lagtbl_c_NFNW1          0.131   
+41 lagtbl_c_NSSW1          0.104   
+42 lzfpm_NRKW1-1         534.      
+43 lzfpm_NRKW1-2         549.      
+44 lzfsm_NRKW1-1         106.      
+45 lzfsm_NRKW1-2         113.      
+46 lzpk_NRKW1-1            0.00515 
+47 lzpk_NRKW1-2            0.0112  
+48 lzsk_NRKW1-1            0.146   
+49 lzsk_NRKW1-2            0.206   
+50 lztwm_NRKW1-1          76.5     
+51 lztwm_NRKW1-2          75.1     
+52 map_p_redist_NRKW1      0.0395  
+53 map_scale_NRKW1         0.865   
+54 map_shift_NRKW1         1.07    
+55 map_std_NRKW1           0.762   
+56 mat_p_redist_NRKW1      0.0230  
+57 mat_scale_NRKW1         0.508   
+58 mat_shift_NRKW1        -4.47    
+59 mat_std_NRKW1           8.42    
+60 mfmax_NRKW1-1           1.02    
+61 mfmax_NRKW1-2           0.570   
+62 mfmin_NRKW1-1           0.310   
+63 mfmin_NRKW1-2           0.104   
+64 pctim_NRKW1-1           0.000714
+65 pctim_NRKW1-2           0.0201  
+66 pet_p_redist_NRKW1      0.462   
+67 pet_scale_NRKW1         1.08    
+68 pet_shift_NRKW1       -12.3     
+69 pet_std_NRKW1           9.40    
+70 pfree_NRKW1-1           0.254   
+71 pfree_NRKW1-2           0.526   
+72 ptps_p_redist_NRKW1     0.178   
+73 ptps_scale_NRKW1        1.12    
+74 ptps_shift_NRKW1      -12.7     
+75 ptps_std_NRKW1          3.98    
+76 rexp_NRKW1-1            1.58    
+77 rexp_NRKW1-2            2.32    
+78 riva_NRKW1-1            0.00271 
+79 riva_NRKW1-2            0.00213 
+80 scf_NRKW1-1             1.38    
+81 scf_NRKW1-2             1.39    
+82 si_NRKW1-1           1257.      
+83 si_NRKW1-2            494.      
+84 uadj_NRKW1-1            0.193   
+85 uadj_NRKW1-2            0.0513  
+86 unit_shape_NRKW1-1      1.21    
+87 unit_shape_NRKW1-2      1.02    
+88 unit_toc_adj_NRKW1-1    0.906   
+89 unit_toc_adj_NRKW1-2    0.983   
+90 uzfwm_NRKW1-1          64.0     
+91 uzfwm_NRKW1-2          76.9     
+92 uzk_NRKW1-1             0.456   
+93 uzk_NRKW1-2             0.455   
+94 uztwm_NRKW1-1          25.1     
+95 uztwm_NRKW1-2          25.1     
+96 zperc_NRKW1-1          38.5     
+97 zperc_NRKW1-2          40.7     
