@@ -1,5 +1,5 @@
 subroutine chanloss(n_clmods, dt, sim_length, year, month, day, &
-    factor, period, cl_type, &
+    factor, period, cl_type, min_q, &
     sim, sim_adj)
 
 ! !     Subroutine Description
@@ -34,6 +34,7 @@ subroutine chanloss(n_clmods, dt, sim_length, year, month, day, &
 ! !     factor:  The adjustment factor for each module (double array)
 ! !     period:  The beginning and ending month that the factor is applied for each module (integer array)
 ! !     cl_type:  integer.  1=varp, 2=varc
+! !     min_q:  The minimum allowable streamflow (double)
 ! !     sim:  Simulated streamflow (double array)
 ! !     OUTPUTS
 ! !     sim_adj:  Simulated streamflow adjusted by the factors/periods of all the Chanloss modules (double array)
@@ -41,6 +42,7 @@ subroutine chanloss(n_clmods, dt, sim_length, year, month, day, &
 
   ! ! Inputs
   integer, intent(in):: n_clmods, dt, sim_length, cl_type
+  double precision, intent(in):: min_q
   integer, dimension(sim_length), intent(in):: year, month, day
   double precision, dimension(n_clmods), intent(in):: factor
   integer, dimension(2,n_clmods), intent(in):: period
@@ -179,12 +181,8 @@ subroutine chanloss(n_clmods, dt, sim_length, year, month, day, &
       q_adj = sim(i)
     end if
 
-    !!if the adjusted flow is less than zero, then set output to near zero
-    if(q_adj>=0)then
-      sim_adj(i) = q_adj
-    else
-      sim_adj(i) = 0.000001d0
-    end if
+    !!if the adjusted flow is less than minimum flow, set to minimum flow (but never less than zero)    
+    sim_adj(i) = MAX(q_adj,min_q,0.000001d0)
 
   end do
 end subroutine

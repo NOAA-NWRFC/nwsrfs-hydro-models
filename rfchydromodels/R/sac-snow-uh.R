@@ -494,7 +494,7 @@ uh <- function(dt_hours, tci, pars, sum_zones = TRUE, start_of_timestep = TRUE, 
   # then the instantaneous output occurs at the end of the timestep
   # so we need to shift the output ahead by one timestep relative
   # to the focings
-  # !!CONSIDER REMOVING THE FORCING DATA BEGINNNING OF TIMESTEP ADJUSTMENT, SO THIS 
+  # !!CONSIDER REMOVING THE FORCING DATA BEGINNNING OF TIMESTEP ADJUSTMENT, SO THIS
   # STOP CAN REMOVED AS WELL!!
   if(start_of_timestep){
     if(sum_zones){
@@ -529,6 +529,7 @@ chanloss <- function(flow, forcing, dt_hours, pars){
 
   n_clmods = pars[pars$name == 'n_clmods',]$value[1]
   cl_type = pars[pars$name == 'cl_type',]$value[1]
+  cl_min_q = pars[pars$name == 'cl_min_q',]$value[1]
   if(is.na(cl_type))cl_type=1
 
   if(is.na(n_clmods) | n_clmods <= 0){
@@ -554,6 +555,7 @@ chanloss <- function(flow, forcing, dt_hours, pars){
                       factor = cl_factors,
                       period = cl_periods,
                       cl_type = as.integer(cl_type),
+                      min_q = as.numeric(cl_min_q),
                       sim = flow[1:sim_length],
                       sim_adj = numeric(sim_length))
     return(cl_flow$sim_adj)
