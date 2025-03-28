@@ -1,10 +1,11 @@
+#!/usr/bin/env python
+
 #############NOTE####################
 #Prior to running this code the FORTRAN code must be compiled using
 #using the Make file located in utilities.
 #The make file requires a python environment with Numpy installed
 
 import os
-
 from utilities.model import *
 from utilities.model_prep import *
 
@@ -19,4 +20,7 @@ forcing, pars, upflow, flow =nwsrfs_prep(run_dir,'results_por_02')
 sim = Model(forcing,pars,upflow,flow)
 
 #Look through the model.py, many more call than this.  However this is the one which will return the total flow
-sim.run_all()
+nwsrfs_run = sim.run_all()
+
+#Create example csv
+nwsrfs_run.to_csv(os.path.join(folder,'EXAMPLE-NRKW1_Sim.csv'))
