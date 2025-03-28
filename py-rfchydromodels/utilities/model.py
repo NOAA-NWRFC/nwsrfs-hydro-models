@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from scipy.special import gamma
 import utilities.model_src as s
-
+#import pdb; pdb.set_trace()
 
 class Model:
 
@@ -15,7 +15,7 @@ class Model:
 
         self.pars = pars.sort_values(['name', 'zone'])
         self.obs = obs
-        
+
         zones = self.pars.loc[(self.pars['zone'].str.contains('-'))|(self.pars['zone'].str.contains('_'))].zone.unique()
 
         n_zones = len(zones)
@@ -45,22 +45,23 @@ class Model:
         self.uptribs_name=uptribs_name
         self.n_uptribs=n_uptribs
 
-        #Rename Zones for each CL Module.  But do not rename cl_type or n_clmods
-        cl_logic=(pars.type=='chanloss')&((pars.name!='cl_type')&(pars.name!='n_clmods'))
+        #Rename Zones for each CL Module.  But do not rename cl_type, n_clmods,min_q
+        cl_logic=(pars.type=='chanloss')&((pars.name!='cl_type')&(pars.name!='n_clmods')&(pars.name!='cl_min_q'))
         self.pars.loc[cl_logic,['zone']]=self.pars.loc[cl_logic].zone + \
                                 '_CL'+ self.pars.loc[cl_logic].name.str.split('_').str[-1]
         
         #n_clmods pars row now unnecessary
         self.pars.drop(self.pars.loc[self.pars.name=='n_clmods'].index,inplace=True)
 
-        #Remove the CL module name from the name columns
-        self.pars.loc[self.pars.type=='chanloss',['name']]=self.pars.loc[self.pars.type=='chanloss'].name.str.split('_').str[:-1].str.join('_')
+        #Remove the CL module name from the name columns, except for cl_min_q
+        self.pars.loc[(self.pars.type=='chanloss')&(pars.name!='cl_min_q'),['name']]= \
+                                self.pars.loc[(self.pars.type=='chanloss')&(pars.name!='cl_min_q')].name.str.split('_').str[:-1].str.join('_')
         #Correct the cl_type name
         self.pars.loc[self.pars.p_name.str.contains('cl_type'),['name']]='cl_type'
         
         #Catalog CHANLOSS info if present
         if self.pars.zone.str.contains('_CL').any():
-            n_chanloss=len(self.pars.loc[self.pars.type=='chanloss'].zone.unique())
+            n_chanloss=len(self.pars.loc[(self.pars.type=='chanloss')&(self.pars.name!='cl_type')].zone.unique())
         else:
             n_chanloss=0
         self.n_chanloss=n_chanloss
@@ -78,12 +79,17 @@ class Model:
         self.hour = forcings[0]['hour'].values
 
         #Calculate forcing using dedicated model class
-        self.forcings=Forcings(forcings,self.pars)
-        self.forcings.fa_ts(self.dt_seconds,self.dates)
-
-        #Calculate the UH using a dedicated model class
-        self.uh=UH(self.pars,self.dt_hours)
         
+        if self.n_zones>0:
+            self.forcings=Forcings(forcings,self.pars)
+            self.forcings.fa_ts(self.dt_seconds,self.dates)
+
+            #Calculate the UH using a dedicated model class
+            self.uh=UH(self.pars,self.dt_hours)
+        else:
+            self.forcings = np.nan
+            self.uh = np.nan
+
         #format peadj for consuse calculation 
         self.peadj_cu = np.full([12, n_consuse], np.nan)
         for i in range(12):
@@ -97,6 +103,8 @@ class Model:
         self.uptribs = np.full([sim_length, max(1,n_uptribs)], np.nan)
         
         for i in range(len(uptribs_name)):
+            #Reindex so the length of the routing reach is equal the forcing length.  Simple fill extrapolation is used as needed
+            route[i] = route[i].reindex(index=forcings[0].index).ffill().bfill()
             self.uptribs[:, i] = route[i]['flow_cfs'].astype('double').to_numpy()
         self.uptribs=np.asfortranarray(self.uptribs)
         
@@ -108,230 +116,251 @@ class Model:
                 self.p[par_type][par] = self.pars.loc[(self.pars.type==par_type)&
                     (self.pars['name'] == par)].sort_values(by='zone')['value'].to_numpy()
         
-        self.sac_pars = np.concatenate([[self.p['sac']['uztwm']], [self.p['sac']['uzfwm']], [self.p['sac']['lztwm']],
-                                    [self.p['sac']['lzfpm']],[self.p['sac']['lzfsm']], [self.p['sac']['adimp']],
-                                    [self.p['sac']['uzk']],[self.p['sac']['lzpk']], [self.p['sac']['lzsk']],
-                                    [self.p['sac']['zperc']],[self.p['sac']['rexp']], [self.p['sac']['pctim']],
-                                    [self.p['sac']['pfree']],[self.p['sac']['riva']], [self.p['sac']['side']],
-                                    [self.p['sac']['rserv']],[self.p['sac']['efc']]
-                                    ],axis=0).astype('double')
-        self.sac_pars=np.asfortranarray(self.sac_pars)
-        
-        self.snow_pars = np.concatenate([[self.p['snow']['scf']], [self.p['snow']['mfmax']], [self.p['snow']['mfmin']],
-                            [self.p['snow']['uadj']],[self.p['snow']['si']], [self.p['snow']['nmf']],
-                            [self.p['snow']['tipm']],[self.p['snow']['mbase']], [self.p['snow']['plwhc']],
-                            [self.p['snow']['daygm']],[self.p['snow']['adc_a']], [self.p['snow']['adc_b']],
-                            [self.p['snow']['adc_c']]
-                            ],axis=0).astype('double')
-        self.snow_pars=np.asfortranarray(self.snow_pars)
+
+        if self.n_zones>0:
+            self.sac_pars = np.concatenate([[self.p['sac']['uztwm']], [self.p['sac']['uzfwm']], [self.p['sac']['lztwm']],
+                                        [self.p['sac']['lzfpm']],[self.p['sac']['lzfsm']], [self.p['sac']['adimp']],
+                                        [self.p['sac']['uzk']],[self.p['sac']['lzpk']], [self.p['sac']['lzsk']],
+                                        [self.p['sac']['zperc']],[self.p['sac']['rexp']], [self.p['sac']['pctim']],
+                                        [self.p['sac']['pfree']],[self.p['sac']['riva']], [self.p['sac']['side']],
+                                        [self.p['sac']['rserv']],[self.p['sac']['efc']]
+                                        ],axis=0).astype('double')
+            self.sac_pars=np.asfortranarray(self.sac_pars)
+            
+            self.snow_pars = np.concatenate([[self.p['snow']['scf']], [self.p['snow']['mfmax']], [self.p['snow']['mfmin']],
+                                [self.p['snow']['uadj']],[self.p['snow']['si']], [self.p['snow']['nmf']],
+                                [self.p['snow']['tipm']],[self.p['snow']['mbase']], [self.p['snow']['plwhc']],
+                                [self.p['snow']['daygm']],[self.p['snow']['adc_a']], [self.p['snow']['adc_b']],
+                                [self.p['snow']['adc_c']]
+                                ],axis=0).astype('double')
+            self.snow_pars=np.asfortranarray(self.snow_pars)
+        else:
+            self.sac_pars = np.nan 
+            self.snow_pars = np.nan
 
     def update_pars(self, pars):
         self.pars = pars
 
     def lagk_run(self,n=None): 
         
-        if n is None:
-            n=list(range(self.n_uptribs))
-        elif isinstance(n, int):
-            n=[n]
-            
-        p = self.p['lagk']
+        if self.n_uptribs>0:
+            if n is None:
+                n=list(range(self.n_uptribs))
+            elif isinstance(n, int):
+                n=[n]
                 
-        lagk=s.lagk(int(self.dt_hours),int(self.dt_hours),
-                    p['lagtbl_a'][n], p['lagtbl_b'][n], p['lagtbl_c'][n], p['lagtbl_d'][n],
-                    p['ktbl_a'][n], p['ktbl_b'][n], p['ktbl_c'][n], p['ktbl_d'][n],
-                    p['lagk_lagmax'][n], p['lagk_kmax'][n], p['lagk_qmax'][n],
-                    p['lagk_lagmin'][n], p['lagk_kmin'][n], p['lagk_qmin'][n],
-                    p['init_co'][n], p['init_if'][n], p['init_of'][n], p['init_stor'][n],
-                    self.uptribs[:,n],int(0))
+            p = self.p['lagk']
+                    
+            lagk=s.lagk(int(self.dt_hours),int(self.dt_hours),
+                        p['lagtbl_a'][n], p['lagtbl_b'][n], p['lagtbl_c'][n], p['lagtbl_d'][n],
+                        p['ktbl_a'][n], p['ktbl_b'][n], p['ktbl_c'][n], p['ktbl_d'][n],
+                        p['lagk_lagmax'][n], p['lagk_kmax'][n], p['lagk_qmax'][n],
+                        p['lagk_lagmin'][n], p['lagk_kmin'][n], p['lagk_qmin'][n],
+                        p['init_co'][n], p['init_if'][n], p['init_of'][n], p['init_stor'][n],
+                        self.uptribs[:,n],int(0))
 
-        sim_flow_cfs = np.sum(lagk[0],axis=1)
-        
-        self.lagk_flow_cfs = pd.Series(sim_flow_cfs, index=self.dates)
-        
-        return self.lagk_flow_cfs
+            sim_flow_cfs = np.sum(lagk[0],axis=1)
+            
+            self.lagk_flow_cfs = pd.Series(sim_flow_cfs, index=self.dates)
+            
+            return self.lagk_flow_cfs
+        else:
+            return np.nan
 
     def lagk_states_run(self): 
         
-        #if n is None:
-        #    n=list(range(self.n_uptribs))
-        #elif isinstance(n, int):
-        #    n=[n]
-        #    
-        p = self.p['lagk']
-                
-        states=s.lagk(int(self.dt_hours),int(self.dt_hours),
-                    p['lagtbl_a'], p['lagtbl_b'], p['lagtbl_c'], p['lagtbl_d'],
-                    p['ktbl_a'], p['ktbl_b'], p['ktbl_c'], p['ktbl_d'],
-                    p['lagk_lagmax'], p['lagk_kmax'], p['lagk_qmax'],
-                    p['lagk_lagmin'], p['lagk_kmin'], p['lagk_qmin'],
-                    p['init_co'], p['init_if'], p['init_of'], p['init_stor'],
-                    self.uptribs,int(1))
+        if self.n_uptribs>0:
+            #if n is None:
+            #    n=list(range(self.n_uptribs))
+            #elif isinstance(n, int):
+            #    n=[n]
+            #    
+            p = self.p['lagk']
+                    
+            states=s.lagk(int(self.dt_hours),int(self.dt_hours),
+                        p['lagtbl_a'], p['lagtbl_b'], p['lagtbl_c'], p['lagtbl_d'],
+                        p['ktbl_a'], p['ktbl_b'], p['ktbl_c'], p['ktbl_d'],
+                        p['lagk_lagmax'], p['lagk_kmax'], p['lagk_qmax'],
+                        p['lagk_lagmin'], p['lagk_kmin'], p['lagk_qmin'],
+                        p['init_co'], p['init_if'], p['init_of'], p['init_stor'],
+                        self.uptribs,int(1))
 
-        state_param=['routed','lag_time','k_inflow','k_storage']
-        
-        self.lagk_states={}
-        for count, param in  enumerate(state_param):
-            self.lagk_states[param]=pd.DataFrame(states[count], index=self.dates,columns=self.uptribs_name)
-        
-        return self.lagk_states
+            state_param=['routed','lag_time','k_inflow','k_storage']
+            
+            self.lagk_states={}
+            for count, param in  enumerate(state_param):
+                self.lagk_states[param]=pd.DataFrame(states[count], index=self.dates,columns=self.uptribs_name)
+            
+            return self.lagk_states
+        else:
+            return np.nan
 
 
     def sacsnow_run(self,inst=True):
 
-        p = {**self.p['sac'],**(self.p['snow']),**(self.p['uh'])}
+            if self.n_zones>0:
+                p = {**self.p['sac'],**(self.p['snow']),**(self.p['uh'])}
 
-        # simulates all zones
+                # simulates all zones
 
-        states = s.sacsnow(int(self.dt_seconds), self.year.astype('int'), self.month.astype('int'), self.day.astype('int'), self.hour.astype('int'),
-                        # general pars
-                        p['alat'].astype('double'), p['elev'].astype('double'),
-                        # sac pars
-                        self.sac_pars,
-                        # pet and precp adjustments
-                        p['peadj'].astype('double'), p['pxadj'].astype('double'),
-                        # snow pars
-                        self.snow_pars,
-                        # initial swe
-                        p['init_swe'].astype('double'),
-                        # forcings
-                        self.forcings.map_fa, self.forcings.ptps_fa, self.forcings.mat_fa,self.forcings.etd,
-                        #Pass states option
-                        int(0))
-        
-        tci=states[2]
-        
-        # channel routing
-        self.sacsnow_flow_cfs = self.uh.tci_2_cfs(tci,self.dates,inst=inst)
+                states = s.sacsnow(int(self.dt_seconds), self.year.astype('int'), self.month.astype('int'), self.day.astype('int'), self.hour.astype('int'),
+                                # general pars
+                                p['alat'].astype('double'), p['elev'].astype('double'),
+                                # sac pars
+                                self.sac_pars,
+                                # pet and precp adjustments
+                                p['peadj'].astype('double'), p['pxadj'].astype('double'),
+                                # snow pars
+                                self.snow_pars,
+                                # initial swe
+                                p['init_swe'].astype('double'),
+                                # forcings
+                                self.forcings.map_fa, self.forcings.ptps_fa, self.forcings.mat_fa,self.forcings.etd,
+                                #Pass states option
+                                int(0))
+                
+                tci=states[2]
+                
+                # channel routing
+                self.sacsnow_flow_cfs = self.uh.tci_2_cfs(tci,self.dates,inst=inst)
 
-        #Recalculate FA forcing due to Map and ETD being modified
-        self.forcings.fa_ts(self.dt_seconds,self.dates)
+                #Recalculate FA forcing due to Map and ETD being modified
+                self.forcings.fa_ts(self.dt_seconds,self.dates)
 
-        return self.sacsnow_flow_cfs
+                return self.sacsnow_flow_cfs
+            else:
+                return np.nan
 
     def sacsnow_states_run(self,inst=True):
 
-        p = {**self.p['sac'],**(self.p['snow']),**(self.p['uh'])}
+        if self.n_zones>0: 
 
-        # simulates all zones
-        states = s.sacsnow(int(self.dt_seconds), self.year.astype('int'), self.month.astype('int'), self.day.astype('int'), self.hour.astype('int'),
-                        # general pars
-                        p['alat'].astype('double'), p['elev'].astype('double'),
-                        # sac pars
-                        self.sac_pars,
-                        # pet and precp adjustments
-                        p['peadj'].astype('double'), p['pxadj'].astype('double'),
-                        # snow pars
-                        self.snow_pars,
-                        # initial swe
-                        p['init_swe'].astype('double'),
-                        # forcings
-                        self.forcings.map_fa, self.forcings.ptps_fa, self.forcings.mat_fa,self.forcings.etd,
-                        #Pass states option
-                        int(1))
+            p = {**self.p['sac'],**(self.p['snow']),**(self.p['uh'])}
 
-        state_param=['map_pxadj','etd_adj','tci','aet',
-                        'uztwc','uzfwc','lztwc','lzfsc','lzfpc','adimc',
-                        'roimp', 'sdro', 'ssur', 'sif', 'bfs', 'bfp',
-                        'swe','aesc','neghs','liqw','raim','psfall','prain']
-        self.sacsnow_states={}
-        for count, param in  enumerate(state_param):
-            self.sacsnow_states[param]=pd.DataFrame(states[count], index=self.dates,columns=self.zones)
+            # simulates all zones
+            states = s.sacsnow(int(self.dt_seconds), self.year.astype('int'), self.month.astype('int'), self.day.astype('int'), self.hour.astype('int'),
+                            # general pars
+                            p['alat'].astype('double'), p['elev'].astype('double'),
+                            # sac pars
+                            self.sac_pars,
+                            # pet and precp adjustments
+                            p['peadj'].astype('double'), p['pxadj'].astype('double'),
+                            # snow pars
+                            self.snow_pars,
+                            # initial swe
+                            p['init_swe'].astype('double'),
+                            # forcings
+                            self.forcings.map_fa, self.forcings.ptps_fa, self.forcings.mat_fa,self.forcings.etd,
+                            #Pass states option
+                            int(1))
 
-        #Calculate streamflow for each zone
-        sf_df=pd.DataFrame()
-        for count, zone in enumerate(self.zones):
-            tci_zone=self.sacsnow_states['tci'][zone].astype('double').to_numpy()
-            tci_zone=np.expand_dims(tci_zone,axis=1)
-            tci_zone=np.asfortranarray(tci_zone)
-            sf_zones=self.uh.tci_2_cfs(tci_zone,self.dates,count,inst=inst).rename(zone)
-            sf_df=pd.concat([sf_df,sf_zones],axis=1,ignore_index=True)
-        sf_df.index=self.dates
-        sf_df.columns=self.zones
-        
-        self.sacsnow_states['sf']=sf_df
-        
-        #Recalculate FA forcing due to Map and ETD being modified
-        self.forcings.fa_ts(self.dt_seconds,self.dates)
-        
-        return self.sacsnow_states
+            state_param=['map_pxadj','etd_adj','tci','aet',
+                            'uztwc','uzfwc','lztwc','lzfsc','lzfpc','adimc',
+                            'roimp', 'sdro', 'ssur', 'sif', 'bfs', 'bfp',
+                            'swe','aesc','neghs','liqw','raim','psfall','prain']
+            self.sacsnow_states={}
+            for count, param in  enumerate(state_param):
+                self.sacsnow_states[param]=pd.DataFrame(states[count], index=self.dates,columns=self.zones)
+
+            #Calculate streamflow for each zone
+            sf_df=pd.DataFrame()
+            for count, zone in enumerate(self.zones):
+                tci_zone=self.sacsnow_states['tci'][zone].astype('double').to_numpy()
+                tci_zone=np.expand_dims(tci_zone,axis=1)
+                tci_zone=np.asfortranarray(tci_zone)
+                sf_zones=self.uh.tci_2_cfs(tci_zone,self.dates,count,inst=inst).rename(zone)
+                sf_df=pd.concat([sf_df,sf_zones],axis=1,ignore_index=True)
+            sf_df.index=self.dates
+            sf_df.columns=self.zones
+            
+            self.sacsnow_states['sf']=sf_df
+            
+            #Recalculate FA forcing due to Map and ETD being modified
+            self.forcings.fa_ts(self.dt_seconds,self.dates)
+            
+            return self.sacsnow_states
+        else:
+            return np.nan
     
     def consuse_run(self):
 
-        p = self.p['consuse']
-        cms_2_cfs=35.3147
-        
-        #Get natural flow
-        #Create blank simulation series
-        qnat=pd.Series(0,index=self.dates)
-        
-        #If there are sac/snow zone, calculate runoff
-        if self.n_zones > 0:
-            qnat = qnat+self.sacsnow_run(inst=True)
-        
-        #If there are upstream reaches to route, add them to the total flow
-        if self.n_uptribs > 0:
-            qnat = self.lagk_run() + qnat
+        if self.n_consuse>0:
+            p = self.p['consuse']
+            cms_2_cfs=35.3147
+            
+            #Get natural flow
+            #Create blank simulation series
+            qnat=pd.Series(0,index=self.dates)
+            
+            #If there are sac/snow zone, calculate runoff
+            if self.n_zones > 0:
+                qnat = qnat+self.sacsnow_run(inst=True)
+            
+            #If there are upstream reaches to route, add them to the total flow
+            if self.n_uptribs > 0:
+                qnat = self.lagk_run() + qnat
 
-        #Chanloss Adjustment
-        qnat=self.chanloss(qnat)
+            #Chanloss Adjustment
+            qnat=self.chanloss(qnat)
 
-        #Convert to daily using the weighting scheme that CHPS uses of utilizing 5 points (edges assigned .5)
-        qnat_daily=(qnat.rolling(5,center=True).sum()+qnat.rolling(3,center=True).sum())/8
-        qnat_daily=qnat_daily.loc[qnat_daily.index.hour==12]
-        qnat_daily=qnat_daily.resample('1D').sum()
-        
-        #Get PET
-        pet=pd.DataFrame(self.forcings.pet,columns=self.zones,index=self.dates)
-        
-        #Create a blank state dataframe
-        state_param=['QADJ','QDIV','QRF_in','QRF_out','QOL','QCD','CE','RFSTOR']
-        self.consuse_states={}
-        for count, param in  enumerate(state_param):
-            self.consuse_states[param]=pd.DataFrame()
-        
-        #Run consuse for each zone individualys
-        for n, cu_name in zip(range(self.n_consuse), self.consuse_name):
+            #Convert to daily using the weighting scheme that CHPS uses of utilizing 5 points (edges assigned .5)
+            qnat_daily=(qnat.rolling(5,center=True).sum()+qnat.rolling(3,center=True).sum())/8
+            qnat_daily=qnat_daily.loc[qnat_daily.index.hour==12]
+            qnat_daily=qnat_daily.resample('1D').sum()
             
-            #Get PET from equivalent SAC zone.  
-            #NOTE:  To match CHPS results have to be shifted back 1 hr so 00:00 timestep
-            #       is included in previous day
-            pet_daily=pet[cu_name].shift(periods=-1, freq='H').resample('1D').sum()
-
-            consuse_ts_input=pd.concat([pet_daily,qnat_daily],axis=1)
-            consuse_ts_input.columns=['pet','qnat']
-            consuse_ts_input=consuse_ts_input[~consuse_ts_input.isna().any(axis=1)]\
+            #Get PET
+            pet=pd.DataFrame(self.forcings.pet,columns=self.zones,index=self.dates)
             
-            peadj=self.pars.loc[(self.pars.name=='peadj')&(self.pars.zone==cu_name),'value'].squeeze()
-            
-            dates_input=consuse_ts_input.index
-            
-            consuse_ts_input=consuse_ts_input.astype('double').to_numpy()
-            consuse_ts_input=np.asfortranarray(consuse_ts_input)
-            
-            #pet_iput=consuse_ts_input.pet.astype('double').to_numpy()
-            #pet_input=np.asfortranarray(pet_input)
-            
-            #qnat_iput=consuse_ts_input.qnat.astype('double').to_numpy()
-            #qnat_input=np.asfortranarray(qnat_input)
-            
-            states=s.consuse(dates_input.year.astype('int'), dates_input.month.astype('int'), dates_input.day.astype('int'),
-                         p['area_km2'][n].astype('double'),p['irr_eff'][n].astype('double'),np.double(p['min_flow_cmsd'][n]*cms_2_cfs),
-                         p['rf_accum_rate'][n].astype('double'),p['rf_decay_rate'][n].astype('double'),
-                         self.peadj_cu[:,n],peadj,
-                         consuse_ts_input[:,0],consuse_ts_input[:,1])
-            
-            #Concat state value for CU zone to dictionary. IF QADJ 
+            #Create a blank state dataframe
+            state_param=['QADJ','QDIV','QRF_in','QRF_out','QOL','QCD','CE','RFSTOR']
+            self.consuse_states={}
             for count, param in  enumerate(state_param):
-                if param=='QADJ':
-                    self.consuse_states[param]=pd.DataFrame(states[count], index=dates_input,columns=[param])
-                else:
-                    self.consuse_states[param]=pd.concat([self.consuse_states[param],
-                            pd.DataFrame(states[count], index=dates_input,columns=[cu_name])],axis=1)
-            #Update the qnat to reflect the adjusted flow (needed for basins w/multiple CU zones)
-            qnat_daily=self.consuse_states['QADJ']
-        
-        return self.consuse_states
+                self.consuse_states[param]=pd.DataFrame()
+            
+            #Run consuse for each zone individualys
+            for n, cu_name in zip(range(self.n_consuse), self.consuse_name):
+                
+                #Get PET from equivalent SAC zone.  
+                #NOTE:  To match CHPS results have to be shifted back 1 hr so 00:00 timestep
+                #       is included in previous day
+                pet_daily=pet[cu_name].shift(periods=-1, freq='H').resample('1D').sum()
+
+                consuse_ts_input=pd.concat([pet_daily,qnat_daily],axis=1)
+                consuse_ts_input.columns=['pet','qnat']
+                consuse_ts_input=consuse_ts_input[~consuse_ts_input.isna().any(axis=1)]\
+                
+                peadj=self.pars.loc[(self.pars.name=='peadj')&(self.pars.zone==cu_name),'value'].squeeze()
+                
+                dates_input=consuse_ts_input.index
+                
+                consuse_ts_input=consuse_ts_input.astype('double').to_numpy()
+                consuse_ts_input=np.asfortranarray(consuse_ts_input)
+                
+                #pet_iput=consuse_ts_input.pet.astype('double').to_numpy()
+                #pet_input=np.asfortranarray(pet_input)
+                
+                #qnat_iput=consuse_ts_input.qnat.astype('double').to_numpy()
+                #qnat_input=np.asfortranarray(qnat_input)
+                
+                states=s.consuse(dates_input.year.astype('int'), dates_input.month.astype('int'), dates_input.day.astype('int'),
+                             p['area_km2'][n].astype('double'),p['irr_eff'][n].astype('double'),np.double(p['min_flow_cmsd'][n]*cms_2_cfs),
+                             p['rf_accum_rate'][n].astype('double'),p['rf_decay_rate'][n].astype('double'),
+                             self.peadj_cu[:,n],peadj,
+                             consuse_ts_input[:,0],consuse_ts_input[:,1])
+                
+                #Concat state value for CU zone to dictionary. IF QADJ 
+                for count, param in  enumerate(state_param):
+                    if param=='QADJ':
+                        self.consuse_states[param]=pd.DataFrame(states[count], index=dates_input,columns=[param])
+                    else:
+                        self.consuse_states[param]=pd.concat([self.consuse_states[param],
+                                pd.DataFrame(states[count], index=dates_input,columns=[cu_name])],axis=1)
+                #Update the qnat to reflect the adjusted flow (needed for basins w/multiple CU zones)
+                qnat_daily=self.consuse_states['QADJ']
+            
+            return self.consuse_states
+        else:
+            return np.nan
 
     def chanloss(self,sim_sf):
     
@@ -343,7 +372,7 @@ class Model:
             
             periods=np.array([p['cl_period_start'],p['cl_period_end']],dtype='int')
             sim_sf_adj=s.chanloss(int(self.dt_seconds), self.year.astype('int'), self.month.astype('int'), self.day.astype('int'),
-                        p['cl_factor'],periods,p['cl_type'].astype('int'),
+                        p['cl_factor'],periods,p['cl_type'].astype('int'), p['cl_min_q'].astype('double'),
                         sim_sf.astype('double').to_numpy())
             sim_sf_adj=pd.Series(sim_sf_adj, index=self.dates)
         return sim_sf_adj
