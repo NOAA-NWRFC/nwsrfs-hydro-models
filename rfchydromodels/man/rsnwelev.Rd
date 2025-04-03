@@ -14,7 +14,8 @@ rsnwelev(forcing, pars, ae_tbl)
 \item{ae_tbl}{data.table with col1 containing quantile info and subsequent col with elev for each zone}
 }
 \value{
-Matrix (1 column per zone) of the forcing input argument with ptps replaced with that derived from rsnwelev model
+Matrix (1 column per zone) of the forcing input argument with ptps replaced
+with that derived from rsnwelev model
 }
 \description{
 Replace ptps column with ptps derived using rain snow line code (lapse rate + MAT)
@@ -23,5 +24,5 @@ Replace ptps column with ptps derived using rain snow line code (lapse rate + MA
 data(forcing)
 data(pars)
 data(area_elev_curve)
-forcing_adj = rsnwelev(forcing, pars,area_elev_curv)
+forcing_adj <- rsnwelev(forcing, pars, area_elev_curv)
 }

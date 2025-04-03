@@ -30,7 +30,7 @@ stuff
 description
 }
 \examples{
-climo = rep(2,12)
-pars = c(.5,0,10,0)
-forcing_adjust_mat(climo,pars)
+climo <- rep(2, 12)
+pars <- c(.5, 0, 10, 0)
+forcing_adjust_mat(climo, pars)
 }

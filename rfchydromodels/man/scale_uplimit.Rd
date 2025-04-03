@@ -7,9 +7,9 @@
 scale_uplimit(shape, dt_hours)
 }
 \arguments{
-\item{shape}{blah}
+\item{shape}{shape parameter}
 
-\item{dt_hours}{blah}
+\item{dt_hours}{timestep}
 }
 \value{
 numeric value indicating the upper limit for the scale

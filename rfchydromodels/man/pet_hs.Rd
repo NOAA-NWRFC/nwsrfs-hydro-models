@@ -24,5 +24,5 @@ Daily PET (vectorized over all inputs)
 Daily Potential Evapotranspiration using Hargreaves-Semani equations
 }
 \examples{
-pet = pet_hs(42,200,20,25,15)
+pet <- pet_hs(42, 200, 20, 25, 15)
 }

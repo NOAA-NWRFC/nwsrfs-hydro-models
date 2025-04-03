@@ -2,7 +2,7 @@
 % Please edit documentation in R/sac-snow-uh.R
 \name{sfc_pressure}
 \alias{sfc_pressure}
-\title{Title}
+\title{Conputes surface pressure in hPa from a given elevation}
 \usage{
 sfc_pressure(elev)
 }
@@ -13,8 +13,8 @@ sfc_pressure(elev)
 Surface pressure in hPa
 }
 \description{
-Title
+Conputes surface pressure in hPa from a given elevation
 }
 \examples{
-sp = sfc_pressure(0)
+sp <- sfc_pressure(0)
 }

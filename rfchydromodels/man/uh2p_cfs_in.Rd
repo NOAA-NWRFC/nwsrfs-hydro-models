@@ -22,10 +22,10 @@ stuff
 Create a 2 parameter gamma unit hydrograph with units cfs/in
 }
 \examples{
-dt = 6
-shape = 2
-scale = 1
-y = uh2p_cfs_in(2,1,6,1000)
-x = seq(dt,dt*length(y),by=dt)
-plot(x,y,t='l')
+dt <- 6
+shape <- 2
+scale <- 1
+y <- uh2p_cfs_in(2, 1, 6, 1000)
+x <- seq(dt, dt * length(y), by = dt)
+plot(x, y, t = "l")
 }

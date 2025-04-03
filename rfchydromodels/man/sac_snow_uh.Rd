@@ -20,8 +20,29 @@ Vector of routed flow in cfs
 Execute SAC-SMA, SNOW17 and UH with given parameters
 }
 \examples{
-data(forcing)
-data(pars)
-dt_hours = 6
-flow_cfs = sac_snow_uh(dt_hours,forcing, pars)
+data(forcingSAKW1)
+data(parsSAKW1)
+dt_hours <- 6
+flow_cfs_SAKW1 <- sac_snow_uh(dt_hours, forcingSAKW1, parsSAKW1)
+
+data(forcingWCHW1)
+data(parsWCHW1)
+flow_cfs_WCHW1 <- sac_snow_uh(dt_hours, forcingWCHW1, parsWCHW1)
+
+data(forcingWGCM8)
+data(parsWGCM8)
+flow_cfs_WGCM8 <- sac_snow_uh(dt_hours, forcingWGCM8, parsWGCM8)
+
+\dontrun{
+library(tidyverse)
+results <- forcingSAKW1[[1]] |>
+  tibble() |>
+  mutate(datetime = ISOdatetime(year, month, day, hour, 0, 0, tz = "America/Los_Angeles")) |>
+  select(datetime) |>
+  mutate(
+    flow_cfs = flow_cfs_SAKW1
+  )
+ggplot(results) +
+  geom_line(aes(datetime, flow_cfs))
+}
 }

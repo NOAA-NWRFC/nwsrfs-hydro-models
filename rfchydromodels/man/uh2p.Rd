@@ -16,7 +16,7 @@ uh2p(shape, scale, timestep, max_len = 1000)
 \item{max_len}{max length of the uh}
 }
 \value{
-stuff
+vector of ordinates for a 2 parameter (shape,scale) gamma unit hydrograph
 }
 \description{
 Returns ordinates for a 2 parameter (shape,scale) gamma unit hydrograph. The ordinates are
@@ -24,10 +24,10 @@ based on the given timestep (in hours). To match the Fortran code, a max length 
 A warning is issued if the UH does not terminate before the given max length.
 }
 \examples{
-dt = 6
-shape = 2
-scale = 1
-y = uh2p(2,1,6)
-x = seq(dt,dt*length(y),by=dt)
-plot(x,y,t='l')
+dt <- 6
+shape <- 2
+scale <- 1
+y <- uh2p(2, 1, 6)
+x <- seq(dt, dt * length(y), by = dt)
+plot(x, y, t = "l")
 }
