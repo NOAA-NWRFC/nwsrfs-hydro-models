@@ -41,9 +41,6 @@ LASTNEXT
 # Mac junk
 .DS_Store
 
-# Notebook Junk
-py-rfchydromodels/Notebooks/*
-!py-rfchydromodels/Notebooks/AORC_CHPS_Difference_Working.ipynb
-!py-rfchydromodels/Notebooks/AdjustQ_to_HDF5.ipynb
-!py-rfchydromodels/Notebooks/AutoCalb_Output_Checks.ipynb
-!py-rfchydromodels/Notebooks/lagk_dev.ipynb
+# example python csv and other files
+py-rfchydromodels/EXAMPLE-*_Sim.csv
+py-rfchydromodels/utilities/__pycache__/
