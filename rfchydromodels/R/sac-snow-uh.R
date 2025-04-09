@@ -567,9 +567,10 @@ chanloss <- function(flow, forcing, dt_hours, pars) {
   #            factor, period, cl_type, &
   #            sim, sim_adj)
 
-  n_clmods <- pars[pars$name == "n_clmods", ]$value[1]
-  cl_type <- pars[pars$name == "cl_type", ]$value[1]
-  if (is.na(cl_type)) cl_type <- 1
+  n_clmods = pars[pars$name == 'n_clmods',]$value[1]
+  cl_type = pars[pars$name == 'cl_type',]$value[1]
+  cl_min_q = pars[pars$name == 'cl_min_q',]$value[1]
+  if(is.na(cl_type))cl_type=1
 
   if (is.na(n_clmods) | n_clmods <= 0) {
     return(flow)
@@ -581,22 +582,21 @@ chanloss <- function(flow, forcing, dt_hours, pars) {
       cl_periods[2, i] <- pars[pars$name == sprintf("cl_period_end_%02d", i), ]$value
       cl_factors[i] <- pars[pars$name == sprintf("cl_factor_%02d", i), ]$value
     }
-    mode(cl_periods) <- "integer"
 
+    cl_flow = .Fortran('chanloss',
+                      n_clmods = as.integer(n_clmods),
+                      dt = as.integer(dt_hours),
+                      sim_length = as.integer(sim_length),
+                      year = as.integer(forcing[[1]]$year)[1:sim_length],
+                      month = as.integer(forcing[[1]]$month)[1:sim_length],
+                      day = as.integer(forcing[[1]]$day)[1:sim_length],
+                      factor = cl_factors,
+                      period = cl_periods,
+                      cl_type = as.integer(cl_type),
+                      min_q = as.numeric(cl_min_q),
+                      sim = flow[1:sim_length],
+                      sim_adj = numeric(sim_length))
 
-    cl_flow <- .Fortran("chanloss",
-      n_clmods = as.integer(n_clmods),
-      dt = as.integer(dt_hours),
-      sim_length = as.integer(sim_length),
-      year = as.integer(forcing[[1]]$year)[1:sim_length],
-      month = as.integer(forcing[[1]]$month)[1:sim_length],
-      day = as.integer(forcing[[1]]$day)[1:sim_length],
-      factor = cl_factors,
-      period = cl_periods,
-      cl_type = as.integer(cl_type),
-      sim = flow[1:sim_length],
-      sim_adj = numeric(sim_length)
-    )
     return(cl_flow$sim_adj)
   }
 }
