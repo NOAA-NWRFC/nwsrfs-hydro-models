@@ -24,8 +24,8 @@ and adjusted forcing data.
 Execute SAC-SMA, SNOW17, return total channel inflow per zone, and model states
 }
 \examples{
-data(forcing)
-data(pars)
-dt_hours = 6
-flow = sac_snow(dt_hours, forcing, pars)
+data(forcingSAKW1)
+data(parsSAKW1)
+dt_hours <- 6
+flow <- sac_snow(dt_hours, forcingSAKW1, parsSAKW1)
 }

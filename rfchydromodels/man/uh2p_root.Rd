@@ -7,13 +7,13 @@
 uh2p_root(scale, shape, dt_hours, toc)
 }
 \arguments{
-\item{scale}{blah}
+\item{scale}{scale parameter}
 
-\item{shape}{blah}
+\item{shape}{shape parameter}
 
-\item{dt_hours}{blah}
+\item{dt_hours}{timestep}
 
-\item{toc}{blah}
+\item{toc}{time of concentration}
 }
 \value{
 function value for root finding

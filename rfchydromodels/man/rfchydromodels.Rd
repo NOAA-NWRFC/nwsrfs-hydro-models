@@ -2,6 +2,7 @@
 % Please edit documentation in R/rfchydromodels.R
 \docType{package}
 \name{rfchydromodels}
+\alias{rfchydromodels-package}
 \alias{rfchydromodels}
 \title{rfchydromodels: A package running several models used operationally by the RFC}
 \description{
@@ -23,3 +24,12 @@ Stuff
 Stuff
 }
 
+\author{
+\strong{Maintainer}: Cameron Bracken \email{cameron.bracken@pnnl.gov} (\href{https://orcid.org/0000-0003-1917-402X}{ORCID})
+
+Authors:
+\itemize{
+  \item Geoffrey Walters \email{geoffrey.walters@noaa.gov}
+}
+
+}

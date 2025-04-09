@@ -22,11 +22,23 @@ Vector of routed flow in cfs
 Execute SAC-SMA, SNOW17, UH and LAG-K with given parameters
 }
 \examples{
+data(forcingSAKW1)
+data(parsSAKW1)
+data(upflowSAKW1)
+dt_hours <- 6
+flow_cfs <- sac_snow_uh_lagk(dt_hours, forcingSAKW1, upflowSAKW1, parsSAKW1)
+
 \dontrun{
-data(forcing)
-data(pars)
-data(upflows)
-dt_hours = 6
-flow_cfs = sac_snow_uh_lagk(dt_hours, forcing, uptribs, pars)
+library(tidyverse)
+results <- upflowSAKW1[[1]] |>
+  tibble() |>
+  mutate(datetime = ISOdatetime(year, month, day, hour, 0, 0, tz = "America/Los_Angeles")) |>
+  select(datetime) |>
+  mutate(
+    upstream_flow = flow_cfs,
+    flow_cfs = flow_cfs
+  )
+ggplot(results) +
+  geom_line(aes(datetime, flow_cfs))
 }
 }

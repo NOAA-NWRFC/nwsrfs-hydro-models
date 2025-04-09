@@ -20,5 +20,5 @@ adc3(a, b, c)
 \code{adc=a*x^b+(1.0-a)*x^c}
 }
 \examples{
-adc = adc3(.5,0.1,2)
+adc <- adc3(.5, 0.1, 2)
 }

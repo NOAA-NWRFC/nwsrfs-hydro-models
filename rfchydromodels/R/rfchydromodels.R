@@ -11,8 +11,6 @@
 #' @section Lag-K routing:
 #' Stuff
 #'
-#' @docType package
 #' @name rfchydromodels
 #' @useDynLib rfchydromodels
-NULL
-#> NULL
+"_PACKAGE"
