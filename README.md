@@ -7,18 +7,35 @@ To support hydrologic model calibration and development, NWRFC has created FORTR
 
 Also included in this repository are Python and R packages that compile and interact with the FORTRAN 90 wrappers. These tools are intended to facilitate coupling the hydrologic models with modern optimization packages, supporting model calibration and evaluation.
 
+Languages:  R, Python, Fortran 77, and Fortran 90, 
+
+Compiler:  You need a fortran compiler to install this package. This package has been tested with [gfortran](https://gcc.gnu.org/wiki/GFortran). See [here](https://cran.r-project.org/bin/macosx/tools/) for an easy option on MacOS.
+
+Limitations: Repository tested on MacOS and Redhat OS
+
 ## Installation
 
 ### R package installation
 
-You need a fortran compiler to install this package. This package has been tested with [gfortran](https://gcc.gnu.org/wiki/GFortran). See [here](https://cran.r-project.org/bin/macosx/tools/) for an easy option on MacOS.
+Pulling a local copy of the package is not necessary for installation.  Instead, from R, execute the following commands:
 
-
-   devtools::install_github('NOAA-NWRFC/nwsrfs-hydro-models',subdir='rfchydromodels')
-   
+```
+devtools::install_github('NOAA-NWRFC/nwsrfs-hydro-models',subdir='rfchydromodels')
+```   
 See the documentation `?rfchydromodels` and `?sac_snow_uh` for examples. 
 
 ### Python package installation
+
+`f2py` is used to compile the source code and Fortran wrappers. Installation of a compile model_src.*.so can be accomplished with the following command:
+
+```
+cd nwsrfs-hydro-models/py-rfchydromodels/utilities
+make
+```
+
+See `nwsrfs-hydro-models/py-rfchydromodels/run_example.py` example code for executing NWSRFS code
+
+*Note:  equivalent python version of R package is forthcoming in future version of this repository*
 
 ## Credits and references
 
