@@ -14,7 +14,7 @@ Also included in this repository are Python and R packages that compile and inte
 You need a fortran compiler to install this package. This package has been tested with [gfortran](https://gcc.gnu.org/wiki/GFortran). See [here](https://cran.r-project.org/bin/macosx/tools/) for an easy option on MacOS.
 
 
-   devtools::install_github('cameronbracken/nwrfc-hydro-models',subdir='rfchydromodels')
+   devtools::install_github('NOAA-NWRFC/nwsrfs-hydro-models',subdir='rfchydromodels')
    
 See the documentation `?rfchydromodels` and `?sac_snow_uh` for examples. 
 
@@ -25,7 +25,11 @@ See the documentation `?rfchydromodels` and `?sac_snow_uh` for examples.
 If you wish to use or adapt the code in this repository, please make sure that your new repository credits this one as the original source of the code. 
 
 ### References
- - Anderson, E. A., 1973: National Weather Service River Forecast System-Snow Accumulation and Ablation Model. NOAA Tech. Memo. NWS Hydro-17, U.S. National Weather Service. [Avail- able from Office of Hydrologic Development, NOAA/NWS, 1325 East–West Highway, Silver Spring, MD 20910.]
+
+* Burnash, Robert J. C., et al. A generalized streamflow simulation system : conceptual modeling for digital computers. , National Weather Service, 1973
+* Anderson, Eric. Snow Accumulation and Ablation Model. National Oceanic and Atmospheric Administration, 2006
+* Linsley, R.K., et al. Hydrology for Engineers, McGraw-Hill series in water resources and environmental engineering. McGraw-Hill, 1982
+* NOAA. Consumptive Use Operation. National Oceanic and Atmospheric Administration, 2005
 
 ## Legal Disclaimer
 
