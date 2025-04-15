@@ -1,0 +1,8 @@
+Authors:
+- Geoffrey Walters PE, NOAA Northwest River Forecast Center (U.S. Federal Government) - Conceptualization, Data Curation, Formal Analysis, Investigation, Methodology, Project Administration, Software, Validation, Visualization, Writing
+- Cameron Bracken, Pacific Northwest National Laboratory – Conceptualization, Data Curation, Formal Analysis, Investigation, Methodology, Software, Validation, Visualization, Writing
+Copyright 2025 U.S. Federal Government (in countries where recognized)
+
+The intent is that this software and documentation ("Project") should be treated as if it is licensed under the license associated with the Project ("License") in the LICENSE file. However, the portions of this Project written by U.S. Federal government employees within the scope of their federal employment are ineligible for copyright protection in the United States. In countries where copyright protection is available, contributions made by U.S. Federal government employees are released under the License. Contributions from non-US federal government employee contributors are released under the License.
+
+Unless required by applicable law or agreed to in writing, software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
