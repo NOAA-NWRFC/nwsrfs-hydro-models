@@ -1,10 +1,11 @@
 # NWRFC Operational hydrology models 
 
-
 ## Overview
-The National Weather Service River Forecasting System (NWRFS) operational hydrologic modeling suite including Sacramento Soil Moisture Accounting (SAC-SMA), Snow-17, Lagk, and ConsUse ([link](https://www.weather.gov/owp/oh_hrl_nwsrfs_users_manual_htm_xrfsdocpdf)). This repo contains the original code written in FORTRAN, rather than the equivalent Java code writen for River Forecast Center (RFC) Community Hydrologic Prediction System (CHPS). 
+The Northwest River Forecast Center (NWRFC) utilizes the National Weather Service River Forecasting System (NWSRFS) to provide timely information related to flooding, water supply, drought, recreation, navigation, and environmental flows. Originally developed in the late 1970s, NWSRFS remains a core component of the NWS Community Hydrologic Prediction System (CHPS). The system includes a suite of models that simulate soil moisture, snow accumulation and melt, flow routing, channel loss, and consumptive water use. For additional details on each model, see [link](https://www.weather.gov/owp/oh_hrl_nwsrfs_users_manual_htm_xrfsdocpdf) .
 
-The Northwest River Forecast Center (NWRFC), has written FORTRAN 90 wrappers to interact with the original NWRFS FORTRAN code to perform automated parameter optimization for model calibration. Included in this repo are Python and R packages which can compile and inteact with the FORTRAN NWRFS code, for the benefit of coupling the hydrologic models with modern optimization packages for model calibration and evaluation.  
+To support hydrologic model calibration and development, NWRFC has created FORTRAN 90 wrappers that execute the original NWSRFS source code. This repository contains the original FORTRAN code (as opposed to the Java-based implementation used in CHPS). The wrapped suite of models includes SAC-SMA, SNOW17, LAGK, CHANLOSS, and CONS_USE.
+
+Also included in this repository are Python and R packages that compile and interact with the FORTRAN 90 wrappers. These tools are intended to facilitate coupling the hydrologic models with modern optimization packages, supporting model calibration and evaluation.
 
 ## Installation
 
