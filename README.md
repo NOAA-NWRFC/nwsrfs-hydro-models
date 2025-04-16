@@ -9,9 +9,9 @@ Also included in this repository are Python and R packages that compile and inte
 
 Languages:  R, Python, Fortran 77, and Fortran 90, 
 
-Compiler:  You need a fortran compiler to install this package. This package has been tested with [gfortran](https://gcc.gnu.org/wiki/GFortran). See [here](https://cran.r-project.org/bin/macosx/tools/) for an easy option on MacOS.
+Compiler:  A fortran compiler to install this package. This package has been tested with [gfortran](https://gcc.gnu.org/wiki/GFortran). See [here](https://cran.r-project.org/bin/macosx/tools/) for an easy option on MacOS.
 
-Limitations: Repository tested on MacOS and Redhat OS
+Known OS compatibility: Repository tested on MacOS and Redhat OS
 
 ## Installation
 
