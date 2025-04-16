@@ -8,8 +8,8 @@ To support hydrologic model calibration and development, NWRFC has created FORTR
 
 Also included in this repository are Python and R packages that compile and interact with the FORTRAN 90 wrappers. These tools are intended to facilitate coupling the hydrologic models with modern optimization packages, supporting model calibration and evaluation.
 
-**Languages:** R, Python, FORTRAN 77, and FORTRAN 90 
-**Compiler:** A FORTRAN compiler is required to install this package. This package has been tested with [gfortran](https://gcc.gnu.org/wiki/GFortran). See [this page](https://cran.r-project.org/bin/macosx/tools/) for a simple installation option on macOS.
+**Languages:** R, Python, FORTRAN 77, and FORTRAN 90\
+**Compiler:** A FORTRAN compiler is required to install this package. This package has been tested with [gfortran](https://gcc.gnu.org/wiki/GFortran). See [this page](https://cran.r-project.org/bin/macosx/tools/) for a simple installation option on macOS\
 **Known OS Compatibility:** macOS and Red Hat OS
 
 ## Installation
@@ -25,9 +25,8 @@ See the documentation `?rfchydromodels` and `?sac_snow_uh` for examples.
 
 ### Python package installation
 
-**Tested Python Version:** 3.10.3
-
-**Package Dependencies:**  numpy, pandas, lxml
+**Tested Python Version:** 3.10.3\
+**Package Dependencies:**  numpy, pandas, lxml\
 **Dependencies:** numpy, pandas, lxml
 
 numpy's `f2py` is used to compile the source code and FORTRAN wrappers. To compile the FORTRAN source:
