@@ -40,6 +40,7 @@ LASTNEXT
 
 # Mac junk
 .DS_Store
+py-rfchydromodels/.idea/
 
 # example python csv and other files
 py-rfchydromodels/EXAMPLE-*_Sim.csv

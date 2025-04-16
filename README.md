@@ -33,7 +33,7 @@ Package Dependencies:  numpy, pandas, lxml
 numpy's `f2py` is used to compile the source code and Fortran wrappers. Compiling the Fortran can be accomplished with the following command:
 
 ```
-cd nwsrfs-hydro-models/py-rfchydromodels/utilities
+cd py-rfchydromodels/utilities
 make
 ```
 See `nwsrfs-hydro-models/py-rfchydromodels/run_example.py` example code for executing NWSRFS code
