@@ -1,23 +1,22 @@
 # NWRFC Operational Hydrology Models 
 
 ## Overview
-The Northwest River Forecast Center (NWRFC) utilizes the National Weather Service River Forecasting System (NWSRFS) to provide timely information related to flooding, water supply, drought, recreation, navigation, and environmental flows. Originally developed in the late 1970s, NWSRFS remains a core component of the NWS Community Hydrologic Prediction System (CHPS). The system includes a suite of models that simulate soil moisture, snow accumulation and melt, flow routing, channel loss, and consumptive water use. For additional details on each model, see [link](https://www.weather.gov/owp/oh_hrl_nwsrfs_users_manual_htm_xrfsdocpdf) .
 
-To support hydrologic model calibration and development, NWRFC has created FORTRAN 90 wrappers that execute the original NWSRFS source code. This repository contains the original FORTRAN code (as opposed to the Java-based implementation used in CHPS). The wrapped suite of models includes SAC-SMA, SNOW17, Unit Hydrograph, LAGK, CHANLOSS, and CONS_USE.
+The Northwest River Forecast Center (NWRFC) utilizes the National Weather Service River Forecasting System (NWSRFS) to provide timely information related to flooding, water supply, drought, recreation, navigation, and environmental flows. Originally developed in the late 1970s, NWSRFS remains a core component of the NWS Community Hydrologic Prediction System (CHPS). The system includes a suite of models that simulate soil moisture, snow accumulation and melt, flow routing, channel loss, and consumptive water use. For additional details on each model, see [this link](https://www.weather.gov/owp/oh_hrl_nwsrfs_users_manual_htm_xrfsdocpdf) .
+
+To support hydrologic model calibration and development, NWRFC has created FORTRAN 90 wrappers to execute the original NWSRFS source code. This repository contains the original FORTRAN code (as opposed to the Java-based implementation used in CHPS). The wrapped suite of models includes SAC-SMA, SNOW17, Unit Hydrograph, LAGK, CHANLOSS, and CONS_USE.
 
 Also included in this repository are Python and R packages that compile and interact with the FORTRAN 90 wrappers. These tools are intended to facilitate coupling the hydrologic models with modern optimization packages, supporting model calibration and evaluation.
 
-Languages:  R, Python, Fortran 77, and Fortran 90, 
-
-Compiler:  A fortran compiler to install this package. This package has been tested with [gfortran](https://gcc.gnu.org/wiki/GFortran). See [here](https://cran.r-project.org/bin/macosx/tools/) for an easy option on MacOS.
-
-Known OS compatibility: Repository tested on MacOS and Redhat OS
+**Languages:** R, Python, FORTRAN 77, and FORTRAN 90 
+**Compiler:** A FORTRAN compiler is required to install this package. This package has been tested with [gfortran](https://gcc.gnu.org/wiki/GFortran). See [this page](https://cran.r-project.org/bin/macosx/tools/) for a simple installation option on macOS.
+**Known OS Compatibility:** macOS and Red Hat OS
 
 ## Installation
 
 ### R package installation
 
-Installation of the package can be accomplished with the following command:
+Install the R package using the following command:
 
 ```
 devtools::install_github('NOAA-NWRFC/nwsrfs-hydro-models',subdir='rfchydromodels')
@@ -26,27 +25,28 @@ See the documentation `?rfchydromodels` and `?sac_snow_uh` for examples.
 
 ### Python package installation
 
-Python version: Code has been tested on Python 3.10.3
+**Tested Python Version:** 3.10.3
 
-Package Dependencies:  numpy, pandas, lxml
+**Package Dependencies:**  numpy, pandas, lxml
+**Dependencies:** numpy, pandas, lxml
 
-numpy's `f2py` is used to compile the source code and Fortran wrappers. Compiling the Fortran can be accomplished with the following command:
+numpy's `f2py` is used to compile the source code and FORTRAN wrappers. To compile the FORTRAN source:
 
 ```
 cd py-rfchydromodels/utilities
 make
 ```
-See `nwsrfs-hydro-models/py-rfchydromodels/run_example.py` example code for executing NWSRFS code
+See `nwsrfs-hydro-models/py-rfchydromodels/run_example.py` for example code demonstrating how to execute the NWSRFS models.
 
-*Note:  equivalent python version of R package is forthcoming in a future version of this repository*
+*Note:  An equivalent Python version of the R package is planned for a future release of this repository.*
 
 ## Credits and references
 
-Please use the folowing journal article for referencing this work:
+Please cite the following journal article if referencing this work
 
-Walters, G., Bracken, C., et al., "A comprehensive calibration framework for the Northwest River Forecast Center." Unpublished manuscript, Submitted 2025, JAWA Journal of the American Water Resources Association
+Walters, G., Bracken, C., et al. A comprehensive calibration framework for the Northwest River Forecast Center. Unpublished manuscript, Submitted 2025, JAWRA (Journal of the American Water Resources Association).
 
-If you wish to use or adapt the code in this repository, please make sure that your new repository credits this one as the original source of the code. 
+If you use or adapt the code in this repository, please credit this repository as the original source.
 
 ### NWSRFS references
 
