@@ -17,7 +17,7 @@ Limitations: Repository tested on MacOS and Redhat OS
 
 ### R package installation
 
-Pulling a local copy of the package is not necessary for installation.  Instead, from R, execute the following commands:
+Installation of the package can be accomplished with the following command:
 
 ```
 devtools::install_github('NOAA-NWRFC/nwsrfs-hydro-models',subdir='rfchydromodels')
@@ -26,22 +26,29 @@ See the documentation `?rfchydromodels` and `?sac_snow_uh` for examples.
 
 ### Python package installation
 
-`f2py` is used to compile the source code and Fortran wrappers. Installation of a compile model_src.*.so can be accomplished with the following command:
+Python version: Code has been tested on Python 3.10.3
+
+Package Dependencies:  numpy, pandas, lxml
+
+numpy's `f2py` is used to compile the source code and Fortran wrappers. Compiling the Fortran can be accomplished with the following command:
 
 ```
 cd nwsrfs-hydro-models/py-rfchydromodels/utilities
 make
 ```
-
 See `nwsrfs-hydro-models/py-rfchydromodels/run_example.py` example code for executing NWSRFS code
 
-*Note:  equivalent python version of R package is forthcoming in future version of this repository*
+*Note:  equivalent python version of R package is forthcoming in a future version of this repository*
 
 ## Credits and references
 
+Please use the folowing journal article for referencing this work:
+
+Walters, G., Bracken, C., et al., "A comprehensive calibration framework for the Northwest River Forecast Center." Unpublished manuscript, Submitted 2025, JAWA Journal of the American Water Resources Association
+
 If you wish to use or adapt the code in this repository, please make sure that your new repository credits this one as the original source of the code. 
 
-### References
+### NWSRFS References
 
 * Burnash, Robert J. C., et al. A generalized streamflow simulation system : conceptual modeling for digital computers. , National Weather Service, 1973
 * Anderson, Eric. Snow Accumulation and Ablation Model. National Oceanic and Atmospheric Administration, 2006
