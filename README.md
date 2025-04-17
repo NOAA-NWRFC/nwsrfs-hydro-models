@@ -11,7 +11,7 @@ Also included in this repository are Python and R packages that compile and inte
 **Languages:** R, Python, FORTRAN 77, and FORTRAN 90\
 **Compiler:** A FORTRAN compiler is required to install this package. This package has been tested with [gfortran](https://gcc.gnu.org/wiki/GFortran). See [this page](https://cran.r-project.org/bin/macosx/tools/) for a simple installation option on macOS\
 **Known OS Compatibility:** macOS and Red Hat OS\
-**Notice:** Testing of wrapper and package conducted exclusively on a **six hour model time step**
+**Time Step Compatibility:** This package and its wrappers have been tested only with a 6-hour time step. Use with other time steps may require additional configuration or validation.\
 
 ## Installation
 
