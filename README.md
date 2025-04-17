@@ -19,7 +19,7 @@ Also included in this repository are Python and R packages that compile and inte
 
 Install the R package using the following command:
 
-```
+```R
 devtools::install_github('NOAA-NWRFC/nwsrfs-hydro-models',subdir='rfchydromodels')
 ```   
 See the documentation `?rfchydromodels` and `?sac_snow_uh` for examples. 
@@ -31,7 +31,7 @@ See the documentation `?rfchydromodels` and `?sac_snow_uh` for examples.
 **Dependencies:** numpy, pandas
 numpy's `f2py` is used to compile the source code and FORTRAN wrappers. To compile the FORTRAN source:
 
-```
+```bash
 cd py-rfchydromodels/utilities
 make
 ```
