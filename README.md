@@ -15,7 +15,7 @@ Also included in this repository are Python and R packages that compile and inte
 
 ## Installation
 
-### R package installation
+### R Package Installation
 
 Install the R package using the following command:
 
@@ -24,7 +24,7 @@ devtools::install_github('NOAA-NWRFC/nwsrfs-hydro-models',subdir='rfchydromodels
 ```   
 See the documentation `?rfchydromodels` and `?sac_snow_uh` for examples. 
 
-### Python package installation
+### Python Package Installation
 
 **Tested Python Version:** 3.10.3\
 **Package Dependencies:**  numpy, pandas, lxml\
@@ -39,26 +39,26 @@ See `nwsrfs-hydro-models/py-rfchydromodels/run_example.py` for example code demo
 
 *Note:  An equivalent Python version of the R package is planned for a future release of this repository.*
 
-## Credits and references
+## Credits and References
 
-Please cite the following journal article if referencing this work
+Please cite the following work when using this tool:
 
-Walters, G., Bracken, C., et al. A comprehensive calibration framework for the Northwest River Forecast Center. Unpublished manuscript, Submitted 2025, JAWRA (Journal of the American Water Resources Association).
+Walters, G., Bracken, C., et al., "A comprehensive calibration framework for the Northwest River Forecast Center." Unpublished manuscript, Submitted 2025, JAWA Journal of the American Water Resources Association
 
-If you use or adapt the code in this repository, please credit this repository as the original source.
+If adapting this code, please credit this repository as the original source. 
 
-### NWSRFS references
+### NWSRFS References
 
 * Burnash, Robert J. C., et al. A generalized streamflow simulation system : conceptual modeling for digital computers. , National Weather Service, 1973
 * Anderson, Eric. Snow Accumulation and Ablation Model. National Oceanic and Atmospheric Administration, 2006
 * Linsley, R.K., et al. Hydrology for Engineers, McGraw-Hill series in water resources and environmental engineering. McGraw-Hill, 1982
 * NOAA. Consumptive Use Operation. National Oceanic and Atmospheric Administration, 2005
 
-## Legal disclaimer
+## Legal Disclaimer
 
-This repository is a scientific product and is not official communication of the National Oceanic and Atmospheric Administration, or the United States Department of Commerce. All NOAA GitHub project code is provided on an 'as is' basis and the user assumes responsibility for its use. Any claims against the Department of Commerce or Department of Commerce bureaus stemming from the use of this GitHub project will be governed by all applicable Federal law. Any reference to specific commercial products, processes, or services by service mark, trademark, manufacturer, or otherwise, does not constitute or imply their endorsement, recommendation or favoring by the Department of Commerce. The Department of Commerce seal and logo, or the seal and logo of a DOC bureau, shall not be used in any manner to imply endorsement of any commercial product or activity by DOC or the United States Government.
+This is a scientific product and does not represent official communication from NOAA or the U.S. Department of Commerce. All code is provided "as is."
 
-[NOAA GitHub Policy](https://github.com/NOAAGov/Information)
+See full disclaimer: [NOAA GitHub Policy](https://github.com/NOAAGov/Information)
  \
  \
  \
