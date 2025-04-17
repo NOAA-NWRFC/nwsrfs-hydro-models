@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 #These functions replicate the FEWS/NWRFS Adjust Q tool
 #Created by:  Geoffrey Walters PE, 5/24/21, modified 1/27/24
 
@@ -8,11 +10,10 @@
 # Any resulting negative discharge values are set to zero.
 
 
-import os, sys, h5py, argparse, warnings
+import os, sys, argparse, warnings
 import pandas as pd, numpy as np
-from .pixml import *
-from utilities.model import *
-from utilities.model_prep import *
+from .model import *
+from .model_prep import *
 
 #import pdb; pdb.set_trace()
 
@@ -22,91 +23,39 @@ from utilities.model_prep import *
 class adjustq_prep:
 
     def __init__(self,
-                hdf5_file: str,
-                hdf5_daily_path: str,
-                hdf5_inst_path: str,
-                chps_file: str="",
+                daily_flow_path: str,
+                inst_flow_path: str,
                 ac_run_path: str=""):
         
-        #hdf5 observations
-        hdf5_read = self.hdf5_check(hdf5_file)
-        self.obs_daily=hdf5_read[hdf5_daily_path].Daily_Avg_Streamflow_cfs
-        self.obs_inst=hdf5_read[hdf5_inst_path].Inst_Streamflow_cfs
+        #import observations csvs
+        ob_daily_flow = pd.read_csv(daily_flow_path)
+        ob_daily_flow['date'] = pd.to_datetime(ob_daily_flow[['year','month','day']])
+        ob_daily_flow.set_index('date',inplace=True)
+        self.obs_daily =  ob_daily_flow.flow_cfs
         
-        
-        #CHPS Simulation
-        if chps_file:         
-            pixml_file=read_pixml_timeseries(chps_file)
-            chps_sim_run=pixml_file.to_df(['units'])
-            chps_sim_run=chps_sim_run.set_index('valid_datetime').value.astype('float').multiply(35.3147)
-            chps_sim_run.index=pd.to_datetime(chps_sim_run.index) - pd.DateOffset(hours=6)
-            chps_sim_run.rename('Inst_Streamflow_cfs',inplace=True)
-        else:
-            chps_sim_run = pd.Series(dtype=float)
-        self.chps_sim = chps_sim_run
+
+        ob_inst_flow = pd.read_csv(inst_flow_path)
+        ob_inst_flow['datetime'] = pd.to_datetime(ob_inst_flow[['year','month','day','hour']])
+        ob_inst_flow.set_index('datetime',inplace=True)
+        self.obs_inst =  ob_inst_flow.flow_cfs
 
         if ac_run_path:
             ac_path, ac_run = os.path.split(ac_run_path)
             forcing, pars, upflow, flow =nwsrfs_prep(ac_path,ac_run)
             ac_sim = Model(forcing,pars,upflow,flow)
             ac_sim_run = ac_sim.run_all()
-
-            if ac_sim_run.index.year.min() >1979:
-                warnings.warn("Autocalb Run Doesn't start at 1979")
         else:
             ac_sim_run = pd.Series(dtype=float)
-        self.ac_sim = ac_sim_run
-
-
-        if(chps_file != "" and ac_run_path != ""):
-            new_index=pd.date_range('1979-10-01 00:00:00','2022-10-01 18:00:00',freq='6H')
-            sim_run = self.chps_sim .combine_first(self.ac_sim)
-            sim_run = sim_run.reindex(new_index)
-            sim_run.interpolate(method='linear',limit_direction='both',inplace=True)
-        else:
-            sim_run =  pd.Series(dtype=float)
-        self.sim = sim_run
+        self.sim = ac_sim_run
         
-    def get_dataset_keys(self,path):
-        f=h5py.File(path, 'r')
-        keys = []
-        f.visit(lambda key : keys.append(key) if isinstance(f[key], h5py.Dataset) else None)
-        f.close()
-        return keys
-
-    def hdf_to_df(self, hdf5, path):
-
-        df=pd.DataFrame(hdf5[path][:])
-        date_time=df.columns[0]
-        df[date_time]=pd.to_datetime(df[date_time].str.decode('utf-8'))
-        df['Source']=df['Source'].str.decode('utf-8')
-        df.set_index(date_time,inplace=True)
-        return df
-
-    def hdf5_check(self, path,zone=1):
-        store=h5py.File(path, 'r')
-        keys=pd.Series(self.get_dataset_keys(path))
-        no_zones=list(set(['1','2','3'])-set([str(zone)]))
-        keys=keys.loc[(~keys.str.contains('Forcing/Zones'+no_zones[0]))&(~keys.str.contains('Forcing/Zones'+no_zones[-1]))]
-        ts_dic=dict()
-        for index, value in keys.items():
-            #if ('Forcing/Zones'+str(zone) in value) or ('Streamflow' in value):
-            try:
-                ts_dic[value]=self.hdf_to_df(store,value)
-            except:
-                ts_dic[value]=pd.DataFrame(store[value][:])
-        store.close()
-        return(ts_dic)
 
 # Class to perform the AdjustQ calculation, utilizing AdjustQPrep as a subclass.
 
 class adjustq(adjustq_prep):
 
     def __init__(self,
-                hdf5_file: str,
-                hdf5_daily_path: str,
-                hdf5_inst_path: str,
-                chps_file: str="",
+                daily_flow_path: str,
+                inst_flow_path: str,
                 ac_run_path: str="",
                 interp_type:  str='ratio',
                 blend: int=10,
@@ -120,10 +69,8 @@ class adjustq(adjustq_prep):
         self.max_iterations = max_iterations
 
         #Get inputs and define them
-        adjustq_inputs = adjustq_prep(hdf5_file,
-            hdf5_daily_path,
-            hdf5_inst_path,
-            chps_file,
+        adjustq_inputs = adjustq_prep(daily_flow_path,
+            inst_flow_path,
             ac_run_path)
 
         self.obs_daily = adjustq_inputs.obs_daily 
@@ -412,43 +359,41 @@ class adjustq(adjustq_prep):
 
 #################Argument Declaration#################
 
-if __name__ == "__main__":
+########################
+# currently not working
+########################
 
-    desc = "Emulates CHPS FEWS AdjustQ tranformation"
-    parser = argparse.ArgumentParser(description=desc,formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+# if __name__ == "__main__":
 
-    # Add an argument with a default value
-    parser.add_argument('-o','--output_file', dest="output_file", type=str,  help='path to output csv file')
-    parser.add_argument('-f','--hdf5_file', dest="hdf5_file", type=str,  help='path to hdf5 file')
-    parser.add_argument('-d','--hdf5_daily', dest="hdf5_daily", type=str, help='path to hdf5 daily dataset')
-    parser.add_argument('-i','--hdf5_inst', dest="hdf5_inst", type=str, help='path to hdf5 instantaneous dataset')
-    parser.add_argument('-c','--chps_sim', dest="chps_sim", type=str, default="" ,help='path to chps sim xml file')
-    parser.add_argument('-t','--interp_type', dest="interp_type", type=str, default="ratio" ,help='interp method must be specified as ratio or difference')
-    parser.add_argument('-b','--blend', dest="blend", type=int, default=10 ,help='number of consecutive missing inst observation to distinguish between using a interpolation or fill proceedure')
-    parser.add_argument('-e','--error_tol', dest="error_tol", type=float, default=0.01 ,help='error tollerance to correct subdaily data to match daily data')
-    parser.add_argument('-m','--max_iter', dest="max_iter", type=int, default=15 ,help='max number of iterations to correct subdaily data to match daily data')
+#     desc = "Emulates CHPS FEWS AdjustQ tranformation"
+#     parser = argparse.ArgumentParser(description=desc,formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    # Parse the arguments
-    args = parser.parse_args()
+#     # Add an argument with a default value
+#     parser.add_argument('-o','--output_file', dest="output_file", type=str,  help='path to output csv file')
+#     parser.add_argument('-d','--flow_daily', dest="flow_daily", type=str, help='path to daily flow csv')
+#     parser.add_argument('-i','--flow_inst', dest="flow_inst", type=str, help='path to instantaneous flow csv')
+#     parser.add_argument('-t','--interp_type', dest="interp_type", type=str, default="ratio" ,help='interp method must be specified as ratio or difference')
+#     parser.add_argument('-b','--blend', dest="blend", type=int, default=10 ,help='number of consecutive missing inst observation to distinguish between using a interpolation or fill proceedure')
+#     parser.add_argument('-e','--error_tol', dest="error_tol", type=float, default=0.01 ,help='error tollerance to correct subdaily data to match daily data')
+#     parser.add_argument('-m','--max_iter', dest="max_iter", type=int, default=15 ,help='max number of iterations to correct subdaily data to match daily data')
 
-    #Output file
-    output_file = args.output_file
+#     # Parse the arguments
+#     args = parser.parse_args()
+
+#     #Output file
+#     output_file = args.output_file
     
-    #Input files
-    hdf5_file = args.hdf5_file
-    hdf5_daily = args.hdf5_daily
-    hdf5_inst = args.hdf5_inst
-    chps_sim = args.chps_sim
+#     #Input files
+#     flow_daily = args.flow_daily
+#     flow_inst = args.flow_inst
 
-    #Options
-    interp_type = args.interp_type
-    blend = args.blend
-    error_tol = args.error_tol
-    max_iter = args.max_iter
+#     #Options
+#     interp_type = args.interp_type
+#     blend = args.blend
+#     error_tol = args.error_tol
+#     max_iter = args.max_iter
 
+#     adjustq_class = adjustq(flow_daily,flow_inst,interp_type, blend, error_tol, max_iter)
 
-    adjustq_class = adjustq(hdf5_file,hdf5_daily,hdf5_inst,chps_sim,
-        interp_type, blend, error_tol, max_iter)
-
-    #write to csv
-    adjustq_class.get_adjustq().to_csv(output_file)
+#     #write to csv
+#     adjustq_class.get_adjustq().to_csv(output_file)

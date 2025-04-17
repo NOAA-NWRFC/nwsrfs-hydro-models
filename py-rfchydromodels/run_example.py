@@ -8,6 +8,7 @@
 import os
 from utilities.model import *
 from utilities.model_prep import *
+from utilities.adjustq import *
 #import pdb; pdb.set_trace()
 
 #############INPUT####################
@@ -45,3 +46,18 @@ fa_table = sim.forcings.fa_fac(sim.dt_seconds,sim.dates)
 
 #Create example csv
 nwsrfs_run.to_csv(os.path.join(folder,'EXAMPLE-NRKW1_Sim.csv'))
+
+
+#############Create AdjustQ Timeseries####################
+
+#Used to format upstream routing reach flow by merging 
+# average daily flow observation, instantaneous flow observation,
+# and nwsrfs simulation
+#emulates CHPS transformation, https://publicwiki.deltares.nl/display/FEWSDOC/AdjustQ
+
+daily_flow_path = os.path.join(run_dir,'flow_daily_'+lid+'.csv')
+inst_flow_path = os.path.join(run_dir,'flow_instantaneous_'+lid+'.csv')
+sim_path = os.path.join(run_dir,'results_por_02')
+
+adjustq_class = adjustq(daily_flow_path,inst_flow_path,sim_path)
+adjustq_example = adjustq_class.adjustq

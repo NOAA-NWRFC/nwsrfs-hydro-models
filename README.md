@@ -11,6 +11,7 @@ Also included in this repository are Python and R packages that compile and inte
 **Languages:** R, Python, FORTRAN 77, and FORTRAN 90\
 **Compiler:** A FORTRAN compiler is required to install this package. This package has been tested with [gfortran](https://gcc.gnu.org/wiki/GFortran). See [this page](https://cran.r-project.org/bin/macosx/tools/) for a simple installation option on macOS\
 **Known OS Compatibility:** macOS and Red Hat OS
+**Warning:** Testing of wrapper and package conducted exclusively on a six hour model time step
 
 ## Installation
 
@@ -27,8 +28,7 @@ See the documentation `?rfchydromodels` and `?sac_snow_uh` for examples.
 
 **Tested Python Version:** 3.10.3\
 **Package Dependencies:**  numpy, pandas, lxml\
-**Dependencies:** numpy, pandas, lxml
-
+**Dependencies:** numpy, pandas
 numpy's `f2py` is used to compile the source code and FORTRAN wrappers. To compile the FORTRAN source:
 
 ```
