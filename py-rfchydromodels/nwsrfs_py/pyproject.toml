@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools", "wheel"]          # What packages are needed to build this project
+build-backend = "setuptools.build_meta"     # The tool that runs the build process (here, setuptools)
+
+
+[project]
+name = "nwsrfspy"                                              # The name of the installable package (used by pip)
+version = "0.1.0"                                              # Semantic version (major.minor.patch)
+description = "Python tools for NWSRFS modeling with FORTRAN source Code integration" # Short description for metadata         
+authors = [{ name = "Geoffrey Walters PE", email = "geoffrey.walters@noaa.gov" }] # Author info (list of tables)
+readme = "README.md"                                           # File to use for long description on PyP
+license = { file = "LICENSE" }                                 # file with license information
+requires-python = ">=3.8"                                      # Minimum required Python version
+dependencies = [                                               # Runtime dependencies installed with the package
+    "numpy",
+    "pandas"
+]
+
+
+[tool.setuptools]
+packages = ["nwsrfs_py"]                     # List of packages to include (can also use find:)
+include-package-data = true                 # Include non-code files (like .so, .txt, etc.)
+
+[table]
+description = """
+This is a multi-line description.
+It can span multiple lines.
+"""
+

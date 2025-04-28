@@ -2,7 +2,7 @@ import warnings
 import pandas as pd
 import numpy as np
 #from scipy.special import gamma
-import utilities.model_src as s
+from . import model_src as s
 #import pdb; pdb.set_trace()
 
 class Model:
