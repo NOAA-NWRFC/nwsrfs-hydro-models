@@ -37,6 +37,11 @@ LASTNEXT
 # R junk
 .Rproj.user
 .Rhistory
+.Rapp.history
+
+# Python junk
+nwsrfspy.egg-info
+__pycache__
 
 # Mac junk
 .DS_Store
