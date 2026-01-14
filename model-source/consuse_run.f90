@@ -78,8 +78,8 @@ subroutine consuse(sim_length, year, month, day, &
 ! !     QRFOUT_out:  Return Flow Time Series in CFSD (double array)
 ! !     QOL_out:  Other Losses Time Series in CFSD (double array)
 ! !     QCD_out: Crop Demand Time Series in CFSD (double array)
-! !     CE_out:  Crop Evapotranspiration in CFSD (double array)
-! !     RFSTOR_out:  Return Flow Storage (double array)
+! !     CE_out:  Crop Evapotranspiration in MM (double array)
+! !     RFSTOR_out:  Return Flow Storage in MM (double array)
 ! !     INTERNAL
 ! !     OPTION:  ET ESTIMATION OPTION: TEMPERATURE OR POTENTIAL ET (ALWAYS 1)
 ! !     ETD(*): ET DEMAND TIME SERIES (MM)

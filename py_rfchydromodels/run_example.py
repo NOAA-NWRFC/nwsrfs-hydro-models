@@ -6,9 +6,9 @@
 #The make file requires a python environment with Numpy installed
 
 import os
-from utilities.model import *
-from utilities.model_prep import *
-from utilities.adjustq import *
+#from nwsrfs_py import *
+from nwsrfs_py import qdjust
+#from utilities.adjustq import *
 #import pdb; pdb.set_trace()
 
 #############INPUT####################

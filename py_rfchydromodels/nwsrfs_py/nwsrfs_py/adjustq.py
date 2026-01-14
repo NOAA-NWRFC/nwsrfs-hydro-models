@@ -1,31 +1,40 @@
 #!/usr/bin/env python
 
-#These functions replicate the FEWS/NWRFS Adjust Q tool
-#Created by:  Geoffrey Walters PE, 5/24/21, modified 1/27/24
+'''
+These class functions replicate the FEWS/NWRFS Adjust Q tool.
 
-# AdjustQ adjusts simulated discharges using observed instantaneous and mean daily discharges. 
-# The process combines two CHPS FEWS transformations:
-# 1. AdjustQUsingInstantaneousDischarge: Corrects simulated discharges based on instantaneous observations.
-# 2. AdjustQUsingMeanDailyDischarge: Applies additional corrections if mean daily discharges exceed the error tolerance.
-# Any resulting negative discharge values are set to zero.
+Used as a preprocessing step to create upstream timeseries 
+for routing reaches where lagk is being optimized
 
+AdjustQ adjusts simulated discharges using observed instantaneous and mean daily discharges. 
+The process combines two CHPS FEWS transformations:
+1. AdjustQUsingInstantaneousDischarge: Corrects simulated discharges based on instantaneous observations.
+2. AdjustQUsingMeanDailyDischarge: Applies additional corrections if mean daily discharges exceed the error tolerance.
+Any resulting negative discharge values are set to zero.
+'''
 
 import os, sys, argparse, warnings
 import pandas as pd, numpy as np
-from .model import *
-from .model_prep import *
+from . import nwrfc_ac
 
 #import pdb; pdb.set_trace()
 
-# Class to create Pandas Series for observed instantaneous data, observed daily data, 
-# and CHPS NWSRFS simulation results.
+class _adjustq_prep:
 
-class adjustq_prep:
+    '''
+    Internal-only class to create Pandas Series for observed instantaneous data, observed daily data, 
+    and CHPS NWSRFS simulation results. Used within the adjustq class.
+
+    Attributes:
+        daily_flow_path (str): Path to daily average streamflow csv provided in a NWRFC autocalb directory [ex: flow_daily_[lid].csv].
+        inst_flow_path (str): Path to instantaneous streamflow csv provided in a NWRFC autocalb directory [ex: flow_instantaneous_[lid].csv].
+        ac_run_path (str | None): Optional path to NWRFC autocalibration results directory [ex: 2zone/[lid]/results_por_02].
+    '''
 
     def __init__(self,
                 daily_flow_path: str,
                 inst_flow_path: str,
-                ac_run_path: str=""):
+                ac_run_path: str | None = None):
         
         #import observations csvs
         ob_daily_flow = pd.read_csv(daily_flow_path)
@@ -39,87 +48,118 @@ class adjustq_prep:
         ob_inst_flow.set_index('datetime',inplace=True)
         self.obs_inst =  ob_inst_flow.flow_cfs
 
-        if ac_run_path:
+        if ac_run_path is not None:
             ac_path, ac_run = os.path.split(ac_run_path)
-            forcing, pars, upflow, flow =nwsrfs_prep(ac_path,ac_run)
-            ac_sim = Model(forcing,pars,upflow,flow)
+            model_inputs = nwrfc_ac.nwsrfs_prep(ac_path,ac_run)
+            ac_sim = nwrfc_ac.nwsrfs_run(model_inputs.forcings, model_inputs.pars, model_inputs.upflow, model_inputs.daily_flow)
             ac_sim_run = ac_sim.run_all()
         else:
             ac_sim_run = pd.Series(dtype=float)
         self.sim = ac_sim_run
         
+class adjustq(_adjustq_prep):
 
-# Class to perform the AdjustQ calculation, utilizing AdjustQPrep as a subclass.
+    '''
+    Class to perform an equivalent CHPS FEWS AdjustQ calculation, inheriting from _adjustq_prep. 
+    
+    Intended to be used within the NWRFC Autocalibration folder/data structure. Uses two different 
+    procedures to interpolate missing instantaneous data: one for small gaps and another for large gaps. 
+    The ``blend`` input variable defines which procedure to use. Where daily observed data is available, 
+    instantaneous data (observed or interpolated) is adjusted to match the observed daily average.
 
-class adjustq(adjustq_prep):
+    Attributes:
+        daily_flow_path (str): Path to daily average streamflow csv provided in a NWRFC autocalb directory.
+        inst_flow_path (str): Path to instantaneous streamflow csv provided in a NWRFC autocalb directory.
+        ac_run_path (str | None): Optional path to NWRFC autocalibration results directory.
+        blend (int): Threshold for determining how many time steps of missing observed instantaneous data constitutes a "large gap". Default: 10.
+        interp_type (str): Correction procedure used to correct simulated discharges for missing gaps smaller than the blend threshold. 
+            Accepts 'ratio' or 'difference'. Default: 'ratio'.
+            
+            * **ratio**: Correction factor is based on the ratio between observed and simulated discharges.
+            * **difference**: Correction value is based on the difference between observed and simulated discharges.
+        
+        error_tol (float): Percent tolerance that the instantaneous daily average must match the observed daily flow average. Default: 0.01.
+        max_iterations (int): Maximum number of iterations to adjust the instantaneous daily average to match the observed daily flow. Default: 15
+    '''
 
     def __init__(self,
                 daily_flow_path: str,
                 inst_flow_path: str,
-                ac_run_path: str="",
-                interp_type:  str='ratio',
+                ac_run_path: str | None = None,
                 blend: int=10,
+                interp_type:  str='ratio',
                 error_tol: float=0.01,
                 max_iterations: int=15):
         
+        #Get input timeseries 
+        super().__init__(daily_flow_path, inst_flow_path, ac_run_path)
+
         #Set options
-        self.interp_type = interp_type
-        self.blend = blend
+        if interp_type == 'ratio' or interp_type == 'difference':
+            self.interp_type = interp_type
+        else:
+            msg = "interp_type input must be either 'ratio' or 'difference'.  Default is 'ratio'"
+            raise ValueError(msg)
+        self.blend = int(blend)
         self.error_tol = error_tol
-        self.max_iterations = max_iterations
+        self.max_iterations = int(max_iterations)
 
-        #Get inputs and define them
-        adjustq_inputs = adjustq_prep(daily_flow_path,
-            inst_flow_path,
-            ac_run_path)
 
-        self.obs_daily = adjustq_inputs.obs_daily 
-        self.obs_inst = adjustq_inputs.obs_inst
-        self.sim = adjustq_inputs.sim
+    def get_adjustq(self):
+
+        """
+        Performs AdjustQ calculation. 
+        
+        This function detects if a simulation timeseries is provided and uses the appropriate 
+        calculation method.
+
+        Returns:
+            pd.DataFrame: A DataFrame with an adjustq timeseries (units: cfs).
+        """
 
         #Get adjustq 
         if not self.sim.empty:
-            self.adjustq = self.adjustq_calc(self.obs_inst,self.obs_daily,self.sim,
-                self.interp_type, self.blend,self.error_tol,self.max_iterations)
+            self.adjustq = self.adjustq_calc()
         else:
-           self.adjustq = self.inst_mean_q_merge(self.obs_inst,self.obs_daily,
-            self.error_tol,self.max_iterations)
+           self.adjustq = self.inst_mean_q_merge()
 
-    # Returns the calculated AdjustQ as a Pandas Series.
-    def get_adjustq(self):
         return pd.DataFrame(self.adjustq)
 
 
-    # This procedure uses observed instantaneous discharges to correct simulated discharges. 
-    # - If observed data exists for a time step, it replaces the simulated value. 
-    # - If no observed data is available, the procedure calculates a corrected value or uses the simulated value as-is.
+    def _adjustq_inst_smallgaps(self,obs_sim_working,gap_list):
 
-    # Correction Methods:
-    # 1. **Ratio Option**:
-    #    - Simulated values are corrected by multiplying them with a correction factor.
-    #    - The correction factor is based on the ratio between observed and simulated discharges at the start and end of a gap.
-    #    - The factor is linearly interpolated across the gap.
-    # 2. **Difference Option**:
-    #    - Simulated values are corrected by adding a correction value.
-    #    - The correction value is based on the difference between observed and simulated discharges at the start and end of the gap.
+        """
+        Steps to fill in missing data where the gap is < blend parameter.
 
-    # Special Case:
-    # - The program may override the configured interpolation method in certain scenarios:
-    #    - If the ratio between start and end ratios exceeds 2, or
-    #    - If either ratio is greater than 5.
-    # - In such cases, the program switches to interpolating by difference, even if ratio-based interpolation was configured.
+        This procedure uses observed instantaneous discharges to correct simulated discharges. 
+        If observed data exists, it replaces the simulated value. If not, it calculates a corrected value.
 
-    #Steps to fill in missing data where the gap is < blend parameter
-    def adjustq_inst_smallgaps(self,obs_sim_working,gap_list,interp_type):
+        **Correction Methods:**
+        
+        * **Ratio Option**: Correction factor based on the ratio between observed/simulated at start/end of gap.
+        * **Difference Option**: Correction based on the difference between observed/simulated.
+
+        **Special Case:**
+        The program overrides the configured method and uses **difference** interpolation if:
+        1. The ratio between start and end ratios exceeds 2.
+        2. Either ratio is greater than 5.
+
+        Args:
+            obs_sim_working (pd.DataFrame): Internal working DataFrame used to build the adjustq timeseries.
+            gap_list (pd.DataFrame): Internal DataFrame used to identify periods with small gaps.
+            
+        Returns:
+            pd.DataFrame: The updated working DataFrame with small gaps filled.
+        """
 
         for index, row in gap_list.iterrows():
                 #Grab the period with the missing values
                 end=index
                 periods=row.Period_Gap
-                start=end-pd.Timedelta(periods*6, unit='H')
+                start=end-pd.Timedelta(periods*6, unit='h')
                 interp_period=obs_sim_working.loc[start:end].copy()
 
-                #Check if the ratio tolerence limits are violated
+                #Check if the ratio tolerance limits are violated
                 start_ratio=interp_period.iloc[0].Inst_Ratio
                 end_ratio=interp_period.iloc[-1].Inst_Ratio
 
@@ -127,52 +167,56 @@ class adjustq(adjustq_prep):
                 ratio_check2=max(start_ratio,end_ratio)>5
 
                 #If interpolation type is difference or if ratio check are violated use the difference method
-                if (interp_type[0].lower()=='d') | (ratio_check1) | (ratio_check2):
+                if (self.interp_type[0].lower()=='d') | (ratio_check1) | (ratio_check2):
                     #print('Difference Procedure Initiated')
                     interp_period['Inst_Difference']=interp_period.Inst_Difference.interpolate()
                     interp_period['AdjustQ_Inst']=interp_period.simulated+interp_period.Inst_Difference
                 #If not using difference interpolation method, use the ratio method
-                elif interp_type[0].lower()=='r':
+                elif self.interp_type[0].lower()=='r':
                     #print('Ratio Procedure Initiated')
                     interp_period['Inst_Ratio']=interp_period.Inst_Ratio.interpolate()
                     interp_period['AdjustQ_Inst']=interp_period.simulated*interp_period.Inst_Ratio
                 #If you get here, an erronous interpolation type was selected 
                 else:
-                    #print('Interp method must be specified as ratio or difference \n'+
-                    #     '***Stopping Routine***')
-                    sys.exit()
-
+                    msg = "Interp method must be 'ratio' or 'difference', got '{self.interp_type}'."
+                    raise ValueError(msg)
 
                 #Add the interpolated data to the obs_sim_working dataframe
                 obs_sim_working.loc[start:end,['AdjustQ_Inst']]=interp_period.loc[start:end,['AdjustQ_Inst']]
 
         return obs_sim_working
 
-    #When the gap in the observed data is to large to fill with a interpolation procedure then the gap in the observed data will be filled with the 
-    #blend procedure. This procedure is also used to provide a smooth transition between the observed data and the simulated at T0. The blend procedure 
-    #will provide a smooth transition between the observed data and the simulated data. The difference between the simulated discharge and the observed 
-    #discharge at the beginning of a gap, end of a gap or at the latest observed value will be used to correct the simulated value.
-
-    # If the gap in observed data is too large to fill using interpolation, the blend procedure is used. 
-    # This procedure ensures a smooth transition between observed and simulated data . 
-    # The blend procedure corrects simulated values by adjusting for the difference between simulated 
-    # and observed discharges at the start of the gap or the end of the gap using the specified blend steps
 
     #Steps to fill in missing data where the gap is < blend parameter
-    def adjustq_inst_largegaps(self,obs_sim_working,gap_list,blend):
+    def _adjustq_inst_largegaps(self,obs_sim_working:pd.DataFrame,gap_list:pd.DataFrame):
+
+        '''
+        Steps to fill in missing data where the gap is > blend parameter 
+        
+        When the gap in observed data is too large to fill with interpolation, this procedure 
+        uses a "blend" method to ensure a smooth transition. It blends the difference 
+        between the simulated and observed discharge at the start and end of the gap over 
+        the specified ``blend`` steps.
+
+        Args:
+            obs_sim_working (pd.DataFrame): Internal working DataFrame which is used to build the adjustq timeseries
+            gap_list (pd.DataFrame): Internal DataFrame used to identify periods with large gaps 
+        Returns:
+            pd.DataFrame: The updated working DataFrame with large gaps filled.
+        '''
         
         #Steps to fill in missing data where the gap is > blend parameter 
         for index, row in gap_list.iterrows():
 
                 #Pull back end of the blend period
                 end=index
-                end_blend=end-pd.Timedelta(blend*6, unit='H')
+                end_blend=end-pd.Timedelta(self.blend*6, unit='h')
                 end_blend_period=obs_sim_working.loc[end_blend:end].copy()
                 end_blend_period.reset_index(inplace=True)
                 #Get the difference to blend
                 end_diff=end_blend_period.iloc[-1].Inst_Difference
                 #Blend the difference over the specified blend period
-                end_blend_period['AdjustQ_Inst']=end_blend_period.simulated+(end_blend_period.index/blend)*end_diff
+                end_blend_period['AdjustQ_Inst']=end_blend_period.simulated+(end_blend_period.index/self.blend)*end_diff
                 end_blend_period.set_index('datetime_local_tz',inplace=True)
 
                 #Add the interpolated data to the obs_sim_working dataframe
@@ -181,14 +225,14 @@ class adjustq(adjustq_prep):
                 periods=row.Period_Gap
 
                 #Pull front end of the blend period
-                start=end-pd.Timedelta(periods*6, unit='H')
-                start_blend=start+pd.Timedelta(blend*6, unit='H')
+                start=end-pd.Timedelta(periods*6, unit='h')
+                start_blend=start+pd.Timedelta(self.blend*6, unit='h')
                 start_blend_period=obs_sim_working.loc[start:start_blend].copy()
                 start_blend_period.reset_index(inplace=True)
                 #Get the difference to blend
                 start_diff=start_blend_period.iloc[0].Inst_Difference
                 #Blend the difference over the specified blend period
-                start_blend_period['AdjustQ_Inst']=start_blend_period.simulated+(1-start_blend_period.index/blend)*start_diff
+                start_blend_period['AdjustQ_Inst']=start_blend_period.simulated+(1-start_blend_period.index/self.blend)*start_diff
                 start_blend_period.set_index('datetime_local_tz',inplace=True)
 
                 #Add the interpolated data to the obs_sim_working dataframe
@@ -196,13 +240,25 @@ class adjustq(adjustq_prep):
         
         return obs_sim_working
 
-    # This procedure corrects the simulated discharge using mean daily discharge values until the error is within the specified tolerance.
+    def _adjustq_daily(self,obs_sim_working:pd.DataFrame):
 
-    #Use observed daily average data to shape instantaneous data
-    def adjustq_daily(self,obs_sim_working,daily_q,max_iterations,error_tol):
+        '''
+        Corrects simulated discharge using mean daily discharge values.
+
+        This iterative procedure scales the instantaneous discharge so that its daily average 
+        matches the observed daily average. It repeats until the error is within the 
+        specified tolerance (``error_tol``) or ``max_iterations`` is reached.
+
+        Args:
+            obs_sim_working (pd.DataFrame): Internal working DataFrame which is used to build the adjustq timeseries.
+        Returns:
+            pd.DataFrame: The updated working DataFrame with daily volume corrections applied.
+
+        '''
+
         i = 1
-        max_error=error_tol+1
-        while (i < max_iterations+1) & (error_tol<max_error):
+        max_error=self.error_tol+1
+        while (i < self.max_iterations+1) & (self.error_tol<max_error):
             #print(i)
 
             #Get Daily Average simulated flow considering both 00:00 time values on either end (given half weight).
@@ -215,14 +271,14 @@ class adjustq(adjustq_prep):
             #change timestep to daily
             daily_avg=daily_avg.resample('1D').sum()
             #Pull observed daily data
-            daily_avg['Daily_Obs']=daily_q.loc[daily_q.index.isin(daily_avg.index)]
-            #Get the daily ratio to adjust the instanteous flow
+            daily_avg['Daily_Obs']=self.obs_daily.loc[self.obs_daily.index.isin(daily_avg.index)]
+            #Get the daily ratio to adjust the instantaneous flow
             daily_avg['Daily_Ratio']=daily_avg.Daily_Obs.divide(daily_avg.Daily_Sim)
-            #Get the pbias to track the tolerence
+            #Get the pbias to track the tolerance
             daily_avg['Pbias']=abs((daily_avg.Daily_Sim-daily_avg.Daily_Obs)/daily_avg.Daily_Sim)
             
             #Convet the index to a include a hour timestep.  
-            daily_avg.index=daily_avg.index+pd.Timedelta(12, unit='H')
+            daily_avg.index=daily_avg.index+pd.Timedelta(12, unit='h')
 
             #Add the daily ratio to the obs_sim_working dataframe set at non 00:00 time values
             #For the 00:00 time use average of the two days
@@ -245,19 +301,40 @@ class adjustq(adjustq_prep):
     #########################Primary AdjustQ Function (calls other functions above)#########################
     ########################################################################################################
 
-    def adjustq_calc(self,inst_q,daily_q,sim,interp_type='ratio',blend=10,error_tol=.01,max_iterations=15):
-        
+    def adjustq_calc(self):
+
+        '''
+        Primary AdjustQ calculation function when model simulation data is available.
+
+        This method orchestrates the full adjustment process:
+        1. Identifies gaps in observed data.
+        2. Calls ``_adjustq_inst_smallgaps`` for short missing periods.
+        3. Calls ``_adjustq_inst_largegaps`` for long missing periods.
+        4. Calls ``_adjustq_daily`` to match daily volumes.
+        5. Clips any negative results to zero.
+
+        Any resulting negative discharge values are set to zero.
+
+        Returns:
+            pd.Series:  A Series with a adjustq timeseries (units: cfs)
+        '''
         ###############PREP Data################################
         
+        if self.sim is None:
+            msg = "No model simulation timeseries defined.  Use `inst_mean_q_merge` instead."
+            raise ValueError(msg)
+
         #Format the daily observed flow
-        daily_q.index.rename('date_local_tz',inplace=True)
-        daily_q.rename('Daily_Avg_Streamflow_cfs',inplace=True)
+        # daily_q = self.obs_daily.copy(deep=True)
+        # daily_q.index.rename('date_local_tz',inplace=True)
+        # daily_q.rename('Daily_Avg_Streamflow_cfs',inplace=True)
         
         #Format the instantaneous observed flow
+        inst_q = self.obs_inst.copy(deep=True)
         inst_q.index.rename('datetime_local_tz',inplace=True)
         inst_q.rename('observed',inplace=True)
           
-        #Grab the nearest instanteous value, within 15min, to each 6hr timestep
+        #Grab the nearest instantaneous value, within 15min, to each 6hr timestep
         obs_6h_begin=inst_q.index[0].floor(freq='D')
         obs_6h_end=inst_q.index[-1].ceil(freq='D')
         obs_6h=pd.DataFrame(index=pd.date_range(start=obs_6h_begin,end=obs_6h_end,freq='6h'))
@@ -268,6 +345,7 @@ class adjustq(adjustq_prep):
         obs_6h=obs_6h[obs_6h.observed>0]
 
         #Format Simulated 6hr Data
+        sim = self.sim.copy(deep=True)
         sim.rename('simulated',inplace=True)
         sim.index.rename('datetime_local_tz',inplace=True)
         
@@ -293,14 +371,14 @@ class adjustq(adjustq_prep):
         obs_gaps['Period_Gap']=(obs_gaps.index.to_series().diff()/pd.to_timedelta('1 hour'))/6
         obs_gaps=obs_gaps.loc[obs_gaps.Period_Gap>1,['Period_Gap']].sort_values(by='Period_Gap')
         
-        obs_gaps_interp=obs_gaps.loc[obs_gaps.Period_Gap<blend]
-        obs_gaps_blend=obs_gaps.loc[obs_gaps.Period_Gap>=blend]
+        obs_gaps_interp=obs_gaps.loc[obs_gaps.Period_Gap<self.blend]
+        obs_gaps_blend=obs_gaps.loc[obs_gaps.Period_Gap>=self.blend]
         
         #Adjust gaps in the observed data less than the blend length
-        working=self.adjustq_inst_smallgaps(working,obs_gaps_interp,interp_type)
+        working=self._adjustq_inst_smallgaps(working,obs_gaps_interp)
         
         #Adjust gaps in the observed data more than the blend length
-        working=self.adjustq_inst_largegaps(working,obs_gaps_blend,blend)
+        working=self._adjustq_inst_largegaps(working,obs_gaps_blend)
         
         #Condense working dataframe to only include the period where there is simulation data
         working=working.loc[~working.simulated.isna()]
@@ -308,7 +386,7 @@ class adjustq(adjustq_prep):
         working.loc[working.AdjustQ_Inst.isna(),['AdjustQ_Inst']]=working.loc[working.AdjustQ_Inst.isna(),['simulated']].values
         
         ####################AdjustQ Mean Daily#################
-        working=self.adjustq_daily(working,daily_q,max_iterations,error_tol)
+        working=self._adjustq_daily(working)
         
         #Replace any negative flow value with zero
         working['AdjustQ_Inst']=working.AdjustQ_Inst.clip(lower=0)
@@ -316,25 +394,36 @@ class adjustq(adjustq_prep):
         return working.AdjustQ_Inst
 
 
-    # For locations without an available simulation (e.g., project outflows), this tool fills missing 6-hour data 
-    # from the instantaneous dataset using daily mean flow. The resulting 6-hour merged data is smoothed using 
-    # the AdjustQDaily function to match daily averages.
-    def inst_mean_q_merge(self,inst_q,daily_q,error_tol=.01,max_iterations=15):
+
+    def inst_mean_q_merge(self):
+
+        '''
+        Merges instantaneous data with daily mean flow for locations without simulation data.
+
+        For locations like project outflows where no simulation exists, this method fills 
+        missing 6-hour data from the instantaneous dataset using daily mean flow. 
+        The resulting merged dataset is then smoothed using ``_adjustq_daily``.
+
+        Returns:
+            pd.Series: A Series containing the merged and adjusted discharge timeseries (units: cfs).
+        '''
         
         ###############PREP Data################################
         
         #Format the daily observed flow
         #Shifting forward 1 timestep to have 00:00 be part of previous day average
-        daily_q_6h=daily_q.resample('6h').ffill()
-        daily_q_6h.index=daily_q_6h.index+pd.Timedelta(6, unit='H')
+        daily_q_6h = self.obs_daily.copy(deep=True)
+        daily_q_6h = daily_q_6h.resample('6h').ffill()
+        daily_q_6h.index = daily_q_6h.index+pd.Timedelta(6, unit='h')
         daily_q_6h.index.rename('datetime_local_tz',inplace=True)
         daily_q_6h.rename('Inst_Streamflow_cfs',inplace=True)
           
         #Format the instantaneous observed flow
+        inst_q = self.obs_inst.copy(deep=True)
         inst_q.index.rename('datetime_local_tz',inplace=True)
         inst_q.rename('Inst_Streamflow_cfs',inplace=True)
           
-        #Grab the nearest instanteous value, within 2hours, to each 6hr timestep
+        #Grab the nearest instantaneous value, within 2hours, to each 6hr timestep
         inst_q_6h_begin=daily_q_6h.index[0].floor(freq='D')
         inst_q_6h_end=daily_q_6h.index[-1].ceil(freq='D')
         inst_q_6h=pd.DataFrame(index=pd.date_range(start=inst_q_6h_begin,end=inst_q_6h_end,freq='6h'))
@@ -349,51 +438,9 @@ class adjustq(adjustq_prep):
         inst_q_6h_merge=pd.DataFrame({'AdjustQ_Inst':inst_q_6h.Inst_Streamflow_cfs.combine_first(daily_q_6h)})
         
         ####################AdjustQ Mean Daily#################
-        inst_q_6h_merge=self.adjustq_daily(inst_q_6h_merge,daily_q,max_iterations,error_tol)
+        inst_q_6h_merge=self._adjustq_daily(inst_q_6h_merge)
         
         #Replace any negative flow value with zero
         inst_q_6h_merge['AdjustQ_Inst']=inst_q_6h_merge.AdjustQ_Inst.clip(lower=0)
         
         return inst_q_6h_merge.AdjustQ_Inst
-
-
-#################Argument Declaration#################
-
-########################
-# currently not working
-########################
-
-# if __name__ == "__main__":
-
-#     desc = "Emulates CHPS FEWS AdjustQ tranformation"
-#     parser = argparse.ArgumentParser(description=desc,formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-
-#     # Add an argument with a default value
-#     parser.add_argument('-o','--output_file', dest="output_file", type=str,  help='path to output csv file')
-#     parser.add_argument('-d','--flow_daily', dest="flow_daily", type=str, help='path to daily flow csv')
-#     parser.add_argument('-i','--flow_inst', dest="flow_inst", type=str, help='path to instantaneous flow csv')
-#     parser.add_argument('-t','--interp_type', dest="interp_type", type=str, default="ratio" ,help='interp method must be specified as ratio or difference')
-#     parser.add_argument('-b','--blend', dest="blend", type=int, default=10 ,help='number of consecutive missing inst observation to distinguish between using a interpolation or fill proceedure')
-#     parser.add_argument('-e','--error_tol', dest="error_tol", type=float, default=0.01 ,help='error tollerance to correct subdaily data to match daily data')
-#     parser.add_argument('-m','--max_iter', dest="max_iter", type=int, default=15 ,help='max number of iterations to correct subdaily data to match daily data')
-
-#     # Parse the arguments
-#     args = parser.parse_args()
-
-#     #Output file
-#     output_file = args.output_file
-    
-#     #Input files
-#     flow_daily = args.flow_daily
-#     flow_inst = args.flow_inst
-
-#     #Options
-#     interp_type = args.interp_type
-#     blend = args.blend
-#     error_tol = args.error_tol
-#     max_iter = args.max_iter
-
-#     adjustq_class = adjustq(flow_daily,flow_inst,interp_type, blend, error_tol, max_iter)
-
-#     #write to csv
-#     adjustq_class.get_adjustq().to_csv(output_file)

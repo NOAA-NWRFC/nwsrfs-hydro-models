@@ -30,7 +30,6 @@ subroutine chanloss(n_clmods, dt, sim_length, year, month, day, &
 ! !     year:  The year associated with each time step (integer array)
 ! !     month:  The month associated with each time step (integer array)
 ! !     day:  The day associated with each time step (integer array)
-! !     hour:  The hour associated with each time step (integer array)
 ! !     factor:  The adjustment factor for each module (double array)
 ! !     period:  The beginning and ending month that the factor is applied for each module (integer array)
 ! !     cl_type:  integer.  1=varp, 2=varc
@@ -45,7 +44,7 @@ subroutine chanloss(n_clmods, dt, sim_length, year, month, day, &
   double precision, intent(in):: min_q
   integer, dimension(sim_length), intent(in):: year, month, day
   double precision, dimension(n_clmods), intent(in):: factor
-  integer, dimension(2,n_clmods), intent(in):: period
+  integer, dimension(n_clmods,2), intent(in):: period
   double precision, dimension(sim_length), intent(in):: sim
 
   ! ! Local varible
@@ -65,7 +64,7 @@ subroutine chanloss(n_clmods, dt, sim_length, year, month, day, &
   dt_hours = dt/3600
 
   ! do i=1,2
-  !   write(*,'(100i3)') period(i,:)
+  !   write(*,'(100i3)') period(:,i)
   ! end do
 
   !! 1) Create monthly adjustment table
@@ -82,8 +81,8 @@ subroutine chanloss(n_clmods, dt, sim_length, year, month, day, &
     !! Grab the beginning and ending month for the period
     !! If either of those parameter values are outside a value of 1-12
     !! Set it to the closest value
-    first_period=int(period(1,n))
-    second_period=int(period(2,n))
+    first_period=int(period(n,1))
+    second_period=int(period(n,2))
     !! Checks
     if(first_period < 1) first_period = 1
     if(first_period > 12) first_period = 12

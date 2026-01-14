@@ -576,10 +576,10 @@ chanloss <- function(flow, forcing, dt_hours, pars) {
     return(flow)
   } else {
     cl_factors <- numeric(n_clmods)
-    cl_periods <- matrix(NA, 2, n_clmods)
+    cl_periods <- matrix(NA, n_clmods,2)
     for (i in 1:n_clmods) {
-      cl_periods[1, i] <- pars[pars$name == sprintf("cl_period_start_%02d", i), ]$value
-      cl_periods[2, i] <- pars[pars$name == sprintf("cl_period_end_%02d", i), ]$value
+      cl_periods[i, 1] <- pars[pars$name == sprintf("cl_period_start_%02d", i), ]$value
+      cl_periods[i, 2] <- pars[pars$name == sprintf("cl_period_end_%02d", i), ]$value
       cl_factors[i] <- pars[pars$name == sprintf("cl_factor_%02d", i), ]$value
     }
 
@@ -637,7 +637,7 @@ consuse <- function(input, pars, cfs = TRUE) {
       day = as.integer(input$day),
       AREA_in = cu_pars[cu_pars$zone == cu_zone & cu_pars$name == "area_km2", ]$value,
       EFF_in = cu_pars[cu_pars$zone == cu_zone & cu_pars$name == "irr_eff", ]$value,
-      MFLOW_in = cu_pars[cu_pars$zone == cu_zone & cu_pars$name == "min_flow_cmsd", ]$value * 0.028316847,
+      MFLOW_in = cu_pars[cu_pars$zone == cu_zone & cu_pars$name == "min_flow_cmsd", ]$value,
       ACCUM_in = cu_pars[cu_pars$zone == cu_zone & cu_pars$name == "rf_accum_rate", ]$value,
       DECAY_in = cu_pars[cu_pars$zone == cu_zone & cu_pars$name == "rf_decay_rate", ]$value,
       peadj_m = as.numeric(peadj_m),

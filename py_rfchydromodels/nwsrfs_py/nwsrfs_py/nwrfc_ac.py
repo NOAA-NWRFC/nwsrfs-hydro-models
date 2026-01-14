@@ -1,11 +1,12 @@
-import warnings
+import os, sys
+from typing import Optional
 import pandas as pd
 import numpy as np
-#from scipy.special import gamma
-from . import model_src as s
+from .wrapper import nwsrfs_src as s
+#import warnings
 #import pdb; pdb.set_trace()
 
-class Model:
+class nwsrfs_run:
 
     def __init__(self,
                  forcings: list,
@@ -323,7 +324,7 @@ class Model:
                 #Get PET from equivalent SAC zone.  
                 #NOTE:  To match CHPS results have to be shifted back 1 hr so 00:00 timestep
                 #       is included in previous day
-                pet_daily=pet[cu_name].shift(periods=-1, freq='H').resample('1D').sum()
+                pet_daily=pet[cu_name].shift(periods=-1, freq='hours').resample('1D').sum()
 
                 consuse_ts_input=pd.concat([pet_daily,qnat_daily],axis=1)
                 consuse_ts_input.columns=['pet','qnat']
@@ -370,7 +371,8 @@ class Model:
         else:
             p = self.p['chanloss']
             
-            periods=np.array([p['cl_period_start'],p['cl_period_end']],dtype='int')
+            periods =  np.column_stack((p['cl_period_start'],p['cl_period_end'])).astype(int)
+           
             sim_sf_adj=s.chanloss(int(self.dt_seconds), self.year.astype('int'), self.month.astype('int'), self.day.astype('int'),
                         p['cl_factor'],periods,p['cl_type'].astype('int'), p['cl_min_q'].astype('double'),
                         sim_sf.astype('double').to_numpy())
@@ -563,6 +565,14 @@ class Forcings:
 
 class UH:
 
+
+    #Will need to apply shift as it was taken out of nwsrfs_f2py_wrapper
+    #UH output needs to be shifted forward 6 hrs because of how forcings are treated in AutoCalb
+    #Repeat the first flow data point and append to the beginning of the ts, so there is no loss in a timestep
+
+    #sf_shift = sf.shift(1)
+    #sf = sf_shift.combine_first(sf)
+
     def __init__(self,
                  pars: pd.DataFrame,
                  dt_hrs: float):
@@ -674,8 +684,161 @@ class UH:
         sim_flow_cfs.loc[sim_flow_cfs.index[0] - pd.offsets.Hour(int(self.dt_hours))]=sim_flow_cfs[0]
         sim_flow_cfs.sort_index(inplace=True)
         #Shift the data forward 6hrs
-        sim_flow_cfs.index=sim_flow_cfs.index+pd.Timedelta(self.dt_hours, unit='H')
+        sim_flow_cfs.index=sim_flow_cfs.index+pd.Timedelta(self.dt_hours, unit='hour')
         #Cutting off the last data point to keep the same length as prior
         sim_flow_cfs=sim_flow_cfs[:-1]
         
         return sim_flow_cfs
+
+class nwsrfs_prep:
+
+    '''
+    This function reads in a files created by the NWRFC autocalibration process.  Files must must follow file conventions of the
+    NOAA-NWRFC/nwsrfs-hydro-autocalibration repository optimization tools
+
+    If no run_dir is provided, the first "results_*" directory found within the autocalb_dir path will be used.
+
+    Attributes:
+
+    autocalb_dir (str): Path to a NWRFC autocalibration directory
+    run_dir (str | None): Name of optimization run subdirectory within the autocal_dir.  postprocess.R needs to already been ran for subdirectory.  Class defaults to using first "results_*" directory found within the autocalb_dir 
+    '''
+
+    def __init__(self,
+                autocalb_dir: str, 
+                 run_dir: Optional[str] = None):
+
+            #Check if directory exist and assign
+            if run_dir is not None:
+                check_path = os.path.join(autocalb_dir,run_dir)
+            else:
+                check_path = autocalb_dir
+            self.autocalb_dir = autocalb_dir
+            self._autocalb_dir_basename = os.path.basename(self.autocalb_dir)
+
+            if not os.path.isdir(check_path):
+                msg = f'{check_path} is not a directory.'
+                raise ValueError(msg)
+
+            #Search autocalb directory for csv files.
+            self.autocalb_files = self.create_dir_df(self.autocalb_dir)
+
+            #Assign run_dir if not specified
+            if run_dir is not None:
+                self.run_dir = run_dir
+            else:
+                results_dir_query = self.autocalb_files.loc[self.autocalb_files.folder.str.startswith('results'),'folder'].sort_values().unique()
+
+                if len(results_dir_query) == 0:
+                    raise ValueError(f"{autocalb_dir} contains no results_* folder.")
+
+                self.run_dir = results_dir_query[0]
+                msg = f'Defaulting to using the following results directory: {self.run_dir}'
+                print(msg)
+
+            #Filter out files taht are not in either autocalb_dir or the run_dir
+            self.autocalb_files = self.autocalb_files.loc[self.autocalb_files.folder.isin([self._autocalb_dir_basename,self.run_dir])]
+
+            #Validate autocalb_dir and run_dir contents
+            self.validate_contents()
+
+            #Read in files
+            self.load_files()
+
+
+    def validate_contents(self):
+
+        #Check for optimial parameter file
+        self.pars_path = os.path.join(self.autocalb_dir,self.run_dir,'pars_optimal.csv')
+        if not os.path.isfile(self.pars_path):
+            msg = f'{self.pars_path} is missing'
+            raise ValueError(msg)
+
+        #Check for flow_daily files
+        self._daily_flow_df = self.autocalb_files.loc[self.autocalb_files.file_name.str.startswith('flow_daily')]
+        if len(self._daily_flow_df) == 0:
+            msg = 'Daily flow csv file is missing.  File must start with flow_daily_*.'
+            raise ValueError(msg)
+        elif len(self._daily_flow_df) > 1:
+            msg = 'Daily flow csv file is ambiguous. Only one csv file must start with flow_daily_*.'
+            raise ValueError(msg)
+        self.daily_flow_path = os.path.join(self._daily_flow_df.path.squeeze(),self._daily_flow_df.file_name.squeeze())
+
+        #Check for forcing files
+        self.forcings_por_df = self.autocalb_files.loc[self.autocalb_files.file_name.str.startswith('forcing_por')].copy()
+        self.forcings_por_df.sort_values(by='file_name',inplace=True)
+        if len(self.forcings_por_df) == 0:
+            msg = 'POR forcing csv files are missing. Files must start with flow_daily_*.'
+            raise ValueError(msg)
+
+        #Check for instantaneous flow file 
+        self._inst_flow_df = self.autocalb_files.loc[self.autocalb_files.file_name.str.startswith('flow_instantaneous')]
+        if len(self._inst_flow_df) == 0:
+            self.inst_flow_logic = False
+            self.inst_flow_path = None
+        if len(self._inst_flow_df) == 1:
+            self.inst_flow_logic = True
+            self.inst_flow_path = os.path.join(self._inst_flow_df.path.squeeze(),self._inst_flow_df.file_name.squeeze())
+        else:
+            msg = 'Instantaneous flow csv file is ambiguous. Only one csv file must start with flow_instantaneous_*.'
+            raise ValueError(msg)
+
+        #Check for upflow flow files
+        self.upflow_df = self.autocalb_files.loc[self.autocalb_files.file_name.str.startswith('upflow')].copy()
+        self.upflow_df.sort_values(by='file_name',inplace=True)
+        if len(self.upflow_df) == 0:
+            self.upflow_flow_logic = False
+        else:
+            self.upflow_flow_logic = True
+     
+    def load_files(self):
+       
+        #Read pars file
+        self.pars=pd.read_csv(self.pars_path)
+
+        #Read daily flow file
+        self.daily_flow = pd.read_csv(self.daily_flow_path)
+        self.daily_flow.index = pd.to_datetime(self.daily_flow[['year', 'month', 'day']])
+        self.daily_flow =self.daily_flow.resample('6h').ffill()
+
+        #Read forcing file data
+        self.forcings = self.read_tsfiles(self.forcings_por_df)
+
+        #If exists, read in instantaneous flow file
+        if self.inst_flow_logic:
+            self.inst_flow = pd.read_csv(self.inst_flow_path)
+            self.inst_flow.index = pd.to_datetime(self.inst_flow[['year', 'month', 'day', 'hour']])
+        else:
+            self.inst_flow = None
+
+        #If exists, read in upflow flow files
+        if self.upflow_flow_logic:
+            self.upflow = self.read_tsfiles(self.upflow_df)
+        else:
+            self.upflow = None
+
+
+    @staticmethod
+    def create_dir_df(path:str):
+            autocalb_files=pd.DataFrame(columns=['path','file_name']) 
+            n=1
+            for root, dirs, files in os.walk(path):
+                for file in files:
+                    if '.csv' in file:
+                        autocalb_files=pd.concat([autocalb_files,
+                                                  pd.DataFrame({'path':root,
+                                                               'file_name':file},index=[n])],axis=0)
+                        n=n+1
+
+            autocalb_files['folder']=autocalb_files.path.apply(os.path.basename)
+
+            return autocalb_files
+
+    @staticmethod
+    def read_tsfiles(path_df:pd.DataFrame):
+        list_df = []
+        for index, row in path_df.iterrows():
+            ts_df = pd.read_csv(os.path.join(row.path,row.file_name))
+            ts_df.index=pd.to_datetime(ts_df[['year', 'month', 'day', 'hour']])
+            list_df.append(ts_df)
+        return list_df
