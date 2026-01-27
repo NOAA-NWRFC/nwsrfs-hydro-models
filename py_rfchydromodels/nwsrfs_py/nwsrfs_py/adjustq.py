@@ -25,10 +25,14 @@ class _adjustq_prep:
     Internal-only class to create Pandas Series for observed instantaneous data, observed daily data, 
     and CHPS NWSRFS simulation results. Used within the adjustq class.
 
-    Attributes:
+    Args:
         daily_flow_path (str): Path to daily average streamflow csv provided in a NWRFC autocalb directory [ex: flow_daily_[lid].csv].
         inst_flow_path (str): Path to instantaneous streamflow csv provided in a NWRFC autocalb directory [ex: flow_instantaneous_[lid].csv].
         ac_run_path (str | None): Optional path to NWRFC autocalibration results directory [ex: 2zone/[lid]/results_por_02].
+    Attributes:
+        obs_daily (pd.Series): The loaded daily observation timeseries. (units: cfs)
+        obs_inst (pd.Series): The loaded instantaneous observation timeseries. (units: cfs)
+        sim (pd.Series): The simulation timeseries (if provided). (units: cfs)
     '''
 
     def __init__(self,
@@ -67,7 +71,7 @@ class adjustq(_adjustq_prep):
     The ``blend`` input variable defines which procedure to use. Where daily observed data is available, 
     instantaneous data (observed or interpolated) is adjusted to match the observed daily average.
 
-    Attributes:
+    Args:
         daily_flow_path (str): Path to daily average streamflow csv provided in a NWRFC autocalb directory.
         inst_flow_path (str): Path to instantaneous streamflow csv provided in a NWRFC autocalb directory.
         ac_run_path (str | None): Optional path to NWRFC autocalibration results directory.
@@ -80,6 +84,12 @@ class adjustq(_adjustq_prep):
         
         error_tol (float): Percent tolerance that the instantaneous daily average must match the observed daily flow average. Default: 0.01.
         max_iterations (int): Maximum number of iterations to adjust the instantaneous daily average to match the observed daily flow. Default: 15
+    Attributes:
+        obs_daily (pd.Series): The loaded daily observation timeseries. (units: cfs)
+        obs_inst (pd.Series): The loaded instantaneous observation timeseries. (units: cfs)
+        sim (pd.Series): The simulation timeseries (if provided). (units: cfs)
+    Computed Attributes:
+        adjustq (pd.Series): The final adjusted discharge timeseries. Available after calling `get_adjustq()`.
     '''
 
     def __init__(self,

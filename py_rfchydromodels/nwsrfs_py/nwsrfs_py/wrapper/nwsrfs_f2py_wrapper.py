@@ -168,31 +168,103 @@ class sacsnow_pars:
         if (self.forcings_ptps.min() < 0) |  (1 < self.forcings_ptps.max()):
             raise ValueError("PTPS forcings values must be between 0 and 1")
 
-#create a new type for sacsnow tci output
+#create a new type for sacsnow_tci output
 SACSnowTCI = NewType('SACSnowTCI',pd.DataFrame)
 
-def sacsnow(pars_dataclass: sacsnow_pars,
-            return_states:bool = False,
-            validate:bool = True,
-            return_pd:bool = True):
+class sacsnow():
 
     '''
-    Function to run the NWSRFS SAC-SMA and Snow17 models via F2PY bindings.  Multiple SAC-SMA and Snow17 parameter sets can be ran simultaneously. 
+    Class to run the NWSRFS SAC-SMA and Snow17 models via F2PY bindings.  Multiple SAC-SMA and Snow17 parameter sets can be ran simultaneously. 
 
     Args:
         sacsnow_pars (dataclass): Dataclass which contains all inputs to run SAC-SMA and Snow17
-        return_states (bool): option to return only tci (total channel inflow) or all states.  Default: False
         validate (bool): Validate sacsnow_pars dataclass inputs are correct format/type. Default: True
-        return_pd (bool): Returns tci timesseries as a pandas DataFrame.  Only applies when ``return_states`` is ``False``.  Default:  True
-    Returns:
-        pd.DataFrame | np.ndarray: If ``return_states`` is ``False``, returns total channel inflow (tci) with a column for each zone (units: mm).
-            Values are DataFrames if ``return_pd`` is ``True``, otherwise numpy arrays.
-        dict[str, pd.DataFrame]: If ``return_states`` is ``True``, a dictionary of DataFrames containing all model states with a column for each zone.
+    '''
+
+    def __init__(self,
+        pars_dataclass: sacsnow_pars,
+        validate:bool = True):
+
+        #Create a copy to prevent any changes to the par dataclass when running the nwrfs soure code
+        self.sacsnow_pars = pars_dataclass
+
+        #Validate sacsnow_pars
+        if validate:
+            self.sacsnow_pars.validate()
+
+        self.__datetime = utils._datetime_conversion(self.sacsnow_pars.year, self.sacsnow_pars.month,
+                                                self.sacsnow_pars.day, self.sacsnow_pars.hour)
+
+        #Set raw_output to None until run function is executed
+        self.__raw_output = None
+        self.__raw_states_output = None
+
+    def __run_wrapper(self):
+        '''
+        Runs sacsnow wrapper
+        '''
+        pars = copy.deepcopy(self.sacsnow_pars)
+        self.__raw_output = nwsrfs_source.sacsnow(
+            pars.dt_seconds, pars.year, pars.month, pars.day, pars.hour, 
+            # general pars
+            pars.alat, pars.elev,
+            # sac pars
+            pars.sac_pars,
+            #pet and precp adjustments
+            pars.peadj, pars.pxadj,
+            # snow pars
+            pars.snow_pars,
+            # initial swe
+            pars.init_swe,
+            # forcings
+            pars.forcings_map, pars.forcings_ptps, pars.forcings_mat,pars.forcings_etd,
+            #Pass states option
+            int(0))
+
+    def __run_wrapper_states(self):
+        '''
+        Runs sacsnow wrapper and return states
+        '''
+        pars = copy.deepcopy(self.sacsnow_pars)
+        self.__raw_states_output = nwsrfs_source.sacsnow(
+            pars.dt_seconds, pars.year, pars.month, pars.day, pars.hour, 
+            # general pars
+            pars.alat, pars.elev,
+            # sac pars
+            pars.sac_pars,
+            #pet and precp adjustments
+            pars.peadj, pars.pxadj,
+            # snow pars
+            pars.snow_pars,
+            # initial swe
+            pars.init_swe,
+            # forcings
+            pars.forcings_map, pars.forcings_ptps, pars.forcings_mat,pars.forcings_etd,
+            #Pass states option
+            int(1))
+
+    @property
+    def sacsnow_tci(self) -> pd.DataFrame:
+        '''
+        Returns total channel inflow (tci) as a DataFrame with a column for each zone (units: mm).
+        '''
+
+        if self.__raw_output is None:
+            self.__run_wrapper()
+
+        tci = pd.DataFrame(self.__raw_output[2],index=self.__datetime).add_prefix('tci_')
+
+        return SACSnowTCI(tci)
+
+    @property
+    def sacsnow_states(self) -> dict[str, pd.DataFrame]:
+        '''
+        Returns a dictionary of DataFrames containing all model states with a column for each zone.
             The dictionary keys are:
 
             * **tci**: Total channel inflow (units: mm).
             * **map_pxadj**: Precipitation after pxadj applied (units: mm).
-            * **etd_adj**: Evaporation demand after peadj, efc, and aesc adjustments applied (units: mm).
+            * **etd_peadj**: Evaporation demand after peadj, efc, and aesc adjustments applied (units: mm).
             * **aet**: Actual evapotranspiration (units: mm).
             * **uztwc**: Upper zone tension water contents (units: mm).
             * **uzfwc**: Upper zone free water contents (units: mm).
@@ -213,40 +285,12 @@ def sacsnow(pars_dataclass: sacsnow_pars,
             * **raim**: Total rain plus snowmelt (units: mm).
             * **psfall**:  Precipitation falling as snow after scf adjustment has been applied (units: mm).
             * **prain**: Precipitation falling as rain (units: mm).
+        '''
 
-    '''
+        if self.__raw_states_output is None:
+            self.__run_wrapper_states()
 
-    #Create a copy to prevent any changes to the par dataclass when running the nwrfs soure code
-    pars = copy.deepcopy(pars_dataclass)
-
-    #Validate sacsnow_pars
-    if validate:
-        pars.validate()
-
-    states = int(1) if return_states else int(0)
-
-    datetime = utils._datetime_conversion(pars.year, pars.month, pars.day, pars.hour)
-
-    sacsnow_run = nwsrfs_source.sacsnow(
-        pars.dt_seconds, pars.year, pars.month, pars.day, pars.hour, 
-        # general pars
-        pars.alat, pars.elev,
-        # sac pars
-        pars.sac_pars,
-        #pet and precp adjustments
-        pars.peadj, pars.pxadj,
-        # snow pars
-        pars.snow_pars,
-        # initial swe
-        pars.init_swe,
-        # forcings
-        pars.forcings_map, pars.forcings_ptps, pars.forcings_mat,pars.forcings_etd,
-        #Pass states option
-        states)
-
-    if return_states:
-
-        state_param = ['map_pxadj','etd_adj','tci','aet',
+        state_param = ['map_pxadj','etd_peadj','tci','aet',
             'uztwc','uzfwc','lztwc','lzfsc','lzfpc','adimc',
             'roimp', 'sdro', 'ssur', 'sif', 'bfs', 'bfp',
             'swe','aesc','neghs','liqw','raim','psfall','prain']
@@ -254,17 +298,9 @@ def sacsnow(pars_dataclass: sacsnow_pars,
         sacsnow_states = {}
         
         for count, param in  enumerate(state_param):
-            sacsnow_states[param] = pd.DataFrame(sacsnow_run[count], index=datetime)
+            sacsnow_states[param] = pd.DataFrame(self.__raw_states_output[count], index=self.__datetime)
 
         return sacsnow_states
-    else:
-
-        tci = pd.DataFrame(sacsnow_run[2],index=datetime).add_prefix('tci_')
-
-        if return_pd:
-            return SACSnowTCI(tci)
-        else:
-            return tci.to_numpy()
 
 @dataclass
 class lagk_pars:
@@ -420,8 +456,7 @@ class lagk_pars:
 
 def lagk(pars_dataclass: lagk_pars,
         return_states:bool = False,
-        validate:bool = True, 
-        return_pd:bool = True):
+        validate:bool = True):
         #,output_timestep: numbers.Number | None = None):
 
     '''
@@ -430,12 +465,9 @@ def lagk(pars_dataclass: lagk_pars,
     Args:
         lagk_pars (dataclass): Dataclass which contains all inputs to run LagK.
         return_states (bool): Option to return only routed flow or all states.  Default: False
-        #output_timestep (numbers.Number | None):  Optional input to change the timestep of the output timeseries.  Default: None
         validate (bool): Validate lagk dataclass inputs are correct format/type. Default: True
-        return_pd (bool): Returns routed flows timesseries as a pandas DataFrame.  Only applies when ``return_states`` is ``False``. Default: True
     Returns:
-        pd.DataFrame | np.ndarray:  If ``return_states`` is ``False``, returns routed flows with a column for each upstream reach (units: cfs).
-            Values are DataFrames if ``return_pd`` is ``True``, otherwise numpy arrays.
+        pd.DataFrame:  If ``return_states`` is ``False``, returns routed flows as a DataFrame with a column for each upstream reach (units: cfs).
         dict[str, pd.DataFrame]: If ``return_states`` is ``True``, a dictionary of DataFrames containing all model states with a column for each upstream reach.
             The dictionary keys are:
 
@@ -498,10 +530,7 @@ def lagk(pars_dataclass: lagk_pars,
 
         routed = pd.DataFrame(lagk_run[0],index=datetime).add_prefix('routed_')
 
-        if return_pd:
-            return routed
-        else:
-            return routed.to_numpy()
+        return routed
 
 @dataclass
 class consuse_pars:
@@ -608,8 +637,7 @@ class consuse_pars:
 
 def consuse(pars_dataclass: consuse_pars,
             return_states:bool = False,
-            validate:bool = True,
-            return_pd:bool = True):
+            validate:bool = True):
 
     '''
     Function to run the NWSRFS CONS_USE model via F2PY bindings.   Only a single consuse zone can be ran at a time.  Timestep is daily average.
@@ -618,10 +646,8 @@ def consuse(pars_dataclass: consuse_pars,
         consuse_pars (dataclass): Dataclass which contains all inputs to run CONS_USE.
         return_states (bool): Option to return only routed flow or all states.  Default: False
         validate (bool): Validate CONS_USE dataclass inputs are correct format/type. Default: True
-        return_pd (bool): Returns consuse timesseries as a pandas Series.  Only applies when ``return_states`` is ``False``. Default:  True
     Returns:
-        pd.Series |  np.ndarray: If ``return_states`` is ``False``, daily streamflow with consumptive use adjustments applied (units: cfsd).
-             Values are Series if ``return_pd`` is ``True``, otherwise numpy arrays.
+        pd.Series: If ``return_states`` is ``False``, a Series of daily streamflow with consumptive use adjustments applied (units: cfsd).
         pd.DataFrame: If ``return_states`` is ``True``, a DataFrame with a column for daily model states.
             The column states are:
 
@@ -663,11 +689,7 @@ def consuse(pars_dataclass: consuse_pars,
 
         qadj_daily = pd.Series(cu_run[0], index=datetime,name='qadj')
 
-        if return_pd:
-            return qadj_daily
-        else:
-            return qadj_daily.to_numpy()
-
+        return qadj_daily
 
 @dataclass
 class chanloss_pars:
@@ -758,18 +780,15 @@ class chanloss_pars:
 
 
 def chanloss(pars_dataclass: chanloss_pars,
-            validate:bool = True,
-            return_pd:bool = True):
+            validate:bool = True):
     '''
     Function to run the NWSRFS chanloss model via F2PY bindings.
 
     Args:
         chanloss_pars (dataclass): Dataclass which contains all inputs to run CHANLOSS.
         validate (bool): Validate chanloss dataclass inputs are correct format/type. Default: True
-        return_pd (bool): Returns chanloss timesseries as a pandas Series. Default: True
     Returns:
-         pd.Series | np.ndarray: A Series of streamflow with chanloss adjustments applied (units: cfs).
-            Values are Series if ``return_pd`` is ``True``, otherwise numpy arrays.
+         pd.Series: A Series of streamflow with chanloss adjustments applied (units: cfs).
     '''
 
     #Create a copy to prevent any changes to the par dataclass when running the nwrfs soure code
@@ -787,10 +806,7 @@ def chanloss(pars_dataclass: chanloss_pars,
 
     qin_adj = pd.Series(cl_run, index=datetime, name='qin_adj')
 
-    if return_pd:
-        return qin_adj
-    else:
-        return qin_adj.to_numpy()
+    return qin_adj
 
 @dataclass
 class fa_pars:
@@ -805,6 +821,8 @@ class fa_pars:
     * **mat** (Temperature): deg C
     * **ptps** (Precip Typing): fraction (0-1)
     * **pet** (Potential Evap): mm
+
+    pet is calculated using a temperature index approach and does not require the ``forcing`` argument passed. ``None`` should be passed instead.
 
     This class supports vectorized execution across multiple zones and timesteps simultaneously. 
     Input arrays should adhere to the following shape conventions:
@@ -821,6 +839,7 @@ class fa_pars:
     * **Forcings** (e.g., ``forcings``): Shape (T, Z)
     * **Scalar Parameters** (e.g., ``alat``): Shape (Z,)
     * **Vector Parameters** (e.g., ``pars``): Shape (N_pars, Z) - Axis 0 corresponds to the ordered parameter list.
+    * **Climo Parameter** (e.g., ``climo``): Shape (12, ) - A value for each month (Jan-Dec)    
 
     Attributes:
         year (np.ndarray): Array of years for each timestep (units: time).
@@ -835,10 +854,10 @@ class fa_pars:
         area (np.ndarray): Array of each zone's area (units: km**2).
         alat (np.ndarray): Array of each zone's centroid latitude (units: decimal degrees).
         limits (np.ndarray): Contains the forcing adjustment upper and lower limits for each of the 12 months. Units vary by forcing type (see above).
-        forcings (np.ndarray):  Input forcings to adjust using pars and limits. Units vary by forcing type (see above).
+        forcings (np.ndarray | None):  Input forcings to adjust using pars and limits. ``None`` must be passed for pet.  Units vary by forcing type (see above).
+        peadj_m (np.ndarray | None):  Input required for PET forcing adjustment.  Contains potential evaporation adjustment factors [pet -> etd] for each of the 12 months [Not required for other forcing types] (units: NA).
         climo (np.ndarray | None): Optional input to provide the monthly climatology which will be used the limits parameter to establish allowable adjustments.  Otherwise climatology 
                                    will be calculated with ``forcings`` inputs.  Units vary by forcing type (see above).
-        peadj_m (np.ndarray | None):  Input required for PET forcing adjustment.  Contains potential evaporation adjustment factors [PET -> ETD] for each of the 12 months [Not required for other forcing types] (units: NA).
     '''
 
     year: np.ndarray
@@ -849,7 +868,7 @@ class fa_pars:
     area: np.ndarray
     alat: np.ndarray
     limits: np.ndarray
-    forcings: np.ndarray
+    forcings: np.ndarray | None = None
     peadj_m: np.ndarray | None = None
     climo:  np.ndarray | None = None
 
@@ -861,8 +880,12 @@ class fa_pars:
         utils._dtype_conversion_batch(self,  int, time_list)
 
         #Convert pars,area, alat, limits, forcings to double
-        fa_inputs = ['pars', 'area', 'alat', 'limits', 'forcings']
+        fa_inputs = ['pars', 'area', 'alat', 'limits']
         utils._dtype_conversion_batch(self,  np.float64, fa_inputs)
+
+        #if forcings exists, then convert to double
+        if self.forcings is not None:
+            self.forcings = utils._dtype_conversion(self.forcings, np.float64)
 
         #if climo exists, then convert to double
         if self.climo is not None:
@@ -885,13 +908,16 @@ class fa_pars:
         if not utils._validate_array_length(self.year, self.month, self.day, self.hour):
             raise ValueError("Time arrays (year, month, day, hour) must have the same length")
 
-        #check that pars is a 1d array
-        if not utils._validate_1d_array(self.pars):
-            raise ValueError("pars array must have a 1d shape")
+        #check that pars, area, alat are a 1d array
+        if not utils._validate_1d_array(self.pars, self.area, self.alat):
+            raise ValueError("pars, area, and alat arrays must have a 1d shape")
 
         #check that the pars attribute has a length of 4
         if len(self.pars) != 4:
            raise ValueError("pars parameter must have a length of 4 (scale,p_redist,std,shift)")
+
+        if not utils._validate_array_length(self.area,self.alat):
+            raise ValueError("area and alat must have the same length to represent each zone")
 
         #check that area array values are valid
         if self.area.min() <= 0:
@@ -905,14 +931,15 @@ class fa_pars:
         if self.limits.shape != (12,2):
             raise ValueError("limits parameter shape must be 12 x 2")
 
-        #check that forcings inputs have the same number of zones as the zone and alat arrays
-        #Note:  Checking first index only is adequate as nested numpy arrays cannont have a "jangled" shape
-        if not utils._validate_array_length(self.area,self.alat, self.forcings[0]):
-            raise ValueError("Each nested forcings list length must correspond to number of zones which is specified by the length of parameter arrays")
-
-        #check that forcings input has same lengths as year, month, day arrays
-        if not utils._validate_array_length(self.year, self.forcings):
-            raise ValueError("forcings input must have the same length as time arrays (year, month, day, hour)")
+        #validation check for forcings if exists
+        if self.forcings is not None:
+            #check that forcings inputs have the same number of zones as the zone and alat arrays
+            #Note:  Checking first index only is adequate as nested numpy arrays cannont have a "jangled" shape
+            if not utils._validate_array_length(self.area, self.forcings[0]):
+                raise ValueError("forcings input must have same number of zones as the area attribute (forcings[0]==area)")
+            #check that forcings input has same lengths as year, month, day arrays
+            if not utils._validate_array_length(self.year, self.forcings):
+                raise ValueError("forcings input must have the same length as time arrays (year, month, day, hour)")
 
         #validation check for climo if exists
         if self.climo is not None:
@@ -926,117 +953,161 @@ class fa_pars:
         #validation check for peadj_m if exists
         if self.peadj_m is not None:
             #check that peadj_m has the same number of zones as forcings
-            if not utils._validate_array_length(self.forcings[0], self.peadj_m[0]):
-                raise ValueError("peadj_m parameter must have same number of zones as input forcings (peadj_m[0]==forcing[0])")
+            if not utils._validate_array_length(self.area, self.peadj_m[0]):
+                raise ValueError("peadj_m parameter must have same number of zones as area attribute (peadj_m[0]==area)")
             #check that peadj_m has a length of 12
             if len(self.peadj_m) != 12:
                 raise ValueError("peadj_m parameter must have a length of 12")
 
-
-def fa(map_dataclass: fa_pars,
-        mat_dataclass: fa_pars,
-        ptps_dataclass: fa_pars,
-        pet_dataclass: fa_pars,
-        return_fac:bool = False,
-        validate:bool = True,
-        return_pd:bool = True):
-
+class fa():
     '''
-    Function to apply monthly climatological forcing adjustments to forcings via F2PY bindings.
+    Class to apply monthly climatological forcing adjustments to forcings via F2PY bindings.
 
     Args:
         map_dataclass (fa_pars): Dataclass containing inputs for precipitation adjustments.
         mat_dataclass (fa_pars): Dataclass containing inputs for temperature adjustments.
         ptps_dataclass (fa_pars): Dataclass containing inputs for precipitation typing adjustments.
         pet_dataclass (fa_pars): Dataclass containing inputs for potential evaporation adjustments.
-        return_fac (bool):  Return monthly forcing adjustments. Default: False
         validate (bool): Validate that map, mat, ptps, and pet dataclass inputs are correct format/type. Default: True
-        return_pd (bool): Returns forcing timesseries as a pandas DataFrame.  Only applies when ``return_fac`` is ``False``. Default: True
-    Returns:
-        dict[str, pd.DataFrame | np.ndarray]: If ``return_fac`` is ``False``, a dictionary of each forcing type with climatological forcing adjustments applied.
-            Values are DataFrames if ``return_pd`` is ``True``, otherwise numpy arrays.
-            The dictionary keys are:
-
-            * **map_fa**: Precipitation array for each timestep (units: mm) 
-            * **mat_fa**: Air temperature array for each timestep (units: degc)
-            * **ptps_fa**: Fraction of precipitation as snow array for each timestep (units: fraction 0-1)
-            * **pet_fa**: Potential evaporation array for each timestep (units: mm)
-            * **etd_fa**: Evaporation demand array for each timestep (units: mm)
-
-        pd.DataFrame:  If ``return_fac`` is ``True``, returns a DataFrame with a column for each forcing type climatological monthly adjustments.
-            The column states are:
-
-            * **map_fac**: Monthly adjustment factors for precipitation (units: NA)
-            * **mat_fac**: Monthly adjustment shift for temperature (units: degc)
-            * **pet_fac**: Monthly adjustment factors for potential evaporation (units: NA)
-            * **ptps_fac**: Monthly adjustment factors for percent precipitation as snow (units: NA)
-
     '''
 
-    #Create a copy to prevent any changes to the par dataclass when running the nwrfs soure code
-    fa_dict = {'map':copy.deepcopy(map_dataclass),'mat':copy.deepcopy(mat_dataclass),
-    'ptps':copy.deepcopy(ptps_dataclass), 'pet':copy.deepcopy(pet_dataclass)}
+    def __init__(self,
+        map_dataclass: fa_pars,
+        mat_dataclass: fa_pars,
+        ptps_dataclass: fa_pars,
+        pet_dataclass: fa_pars,
+        validate:bool = True):
 
-    #Validate consuse_pars
-    if validate:
+        #Create a copy to prevent any changes to the par dataclass when running the nwrfs soure code
+        self.fa_pars = {'map':map_dataclass,'mat':mat_dataclass,'ptps':ptps_dataclass, 'pet':pet_dataclass}
+
+        #Vaidate inputs
+        if validate:
+            self.__validate()
+
+        #Create climo fa inputs
+        self.__create_climo()
+
+        #Set raw_output to None until run function is executed
+        self.__raw_output = None
+
+    def __validate(self):
+        '''
+        Validate class inputs, utilze fa_pars validation functionality
+        '''
 
         #Run each fa dataclass through its validation function
-        for key, fa_dc in fa_dict.items():
+        for key, fa_dc in self.fa_pars.items():
             try:
                 fa_dc.validate()
             except ValueError as e:
                 error_message = f"Validation error with {key}_dataclass: {e}"
                 raise RuntimeError(error_message) from e
-                #raise
 
         #Check that ALL forcings dataclass did not pass a climo value or ALL did
-        climo_types = {type(fa_dc.climo) for fa_dc in fa_dict.values()}
+        climo_types = {type(fa_dc.climo) for fa_dc in self.fa_pars.values()}
         if len(climo_types) > 1:
             raise ValueError("A mixed use of the climo attribue with the passed fa_pars is not allowed")
 
         #check that map forcings values are valid:
-        if not utils._validate_positive_values(fa_dict['map'].forcings):
-            raise ValueError("MAP forcings values must be >= 0")
+        if not utils._validate_positive_values(self.fa_pars['map'].forcings):
+            raise ValueError("map forcings values must be >= 0")
 
         #check that the ptps forcing values are valid:
-        if (fa_dict['ptps'].forcings.min() < 0) |  (1 < fa_dict['ptps'].forcings.max()):
-            raise ValueError("PTPS forcings values must be between 0 and 1")
+        if (self.fa_pars['ptps'].forcings.min() < 0) |  (1 < self.fa_pars['ptps'].forcings.max()):
+            raise ValueError("ptps forcings values must be between 0 and 1")
 
         #check that peadj_m exists
-        if fa_dict['pet'].peadj_m is None:
+        if self.fa_pars['pet'].peadj_m is None:
             raise ValueError("peadj_m must be passed by the pet_dataclass")
+
+        #check that pet forcings is not passed
+        if self.fa_pars['pet'].forcings is not None:
+            raise ValueError("pet forcings cannot be passed")
 
         time_validate = []
         #Check the time arrays are all the same
         for time_attribute in ['year', 'month', 'day', 'hour']:
-            time_all_same = all(np.array_equal(getattr(fa_dict['map'],time_attribute),getattr(fa_time,time_attribute)) for fa_time in fa_dict.values())
+            time_all_same = all(np.array_equal(getattr(self.fa_pars['map'],time_attribute),getattr(fa_time,time_attribute)) for fa_time in self.fa_pars.values())
             time_validate.append(time_all_same)
         if not all(time_validate):
             raise ValueError("All time arrays (year, month, day, hour) associated with forcings values must represent equal date ranges")
 
-    #create a climo array.  Only checking MAP for climo data, assuming validate caught any climo mismatch amongst forcings
-    if fa_dict['map'].climo is not None:
-        climo = np.concatenate((fa_dict['map'].climo, fa_dict['mat'].climo, fa_dict['pet'].climo,fa_dict['ptps'].climo), axis=1)
-        climo = np.flip(climo)
-    else:
-        #Make dummy climo input
-        climo=np.full((12, 4), -9999,dtype=np.float64)
-    climo=np.asfortranarray(climo)
+    def __create_climo(self):
+        '''
+        Creates ``climo`` attribute, uses dummy values of -9999 if no climo inputs are provided
+        '''
+        #create a climo array.  Only checking MAP for climo data, assuming validate caught any climo mismatch amongst forcings
+        if self.fa_pars['map'].climo is not None:
+            self.__climo_array = np.stack(self.fa_pars['map'].climo, self.fa_pars['mat'].climo, self.fa_pars['pet'].climo,self.fa_pars['ptps'].climo)
+        else:
+            #Make dummy climo input
+            self.__climo_array = np.full((12, 4), -9999,dtype=np.float64)
+        self.__climo_array = np.asfortranarray(self.__climo_array)
 
-    #arbitrary decision to use map for time, lat, and area varibles.  MAT, PTPS, or PET could have been used 
-    fa_run = nwsrfs_source.fa_ts(fa_dict['map'].dt_seconds,fa_dict['map'].year,fa_dict['map'].month,fa_dict['map'].day,fa_dict['map'].hour,
-                    fa_dict['map'].alat,fa_dict['map'].area,
-                    fa_dict['pet'].peadj_m,
-                    fa_dict['map'].pars,fa_dict['mat'].pars,fa_dict['pet'].pars,fa_dict['ptps'].pars,
-                    fa_dict['map'].limits,fa_dict['mat'].limits,fa_dict['pet'].limits,fa_dict['ptps'].limits,
-                    climo,
-                    fa_dict['map'].forcings,fa_dict['ptps'].forcings,fa_dict['mat'].forcings)
+    def __run_wrapper(self):
+        '''
+        runs monthly climatological forcing adjustment wrapper
+        '''
+        pars = copy.deepcopy(self.fa_pars)
 
-    if return_fac:
-
-        fa_run=fa_run[1:5]
+        #arbitrary decision to use map for time, lat, and area varibles.  MAT, PTPS, or PET could have been used 
+        self.__raw_output = nwsrfs_source.fa_ts(pars['map'].dt_seconds,pars['map'].year,pars['map'].month,pars['map'].day,pars['map'].hour,
+                                pars['map'].alat,pars['map'].area,
+                                pars['pet'].peadj_m,
+                                pars['map'].pars,pars['mat'].pars,pars['pet'].pars,pars['ptps'].pars,
+                                pars['map'].limits,pars['mat'].limits,pars['pet'].limits,pars['ptps'].limits,
+                                self.__climo_array,
+                                pars['map'].forcings,pars['ptps'].forcings,pars['mat'].forcings)
         
-        #Create a DataFrame for output return, ignore first output array as it is climo not a fac adjustment
+    @property
+    def forcings(self) -> dict[str, pd.DataFrame]:
+        '''
+        Returns a dictionary of adjusted forcings as DataFrames. 
+
+        The dictionary keys are:
+        * **map_fa**: Precipitation (units: mm) 
+        * **mat_fa**: Air temperature (units: degc)
+        * **ptps_fa**: Fraction of precipitation as snow (units: fraction 0-1)
+        * **pet_fa**: Potential evaporation (units: mm)
+        * **etd_fa**: Evaporation demand (units: mm)
+        '''
+
+        #If the run function has yet to be executed, run it
+        if self.__raw_output is None:
+            self.__run_wrapper()
+
+        #Calculate datetime
+        datetime = utils._datetime_conversion(self.fa_pars['map'].year, self.fa_pars['map'].month, self.fa_pars['map'].day, self.fa_pars['map'].hour).rename('date')
+
+        #Create a dictionary of DataFrames for output purposes
+        fa_param=['map_fa','mat_fa','ptps_fa','pet_fa','etd_fa']
+        fa_dict={}
+        for count, param in  enumerate(fa_param):
+            fa_dict[param]=pd.DataFrame(self.__raw_output[count+5], index=datetime)
+        
+        return fa_dict
+
+    @property
+    def fa_factors(self) -> pd.DataFrame:
+        '''
+        Returns a DataFrame (index 1-12) of monthly adjustment factors (index 1-12).
+        
+        The columns correspond to:
+        * **map_fac**: Monthly precipitation adjustment factors (units: NA)
+        * **mat_fac**: Monthly temperature adjustment shifts (units: degc)
+        * **pet_fac**: Monthly potential evaporation adjustment factors (units: NA)
+        * **ptps_fac**: Monthly precip-as-snow adjustment factors (units: NA)
+        '''
+
+        #If the run function has yet to be executed, run it
+        if self.__raw_output is None:
+            self.__run_wrapper()
+
+        #Ignore first output aray as it is climo not a fac adjustment
+        fa_run = self.__raw_output[1:5]
+
+        #Create a DataFrame with a column for each factor
         fac_parameters=['map_fac','mat_fac','pet_fac','ptps_fac']
         fac_df=pd.DataFrame(columns=fac_parameters,index=range(1,13))
         for i, col in enumerate(fac_parameters,0):
@@ -1044,21 +1115,24 @@ def fa(map_dataclass: fa_pars,
 
         return fac_df
 
-    else:
-
-        #Calculate datetime
-        datetime = utils._datetime_conversion(fa_dict['map'].year, fa_dict['map'].month, fa_dict['map'].day, fa_dict['map'].hour).rename('date')
-
-        #Create a dictionary of DataFrames for output purposes
-        fa_param=['map_fa','mat_fa','ptps_fa','pet_fa','etd_fa']
-        fa_dict={}
-        for count, param in  enumerate(fa_param):
-            fa_dict[param]=pd.DataFrame(fa_run[count+5], index=datetime)
+    @property
+    def forcings_climo(self) -> pd.DataFrame:
+        '''
+        12-month climatology values as DataFrame (index 1-12). 
         
-        if return_pd:
-            return fa_dict
-        else:
-            return {key:value.to_numpy() for key, value in fa_dict.items()}
+        The columns correspond to:
+        * **map_climo**: Monthly precipitation climatology (units: mm/month total)
+        * **mat_climo**: Monthly temperature climatology (units: degc monthly avg)
+        * **pet_climo**: Monthly potential evaporation climatology (units: mm/month)
+        * **ptps_climo**: Monthly precip-as-snow climatology (units: fraction 0-1 monthly avg)
+        '''
+
+        #If the run function has yet to be executed, run it
+        if self.__raw_output is None:
+            self.__run_wrapper()
+
+        return pd.DataFrame(self.__climo_array,columns=['map_climo','mat_climo','pet_climo','ptps_climo'])
+
 
 @dataclass
 class gammauh_pars:
@@ -1078,11 +1152,11 @@ class gammauh_pars:
     * **Parameters** (e.g., ``shape``): Shape (Z,)
 
     Attributes:
-        dt_hours (np.ndarray): UH timestep (units: hours).
-        area (np.ndarray): Array of each zone's area (units:  km**2).
-        shape (np.ndarray): Array of each zone's shape parameter (units:  km**2).
-        scale (np.ndarray | None): Optional array of each zone's scale parameter.  If scale is None, toc parameter must be provided (units: NA).
-        toc  (np.ndarray | None): Optional array of each zone's time of concentration (toc) parameter.  If toc is None, the scale parameter must be provided (units: hours).
+        dt_hours (np.ndarray): UH timestep. (units: hours)
+        area (np.ndarray): Array of each zone's area. (units:  km**2)
+        shape (np.ndarray): Array of each zone's shape parameter. (units:  km**2)
+        scale (np.ndarray | None): Optional array of each zone's scale parameter.  If scale is None, toc parameter must be provided. (units: NA)
+        toc  (np.ndarray | None): Optional array of each zone's time of concentration (toc) parameter.  If toc is None, the scale parameter must be provided. (units: hours)
     '''
     
     dt_hours: numbers.Number
@@ -1143,115 +1217,139 @@ class gammauh_pars:
         if np.vstack([self.area,self.shape,opt_attr]).min() <= 0:
             raise ValueError(f"Area, shape, and {opt_var} parameter parameters must be greater than zero")
 
-class gammauh(gammauh_pars):
+class gamma_uh():
     '''
     class to use gamma unit hydrograph functionality
-    Attributes:
+    Args:
         uh_pars(dataclass): Dataclass which contains all inputs needed for gamma unit hydrograph calculations. 
         validate (bool): Validate gammauh dataclass inputs are correct format/type. Default: True
+    Attributes:
+        gamma_uh_pars (dataclass): Dataclass which contains all inputs needed for gamma unit hydrograph calculations. 
     '''
-    def __init__(self, pars_dataclass: gammauh_pars, validate:bool=True):
+    def __init__(self, 
+                pars_dataclass: gammauh_pars, 
+                validate:bool=True):
 
-        pars = copy.deepcopy(pars_dataclass)
+        #Assign parameters
+        self.gamma_uh_pars = pars_dataclass
 
         #Validate gammauh_pars
         if validate:
-            pars.validate()
+            self.gamma_uh_pars.validate()
 
-        self.__dict__.update(pars.__dict__)
-        self.n_zones = len(self.shape)
+        #Get the number of zones
+        self.__n_zones = len(self.gamma_uh_pars.shape)
 
         #If scale parameter is none, calcuate it
-        if self.scale is None:
-            self._get_shape_par()
-            msg = 'shape parameters created using toc parameters'
-            print(msg)
+        if self.gamma_uh_pars.scale is None:
+            self._get_shape_par()   
+        else:
+            self.__scale = self.gamma_uh_pars.scale
+
+        #Create attribute to track it uh has been ran
+        self.__uh = None
 
     #calculate the scale parameter for each zone
     def _get_shape_par(self):
 
-        self.scale = np.zeros(self.n_zones)
-        for i in range(self.n_zones):
-            shape = self.shape[i]
-            toc = self.toc[i]
-            self.scale[i] = nwsrfs_source.uh2p_get_scale_root(shape,toc,np.float64(1))
+        #Create a copy of the parameters
+        pars = copy.deepcopy(self.gamma_uh_pars)
 
-    #
+        self.__scale = np.zeros(self.__n_zones)
+        for i in range(self.__n_zones):
+            shape = pars.shape[i]
+            toc = pars.toc[i]
+            self.__scale[i] = nwsrfs_source.uh2p_get_scale_root(shape,toc,np.float64(1))
+
     def return_uh(self,
-                return_hourly:bool = False):
-
+                tstep):
         '''
-        Return a unit hydrograph in either model timestep or hourly.
+        Returns a unit hydrograph as a DataFrame at a timestep specified by ``tstep``.
         Args:
-            return_hourly (bool): Specifies to return unit hydrograph at an hourly timestep, 
-                otherwise returns using timestep specified by ''dt_hours'' class field.  Default: False
+            tstep (int): Specifies tstep of unit hydrograph to return (units: hours). 
         Returns:
              pd.DataFrame: A DataFrame containing unit hydrograph (uh) with a column for each zone (units: cfs).
         '''
 
-        if return_hourly:
-            tstep = np.float64(1)
-        else:
-            tstep = self.dt_hours
+        #Create a copy of the parameters
+        pars = copy.deepcopy(self.gamma_uh_pars)
+
+        #convert tstep to integer
+        tstep = int(tstep)
 
         #Calculate the uh for each zone
         uh_df=pd.DataFrame()
-        for i in range(self.n_zones):
-            shape=self.shape[i]
-            scale=self.scale[i]
-            area=self.area[i]
+        for i in range(self.__n_zones):
+
+            shape = pars.shape[i]
+            scale = self.__scale[i]
+            area = pars.area[i]
+
             #volume calcuation zone_area_km2 to mi2 (0.386102) to ft2 (0.386102*5280)
             #multiplied by 1 inch (in ft) for a volume of ft3
-            total_uh_vol=area*0.386102*5280**2*1/12
+            total_uh_vol = area*0.386102*5280**2*1/12
 
             #dimensionless uh
-            uh_dl=nwsrfs_source.uh2p_call(shape,scale,tstep,int(1000))
+            uh_dl = nwsrfs_source.uh2p_call(shape,scale,tstep,int(1000))
             first0 = next(x for x, val in enumerate(uh_dl) if val == 0)
-            uh_dl=uh_dl[:first0]
+            uh_dl = uh_dl[:first0]
             
             #Distribute volume
-            uh_vol= [ordinate * total_uh_vol for ordinate in uh_dl]
+            uh_vol = [ordinate * total_uh_vol for ordinate in uh_dl]
             #Divide by timestep in seconds
-            uh= [ordinate / (tstep*60**2) for ordinate in uh_vol]
+            uh = [ordinate / (tstep*60**2) for ordinate in uh_vol]
             #Assign to UH DataFrame
-            uh_df=pd.concat([uh_df,pd.Series(uh,name=f'uh_{str(i)}')],axis=1)
+            uh_df = pd.concat([uh_df,pd.Series(uh,name=f'uh_{str(i)}')],axis=1)
+
         #modify and label index
-        uh_df.index=uh_df.index.to_series().multiply(tstep)
+        uh_df.index = uh_df.index.to_series().multiply(tstep)
         uh_df.index.rename('hours',inplace=True)
         
         return uh_df
 
+    @property
+    def uh(self) -> pd.DataFrame:
+        '''
+        Returns a unit hydrograph at as a DataFrame at a timestep specified by the ``dt_hours`` attribute.
+        '''
+
+        if self.__uh is None:
+            #Create a copy of the parameters
+            pars = copy.deepcopy(self.gamma_uh_pars)
+            self.__uh = self.return_uh(tstep=pars.dt_hours)
+
+        return self.__uh 
 
     def return_sf(self,
                 tci:SACSnowTCI,
-                return_inst:bool = True,
-                return_pd:bool = True):
+                return_inst:bool = True):
 
         '''
         Return a timeseries of streamflow for each zone.
         Args:
-            tci (SACSnowTCI): Specific tci DataFrame output from sacsnow(..., return_states=False,return_pd=True) (units:  mm).
+            tci (SACSnowTCI): Specific tci DataFrame output from sacsnow classes sacsnow_tci property (units:  mm).
             return_inst (bool): The specifies to return instaneous streamflow, rather than period average.  Default: True
-            return_pd (bool): Returns streamflow timesseries as a pandas Series.  Default: True
         Returns:
-            pd.Series | np.ndarray: A DataFrame containing streamflow with a column for each zone (units: cfs).
-                Values are Series if ``return_pd`` is ``True``, otherwise numpy arrays.
+            pd.DataFrame: A DataFrame containing streamflow with a column for each zone (units: cfs).
         '''
 
+        #Create a copy of the parameters
+        pars = copy.deepcopy(self.gamma_uh_pars)
+
         #Format tci into a FORTRAN friendly datatype
-        tci_array = utils._dtype_conversion(tci.values,np.float64)
+        tci_array = utils._dtype_conversion(tci.to_numpy(),np.float64)
         tci_array = np.asfortranarray(tci_array)
 
         m_uh = int(1000)  # max UH length
         n_uh = len(tci_array) + m_uh
 
+        #Calculate the streamflow for each zone
         sf = pd.DataFrame(index=tci.index)
+        for i in range(self.__n_zones):
 
-        for i in range(self.n_zones):
-
-            shape=self.shape[i]
-            scale=self.scale[i]
-            area=self.area[i]
+            shape=pars.shape[i]
+            scale=self.__scale[i]
+            area=pars.area[i]
             col_name = f'sf_{i}'
 
             flow_routed = nwsrfs_source.duamel(tci_array[:, i], shape, scale,
@@ -1273,7 +1371,4 @@ class gammauh(gammauh_pars):
                 sim_flow_pavg_cfs = (sim_flow_inst_cfs + next_sim) / 2
                 sf[col_name] = sim_flow_pavg_cfs
 
-        if return_pd:
-            return sf
-        else:
-            return sf.to_numpy()
+        return sf
