@@ -185,7 +185,7 @@ class sacsnow():
         pars_dataclass: sacsnow_pars,
         validate:bool = True):
 
-        #Create a copy to prevent any changes to the par dataclass when running the nwrfs soure code
+        #Assign parameters
         self.sacsnow_pars = pars_dataclass
 
         #Validate sacsnow_pars
@@ -196,14 +196,15 @@ class sacsnow():
                                                 self.sacsnow_pars.day, self.sacsnow_pars.hour)
 
         #Set raw_output to None until run function is executed
-        self.__raw_output = None
-        self.__raw_states_output = None
+        self.__raw_output = self.__raw_states_output =None
 
     def __run_wrapper(self):
         '''
         Runs sacsnow wrapper
         '''
+        #Create a copy to prevent any changes to the par dataclass when running the nwrfs soure code
         pars = copy.deepcopy(self.sacsnow_pars)
+
         self.__raw_output = nwsrfs_source.sacsnow(
             pars.dt_seconds, pars.year, pars.month, pars.day, pars.hour, 
             # general pars
@@ -225,7 +226,10 @@ class sacsnow():
         '''
         Runs sacsnow wrapper and return states
         '''
+
+        #Create a copy to prevent any changes to the par dataclass when running the nwrfs soure code
         pars = copy.deepcopy(self.sacsnow_pars)
+
         self.__raw_states_output = nwsrfs_source.sacsnow(
             pars.dt_seconds, pars.year, pars.month, pars.day, pars.hour, 
             # general pars
@@ -294,7 +298,6 @@ class sacsnow():
             'uztwc','uzfwc','lztwc','lzfsc','lzfpc','adimc',
             'roimp', 'sdro', 'ssur', 'sif', 'bfs', 'bfp',
             'swe','aesc','neghs','liqw','raim','psfall','prain']
-
         sacsnow_states = {}
         
         for count, param in  enumerate(state_param):
@@ -454,83 +457,133 @@ class lagk_pars:
         if self.qin.min() < 0:
             raise ValueError("Upstream flow values cannot be less than 0")
 
-def lagk(pars_dataclass: lagk_pars,
-        return_states:bool = False,
-        validate:bool = True):
-        #,output_timestep: numbers.Number | None = None):
+class lagk():
 
     '''
-    Function to run the NWSRFS LagK models via F2PY bindings.  Multiple upstream routes can be ran simultaneously.
+    Class to run the NWSRFS LagK models via F2PY bindings.  Multiple upstream routes can be ran simultaneously.
 
     Args:
         lagk_pars (dataclass): Dataclass which contains all inputs to run LagK.
-        return_states (bool): Option to return only routed flow or all states.  Default: False
         validate (bool): Validate lagk dataclass inputs are correct format/type. Default: True
-    Returns:
-        pd.DataFrame:  If ``return_states`` is ``False``, returns routed flows as a DataFrame with a column for each upstream reach (units: cfs).
-        dict[str, pd.DataFrame]: If ``return_states`` is ``True``, a dictionary of DataFrames containing all model states with a column for each upstream reach.
+    '''
+
+    def __init__(self,
+        pars_dataclass: lagk_pars,
+        validate:bool = True):
+        #,output_timestep: numbers.Number | None = None):)
+
+        #Assign parameters
+        self.lagk_pars = pars_dataclass 
+
+        #Validate lagk_pars
+        if validate:
+            self.lagk_pars.validate()
+
+        
+        self.__datetime = utils._datetime_conversion(self.lagk_pars.year, self.lagk_pars.month, self.lagk_pars.day, self.lagk_pars.hour)
+        self._ita = self._itb = self.lagk_pars.dt_hours
+        
+        #!!LAGK CAN HAVE DIFFERENT INPUT/OUTPUT TIMESTEP BUT LAGK F90 WRAPPER IS CURRENTLY NOT SET UP TO ACCOMODATE!!
+        # if output_timestep is None:
+        #     self._ita = self._ita  = pars.dt_hours
+        #     self.__datetime  = utils._datetime_conversion(pars.year, pars.month, pars.day, pars.hour)
+        # elif isinstance(output_timestep, numbers.Number):
+        #     self._ita  = pars.dt_hours
+        #     self._itb = int(output_timestep)
+        #     #here, need to resample
+        #     dt_in = utils._datetime_conversion(pars.year, pars.month, pars.day, pars.hour)
+        #     self.__datetime = pd.date_range(start=dt_in.iloc[0],end=dt_in.iloc[-1],freq=f'{str(itb)}H')
+
+        #Set raw_output to None until run function is executed
+        self.__raw_output = self.__raw_states_output =None
+
+    def __run_wrapper(self):
+        '''
+        Runs lagk wrapper
+        '''
+
+        #Create a copy to prevent any changes to the par dataclass when running the nwrfs soure code
+        pars = copy.deepcopy(self.lagk_pars)
+
+        self.__raw_output = nwsrfs_source.lagk(
+            #input and output timestep 
+            self._ita,self._itb,
+            #lag table equation fixed values
+            pars.tbl_lageq_a,pars.tbl_lageq_b,pars.tbl_lageq_c,pars.tbl_lageq_d,
+            #k table equation fixed values
+            pars.tbl_keq_a,pars.tbl_keq_b,pars.tbl_keq_c,pars.tbl_keq_d,
+            #lag,k,q max
+            pars.tbl_lagmax,pars.tbl_kmax,pars.tbl_qmax,
+            #lag,k,q min
+            pars.tbl_lagmin,pars.tbl_kmin,pars.tbl_qmin,       
+            #inital states
+            pars.init_co,pars.init_qin,pars.init_qout,pars.init_stor,
+            #upstream flow
+            pars.qin,
+            #Pass states option
+            int(0))
+
+    def __run_wrapper_states(self):
+        '''
+        Runs lagk and return states
+        '''
+
+        #Create a copy to prevent any changes to the par dataclass when running the nwrfs soure code
+        pars = copy.deepcopy(self.lagk_pars)
+
+        self.__raw_states_output = nwsrfs_source.lagk(
+            #input and output timestep 
+            self._ita,self._itb,
+            #lag table equation fixed values
+            pars.tbl_lageq_a,pars.tbl_lageq_b,pars.tbl_lageq_c,pars.tbl_lageq_d,
+            #k table equation fixed values
+            pars.tbl_keq_a,pars.tbl_keq_b,pars.tbl_keq_c,pars.tbl_keq_d,
+            #lag,k,q max
+            pars.tbl_lagmax,pars.tbl_kmax,pars.tbl_qmax,
+            #lag,k,q min
+            pars.tbl_lagmin,pars.tbl_kmin,pars.tbl_qmin,       
+            #inital states
+            pars.init_co,pars.init_qin,pars.init_qout,pars.init_stor,
+            #upstream flow
+            pars.qin,
+            #Pass states option
+            int(1))
+
+    @property
+    def lagk_route(self) -> pd.DataFrame:
+        '''
+        Returns routed flows as a DataFrame with a column for each upstream reach (units: cfs).
+        '''
+
+        if self.__raw_output is None:
+            self.__run_wrapper()
+
+        routed = pd.DataFrame(self.__raw_output[0],index=self.__datetime).add_prefix('routed_')
+
+        return routed
+
+    @property
+    def lagk_states(self) -> dict[str, pd.DataFrame]:
+        '''
+        Returns a dictionary of DataFrames containing all model states with a column for each upstream reach.
             The dictionary keys are:
 
             * **routed**: Routed flow with lag and k applied (units: cfs).
             * **lag_time**: Lag applied to upstream flow (units: hours).
             * **k_inflow**: upstreamflow with only lag applied  (units: cfs).
             * **k_storage**: Attenuation storage (units: cfs).
-    '''
+        '''
 
-    #Create a copy to prevent any changes to the par dataclass when running the nwrfs soure code
-    pars = copy.deepcopy(pars_dataclass)
-
-    #Validate lagk_pars
-    if validate:
-        pars.validate()
-
-    states = int(1) if return_states else int(0)
-    datetime = utils._datetime_conversion(pars.year, pars.month, pars.day, pars.hour)
-    ita = itb = pars.dt_hours
-    
-    #!!LAGK CAN HAVE DIFFERENT INPUT/OUTPUT TIMESTEP BUT LAGK F90 WRAPPER IS CURRENTLY NOT SET UP TO ACCOMODATE!!
-    # if output_timestep is None:
-    #     ita = itb = pars.dt_hours
-    #     datetime = utils._datetime_conversion(pars.year, pars.month, pars.day, pars.hour)
-    # elif isinstance(output_timestep, numbers.Number):
-    #     ita = pars.dt_hours
-    #     itb = int(output_timestep)
-    #     #here, need to resample
-    #     dt_in = utils._datetime_conversion(pars.year, pars.month, pars.day, pars.hour)
-    #     datetime = pd.date_range(start=dt_in.iloc[0],end=dt_in.iloc[-1],freq=f'{str(itb)}H')
-
-    lagk_run=nwsrfs_source.lagk(
-        #input and output timestep 
-        ita,itb,
-        #lag table equation fixed values
-        pars.tbl_lageq_a,pars.tbl_lageq_b,pars.tbl_lageq_c,pars.tbl_lageq_d,
-        #k table equation fixed values
-        pars.tbl_keq_a,pars.tbl_keq_b,pars.tbl_keq_c,pars.tbl_keq_d,
-        #lag,k,q max
-        pars.tbl_lagmax,pars.tbl_kmax,pars.tbl_qmax,
-        #lag,k,q min
-        pars.tbl_lagmin,pars.tbl_kmin,pars.tbl_qmin,       
-        #inital states
-        pars.init_co,pars.init_qin,pars.init_qout,pars.init_stor,
-        #upstream flow
-        pars.qin,
-        #Pass states option
-        states)
-
-    if return_states:
+        if self.__raw_states_output is None:
+            self.__run_wrapper_states()
 
         state_param = ['routed','lag_time','k_inflow','k_storage']
         lagk_states = {}
-        
+
         for count, param in  enumerate(state_param):
-            lagk_states[param] = pd.DataFrame(lagk_run[count], index=datetime)
+            lagk_states[param] = pd.DataFrame(self.__raw_states_output[count], index=self.__datetime)
 
         return lagk_states
-    else:
-
-        routed = pd.DataFrame(lagk_run[0],index=datetime).add_prefix('routed_')
-
-        return routed
 
 @dataclass
 class consuse_pars:

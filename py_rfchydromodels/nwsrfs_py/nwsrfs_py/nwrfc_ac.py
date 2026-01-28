@@ -283,7 +283,11 @@ class nwsrfs_prep:
         return list_df
 
 
-class nwsrfs_run(nwsrfs_prep,nwsrfs.fa,nwsrfs.sacsnow,nwsrfs.gamma_uh):
+class nwsrfs_run(nwsrfs_prep,
+                nwsrfs.fa,
+                nwsrfs.sacsnow,
+                nwsrfs.gamma_uh,
+                nwsrfs.lagk):
     '''
 
     ###what does this class do?!?#####
@@ -312,15 +316,16 @@ class nwsrfs_run(nwsrfs_prep,nwsrfs.fa,nwsrfs.sacsnow,nwsrfs.gamma_uh):
         #Validate forcing_adj argument
         self._interrogate_fa_arg(forcing_adj)
 
-        #If there is a sac-snow model, perform forcing adjustments, SAC-SMA, SNOW17, UH Gamma
+        #If there is a sac-snow model, perform forcing adjustments and activate SAC-SMA, SNOW17, UH Gamma models
         if not self.sacsnow_logic:
-            self.fa_factors = None            
-            self.forcings_climo = None
-            self.return_sf = None
+            self.fa_factors = self.forcings_climo = None            
         else:
             self.fa_run()
             self.sacsnow_uh_run()
 
+        #If there is a lagk model, activate model
+        if self.upflow_logic:
+            self.lagk_run()
         ############################################
 
 
@@ -378,14 +383,17 @@ class nwsrfs_run(nwsrfs_prep,nwsrfs.fa,nwsrfs.sacsnow,nwsrfs.gamma_uh):
                 msg = f'One or more string forcing_adj argument string not understood, expecting: {", ".join(forcing_types)}'
                 raise ValueError(msg)   
 
-    def fa_run(self,         
-            validate:bool = True):
+    def fa_run(self,validate:bool = True):
         '''
         Apply monthly climatological forcing adjustments to forcing specified by the ``forcing_adj_types`` attribute
         
         Args:
             validate (bool): Validate that map, mat, ptps, and pet inputs are correct format/type. Default: True
         '''
+
+        #If SAC-SMA and SNOW17 parameter don't exist return none
+        if not self.sacsnow_logic:
+            return None
 
         #If forcing_adj_types is None or then set all fa_pars values to scale=1, p_redist=0, std=10, shift=0
         nofa_pars = np.array([1,0,10,0])
@@ -484,6 +492,10 @@ class nwsrfs_run(nwsrfs_prep,nwsrfs.fa,nwsrfs.sacsnow,nwsrfs.gamma_uh):
         Args:
             validate (bool): Validate that SAC-SMA, Snow17, and gamma UH inputs are correct format/type. Default: True
         '''
+
+        #If SAC-SMA and SNOW17 parameter don't exist return none
+        if not self.sacsnow_logic:
+            return None
 
         #Get a nested dictionary for SAC-SMA, Snow17, and gamma UH with parameter values
         pars_dict = {}
@@ -645,6 +657,10 @@ class nwsrfs_run(nwsrfs_prep,nwsrfs.fa,nwsrfs.sacsnow,nwsrfs.gamma_uh):
             pd.DataFrame: A DataFrame containing streamflow with a column for each zone (units: cfs).
         '''
 
+        #If SAC-SMA and SNOW17 parameter don't exist return none
+        if not self.sacsnow_logic:
+            return None
+
         raw_output = nwsrfs.gamma_uh.return_sf(self,tci,return_inst)
         #Rename column of Dataframe to correpond to zone names
         return raw_output.set_axis(self.zone_names, axis=1)
@@ -679,148 +695,82 @@ class nwsrfs_run(nwsrfs_prep,nwsrfs.fa,nwsrfs.sacsnow,nwsrfs.gamma_uh):
 
         return sf_output
 
-    # def update_pars(self, pars):
-    #     self.pars = pars
+    def lagk_run(self, validate:bool=True):
+        '''
+        Run Lagk with the parameters specified in ``pars``.
 
-    # def lagk_run(self,n=None): 
-        
-    #     if self.n_upflow>0:
-    #         if n is None:
-    #             n=list(range(self.n_upflow))
-    #         elif isinstance(n, int):
-    #             n=[n]
-                
-    #         p = self.p['lagk']
-                    
-    #         lagk=s.lagk(int(self.dt_hours),int(self.dt_hours),
-    #                     p['lagtbl_a'][n], p['lagtbl_b'][n], p['lagtbl_c'][n], p['lagtbl_d'][n],
-    #                     p['ktbl_a'][n], p['ktbl_b'][n], p['ktbl_c'][n], p['ktbl_d'][n],
-    #                     p['lagk_lagmax'][n], p['lagk_kmax'][n], p['lagk_qmax'][n],
-    #                     p['lagk_lagmin'][n], p['lagk_kmin'][n], p['lagk_qmin'][n],
-    #                     p['init_co'][n], p['init_if'][n], p['init_of'][n], p['init_stor'][n],
-    #                     self.upflow[:,n],int(0))
+        Args:
+            validate (bool): Validate that LagK inputs are correct format/type. Default: True
+        '''
 
-    #         sim_flow_cfs = np.sum(lagk[0],axis=1)
-            
-    #         self.lagk_flow_cfs = pd.Series(sim_flow_cfs, index=self.dates)
-            
-    #         return self.lagk_flow_cfs
-    #     else:
-    #         return np.nan   
-    # def lagk_states_run(self): 
-        
-    #     if self.n_upflow>0:
-    #         #if n is None:
-    #         #    n=list(range(self.n_upflow))
-    #         #elif isinstance(n, int):
-    #         #    n=[n]
-    #         #    
-    #         p = self.p['lagk']
-                    
-    #         states=s.lagk(int(self.dt_hours),int(self.dt_hours),
-    #                     p['lagtbl_a'], p['lagtbl_b'], p['lagtbl_c'], p['lagtbl_d'],
-    #                     p['ktbl_a'], p['ktbl_b'], p['ktbl_c'], p['ktbl_d'],
-    #                     p['lagk_lagmax'], p['lagk_kmax'], p['lagk_qmax'],
-    #                     p['lagk_lagmin'], p['lagk_kmin'], p['lagk_qmin'],
-    #                     p['init_co'], p['init_if'], p['init_of'], p['init_stor'],
-    #                     self.upflow,int(1))
+        #If lagk parameter don't exist return none
+        if not self.upflow_logic:
+            return None
 
-    #         state_param=['routed','lag_time','k_inflow','k_storage']
-            
-    #         self.lagk_states={}
-    #         for count, param in  enumerate(state_param):
-    #             self.lagk_states[param]=pd.DataFrame(states[count], index=self.dates,columns=self.upflow_name)
-            
-    #         return self.lagk_states
-    #     else:
-    #         return np.nan
+        #Get a nested dictionary for SAC-SMA, Snow17, and gamma UH with parameter values
+        pars_dict = {}
+        for par in self.pars.loc[self.pars.type=='lagk'].name.unique():
+            pars_dict[par] = self.pars.loc[(self.pars.type=='lagk')&
+                (self.pars['name'] == par)].sort_values(by='zone')['value'].to_numpy()
 
 
-    # def sacsnow_run(self,inst=True):
+        lagk_dc = nwsrfs.lagk_pars(year = self.year,month =self.month,day = self.day,hour = self.hour,
+                    tbl_lageq_a = pars_dict['lagtbl_a'], tbl_lageq_b = pars_dict['lagtbl_b'],
+                    tbl_lageq_c = pars_dict['lagtbl_c'], tbl_lageq_d = pars_dict['lagtbl_d'],
+                    tbl_keq_a = pars_dict['ktbl_a'], tbl_keq_b = pars_dict['ktbl_b'],
+                    tbl_keq_c = pars_dict['ktbl_c'], tbl_keq_d = pars_dict['ktbl_d'],
+                    tbl_lagmax = pars_dict['lagk_lagmax'], tbl_lagmin = pars_dict['lagk_lagmin'],
+                    tbl_kmax = pars_dict['lagk_kmax'], tbl_kmin = pars_dict['lagk_kmin'],
+                    tbl_qmax = pars_dict['lagk_qmax'], tbl_qmin = pars_dict['lagk_qmin'],
+                    init_co = pars_dict['init_co'], init_stor = pars_dict['init_stor'],
+                    init_qin = pars_dict['init_if'], init_qout = pars_dict['init_of'],
+                    qin = self.upflow.to_numpy())
 
-    #         if self.n_zones>0:
-    #             p = {**self.p['sac'],**(self.p['snow']),**(self.p['uh'])}
-     
+        nwsrfs.lagk.__init__(self,
+            pars_dataclass = lagk_dc,
+            validate = validate)
 
-    #             states = s.sacsnow(int(self.dt_seconds), self.year.astype('int'), self.month.astype('int'), self.day.astype('int'), self.hour.astype('int'),
-    #                             # general pars
-    #                             p['alat'].astype('double'), p['elev'].astype('double'),
-    #                             # sac pars
-    #                             self.sac_pars,
-    #                             # pet and precp adjustments
-    #                             p['peadj'].astype('double'), p['pxadj'].astype('double'),
-    #                             # snow pars
-    #                             self.snow_pars,
-    #                             # initial swe
-    #                             p['init_swe'].astype('double'),
-    #                             # forcings
-    #                             self.forcings.map_fa, self.forcings.ptps_fa, self.forcings.mat_fa,self.forcings.etd,
-    #                             #Pass states option
-    #                             int(0))
-                
-    #             tci=states[2]
-                
-    #             # channel routing
-    #             self.sacsnow_flow_cfs = self.uh.tci_2_cfs(tci,self.dates,inst=inst)
+    @property
+    def lagk_route(self) -> pd.DataFrame:
+        '''
+        Returns routed flows as a DataFrame with a column for each upstream reach (units: cfs).
+        '''
 
-    #             #Recalculate FA forcing due to Map and ETD being modified
-    #             self.forcings.fa_ts(self.dt_seconds,self.dates)
+        #If lagk parameter don't exist return none
+        if not self.upflow_logic:
+            return None
 
-    #             return self.sacsnow_flow_cfs
-    #         else:
-                # return np.nan
+        #Get routings from lagk class
+        #Use .fget (Function Get) to grab the actual function inside because forcings is a property object
+        raw_output = nwsrfs.lagk.lagk_route.fget(self) 
 
-#     def sacsnow_states_run(self,inst=True):
+        #Rename column of Dataframe to correpond to upstream reach name
+        return raw_output.set_axis(self.upflow_names, axis=1)    
 
-#         if self.n_zones>0: 
+    @property
+    def lagk_states(self) -> dict[str, pd.DataFrame]:
+        '''
+        Returns a dictionary of DataFrames containing all model states with a column for each upstream reach.
+            The dictionary keys are:
 
-#             p = {**self.p['sac'],**(self.p['snow']),**(self.p['uh'])}
+            * **routed**: Routed flow with lag and k applied (units: cfs).
+            * **lag_time**: Lag applied to upstream flow (units: hours).
+            * **k_inflow**: upstreamflow with only lag applied  (units: cfs).
+            * **k_storage**: Attenuation storage (units: cfs).
+        '''
 
-#             # simulates all zones
-#             states = s.sacsnow(int(self.dt_seconds), self.year.astype('int'), self.month.astype('int'), self.day.astype('int'), self.hour.astype('int'),
-#                             # general pars
-#                             p['alat'].astype('double'), p['elev'].astype('double'),
-#                             # sac pars
-#                             self.sac_pars,
-#                             # pet and precp adjustments
-#                             p['peadj'].astype('double'), p['pxadj'].astype('double'),
-#                             # snow pars
-#                             self.snow_pars,
-#                             # initial swe
-#                             p['init_swe'].astype('double'),
-#                             # forcings
-#                             self.forcings.map_fa, self.forcings.ptps_fa, self.forcings.mat_fa,self.forcings.etd,
-#                             #Pass states option
-#                             int(1))
+        #If lagk parameter don't exist return none
+        if not self.upflow_logic:
+            return None
 
-#             state_param=['map_pxadj','etd_adj','tci','aet',
-#                             'uztwc','uzfwc','lztwc','lzfsc','lzfpc','adimc',
-#                             'roimp', 'sdro', 'ssur', 'sif', 'bfs', 'bfp',
-#                             'swe','aesc','neghs','liqw','raim','psfall','prain']
-#             self.sacsnow_states={}
-#             for count, param in  enumerate(state_param):
-#                 self.sacsnow_states[param]=pd.DataFrame(states[count], index=self.dates,columns=self.zones)
+        #Get states from lagk class
+        #Use .fget (Function Get) to grab the actual function inside because forcings is a property object
+        raw_output = nwsrfs.lagk.lagk_states.fget(self)
 
-#             #Calculate streamflow for each zone
-#             sf_df=pd.DataFrame()
-#             for count, zone in enumerate(self.zones):
-#                 tci_zone=self.sacsnow_states['tci'][zone].astype('double').to_numpy()
-#                 tci_zone=np.expand_dims(tci_zone,axis=1)
-#                 tci_zone=np.asfortranarray(tci_zone)
-#                 sf_zones=self.uh.tci_2_cfs(tci_zone,self.dates,count,inst=inst).rename(zone)
-#                 sf_df=pd.concat([sf_df,sf_zones],axis=1,ignore_index=True)
-#             sf_df.index=self.dates
-#             sf_df.columns=self.zones
-            
-#             self.sacsnow_states['sf']=sf_df
-            
-#             #Recalculate FA forcing due to Map and ETD being modified
-#             self.forcings.fa_ts(self.dt_seconds,self.dates)
-            
-#             return self.sacsnow_states
-#         else:
-#             return np.nan
-    
+        #For each dictionary value, rename column of Dataframe to correpond to zone names
+        return {key: df.set_axis(self.upflow_names, axis=1) for key, df in raw_output.items()}
+
+
 #     def consuse_run(self):
 
 #         if self.n_consuse>0:
