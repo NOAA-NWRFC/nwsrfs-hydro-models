@@ -1,4 +1,4 @@
-import os, sys
+import os, sys, copy
 from typing import NewType
 import pandas as pd
 import numpy as np
@@ -69,7 +69,7 @@ class nwsrfs_prep:
             self.interrogate_pars()
 
             #Extract time vectors
-            self.dates = self.forcings_raw['map'].index.strftime('%Y-%m-%d %H:00').to_numpy()
+            self.dates = self.forcings_raw['map'].index.rename('datetime')
             self.year = self.forcings_raw['map'].index.year.to_numpy()
             self.month = self.forcings_raw['map'].index.month.to_numpy()
             self.day = self.forcings_raw ['map'].index.day.to_numpy()
@@ -191,7 +191,7 @@ class nwsrfs_prep:
         '''
 
         #Get zone names and number , if present
-        self.zone_names = tuple(self.pars.loc[(self.pars['zone'].str.contains('-'))|(self.pars['zone'].str.contains('_'))].zone.unique())
+        self.zone_names = tuple(self.pars.loc[(self.pars.zone.str.contains('-'))].zone.unique())
         self.n_zones = len(self.zone_names)
         if self.n_zones > 0:
             self.sacsnow_logic = True
@@ -210,7 +210,7 @@ class nwsrfs_prep:
         if self.pars.zone.str.contains('-CU').any():
             self.consuse_logic = True
             self.consuse_name = tuple(self.pars.loc[self.pars.type=='consuse'].zone.unique())
-            self.n_consuse = len(consuse_name)
+            self.n_consuse = len(self.consuse_name)
         else:
             self.consuse_logic = False
             self.consuse_name = None
@@ -287,7 +287,8 @@ class nwsrfs_run(nwsrfs_prep,
                 nwsrfs.fa,
                 nwsrfs.sacsnow,
                 nwsrfs.gamma_uh,
-                nwsrfs.lagk):
+                nwsrfs.lagk,
+                nwsrfs.chanloss):
     '''
 
     ###what does this class do?!?#####
@@ -306,7 +307,6 @@ class nwsrfs_run(nwsrfs_prep,
     def __init__(self,
                 autocalb_dir: str, 
                 run_dir: str | None = None,
-
                 forcing_adj: bool | list[str] = True):
 
         #Initiate nwsrfs_prep    stop
@@ -323,28 +323,17 @@ class nwsrfs_run(nwsrfs_prep,
             self.fa_run()
             self.sacsnow_uh_run()
 
-        #If there is a lagk model, activate model
+        #If there is a lagk model, activate
         if self.upflow_logic:
             self.lagk_run()
-        ############################################
 
+        #If there is a chanloss model, activate
+        if self.chanloss_logic:
+            self.chanloss_run()
 
-        #     #Calculate the UH using a dedicated model class
-        #     self.uh=UH(self.pars,self.dt_hours)
-        # else:
-        #     self.forcings = np.nan
-        #     self.uh = np.nan
-
-        # #format peadj for consuse calculation 
-        # self.peadj_cu = np.full([12, n_consuse], np.nan)
-        # for i in range(12):
-        #     m = i + 1
-        #     for j, z in zip(range(n_consuse), consuse_name):
-        #         self.peadj_cu[i, j] = pars[(pars['name'] == 'peadj_cu_' + f'{m:02}') & (pars['zone'] == z) &
-        #                 (pars['type']== 'consuse')]['value'].astype('double').to_numpy()[0]
-        # self.peadj_cu=np.asfortranarray(self.peadj_cu)
-        
-
+        #If there is a consuse model, activate
+        if self.consuse_logic:
+            self.consuse_run()
 
     def _interrogate_fa_arg(self,forcing_adj):
         '''
@@ -366,7 +355,7 @@ class nwsrfs_run(nwsrfs_prep,
                 self.forcing_adj_types = ('map','mat', 'ptps','pet')
             else:
                 self.forcing_adj_logic = None
-                self.forcing_adj_types = None
+                self.forcing_adj_types = ()
         else:
             self.forcing_adj_logic = True
             #Just in case, set string entries to lower case and remove duplicates entries
@@ -478,9 +467,8 @@ class nwsrfs_run(nwsrfs_prep,
         #Use .fget (Function Get) to grab the actual function inside because forcings is a property object
         raw_output = nwsrfs.fa.forcings.fget(self)
 
-        #Remove "_fa" from dictionary keys, then remove key/value pair 'pet'
-        fixed_output = {key.split('_')[0]:value for key, value in raw_output.items()}
-        fixed_output.pop('pet')
+        #Remove "_fa" from dictionary keys and rename columns based on zone_names
+        fixed_output = {key.split('_')[0]:value.set_axis(self.zone_names, axis=1) for key, value in raw_output.items()}
         
         return fixed_output
 
@@ -555,7 +543,7 @@ class nwsrfs_run(nwsrfs_prep,
         Returns total channel inflow (tci) as a DataFrame with a column for each zone (units: mm).
         '''
 
-        #If SAC-SMA and SNOW17 parameter don't exist return none
+        #If SAC-SMA and SNOW17 parameters don't exist return none
         if not self.sacsnow_logic:
             return None
 
@@ -569,7 +557,7 @@ class nwsrfs_run(nwsrfs_prep,
     @property
     def sacsnow_states(self) -> dict[str, pd.DataFrame]:
         '''
-        Returns a dictionary of DataFrames containing all model states with a column for each zone. 
+        Returns a dictionary of DataFrames containing all SAC-SMA model states with a column for each zone. 
             The dictionary keys are:
 
             * **tci**: Total channel inflow (units: mm).
@@ -597,7 +585,7 @@ class nwsrfs_run(nwsrfs_prep,
             * **prain**: Precipitation falling as rain (units: mm).
         '''
 
-        #If SAC-SMA and SNOW17 parameter don't exist return none
+        #If SAC-SMA and SNOW17 parameters don't exist return none
         if not self.sacsnow_logic:
             return None
 
@@ -633,7 +621,7 @@ class nwsrfs_run(nwsrfs_prep,
         Returns a unit hydrograph at as a DataFrame at a timestep specified by the ``dt_hours`` attribute.
         '''
 
-        #If SAC-SMA and SNOW17 parameter don't exist return none
+        #If SAC-SMA and SNOW17 parameters don't exist return none
         if not self.sacsnow_logic:
             return None
 
@@ -677,7 +665,7 @@ class nwsrfs_run(nwsrfs_prep,
             pd.DataFrame: Returns streamflow as a DataFrame with a column for each zone (units: cfs).
         '''
 
-        #If SAC-SMA and SNOW17 parameter don't exist return none
+        #If SAC-SMA and SNOW17 parameters don't exist return none
         if not self.sacsnow_logic:
             return None
 
@@ -697,17 +685,17 @@ class nwsrfs_run(nwsrfs_prep,
 
     def lagk_run(self, validate:bool=True):
         '''
-        Run Lagk with the parameters specified in ``pars``.
+        Runs Lagk with the parameters specified in ``pars``.
 
         Args:
             validate (bool): Validate that LagK inputs are correct format/type. Default: True
         '''
 
-        #If lagk parameter don't exist return none
+        #If lagk parameters don't exist return none
         if not self.upflow_logic:
             return None
 
-        #Get a nested dictionary for SAC-SMA, Snow17, and gamma UH with parameter values
+        #Get a dictionary of lagk parameter values
         pars_dict = {}
         for par in self.pars.loc[self.pars.type=='lagk'].name.unique():
             pars_dict[par] = self.pars.loc[(self.pars.type=='lagk')&
@@ -736,7 +724,7 @@ class nwsrfs_run(nwsrfs_prep,
         Returns routed flows as a DataFrame with a column for each upstream reach (units: cfs).
         '''
 
-        #If lagk parameter don't exist return none
+        #If lagk parameters don't exist return none
         if not self.upflow_logic:
             return None
 
@@ -750,7 +738,7 @@ class nwsrfs_run(nwsrfs_prep,
     @property
     def lagk_states(self) -> dict[str, pd.DataFrame]:
         '''
-        Returns a dictionary of DataFrames containing all model states with a column for each upstream reach.
+        Returns a dictionary of DataFrames containing all lagk model states with a column for each upstream reach.
             The dictionary keys are:
 
             * **routed**: Routed flow with lag and k applied (units: cfs).
@@ -770,137 +758,225 @@ class nwsrfs_run(nwsrfs_prep,
         #For each dictionary value, rename column of Dataframe to correpond to zone names
         return {key: df.set_axis(self.upflow_names, axis=1) for key, df in raw_output.items()}
 
+    @property
+    def sacsnow_lagk_run(self):
+        '''
+          Returns a Series of the sum of any sacsnow run off and upstream routed flow for each timestep (units: cfs)
+        '''
 
-#     def consuse_run(self):
+        #Create blank simulation series
+        qin=pd.Series(0,index=self.dates)
 
-#         if self.n_consuse>0:
-#             p = self.p['consuse']
-#             cms_2_cfs=35.3147
+        #If there are sac/snow zone, calculate runoff
+        if self.sacsnow_logic:
+            qin += self.sacsnow_sf().sum(axis=1)
+
+        #If there are upstream reaches to route, add them to the total flow
+        if self.upflow_logic:
+            qin += self.lagk_route.sum(axis=1)
+
+        return qin.rename('qin')
+
+    def chanloss_run(self, validate:bool=True):
+
+        '''
+        Runs chanloss with the parameters specified in ``pars``.
+
+        Args:
+            validate (bool): Validate that chanloss inputs are correct format/type. Default: True
+        '''
+
+        #If chanloss parameters don't exist return none
+        if not self.chanloss_logic:
+            return None
+
+        #Get a dictionary of chanloss parameter values
+        pars_dict = {}
+        for par in self.pars.loc[self.pars.type=='chanloss'].name.unique():
+            pars_dict[par] = self.pars.loc[(self.pars.type=='chanloss')&
+                (self.pars['name'] == par)].sort_values(by='zone')['value'].to_numpy()
+
+        periods =  np.column_stack((pars_dict['cl_period_start'],pars_dict['cl_period_end']))
+
+        qin = self.sacsnow_lagk_run
+
+        self._chanloss_dc = nwsrfs.chanloss_pars(year = self.year,month =self.month,day = self.day,hour = self.hour,
+                                periods = periods, factors = pars_dict['cl_factor'],
+                                cl_type = pars_dict['cl_type'], min_flow = pars_dict['cl_min_q'],
+                                qin = qin)
+
+        nwsrfs.chanloss.__init__(self,
+            pars_dataclass = self._chanloss_dc,
+            validate = validate)
+
+    def chanloss_apply(self, qin:pd.Series, validate:bool=True):
+        '''
+        Runs chanloss with the parameters specified in ``pars`` and qin supplied.
+
+        Args:
+            qin (pd.Series):  Input streamflow to adjust for CHANLOSS (units: cfs).
+            validate (bool): Validate that chanloss inputs are correct format/type. Default: True
+        '''
+
+        #If chanloss parameters don't exist return none
+        if not self.chanloss_logic:
+            return None
+
+        #create a copy of the existing pars dataclass and replace qin with the supplied qin argument
+        dc_pars = copy.deepcopy(self._chanloss_dc)
+        dc_pars.qin = qin.to_numpy()
+
+        #Initiate the chanloss class
+        cl_class = nwsrfs.chanloss(pars_dataclass = dc_pars,validate=validate)
+
+        #Return adjustments
+        return cl_class.chanloss_qadj
+
+    @property
+    def sacsnow_lagk_chanloss_run(self):
+        '''
+          Returns a Series of the sum of any sacsnow run off and upstream routed flow for each timestep with chanloss applied (units: cfs)
+        '''
+
+        if self.chanloss_logic:
+            return self.chanloss_qadj.rename('qin')
+        else:
+            return self.sacsnow_lagk_run
+
+    def consuse_run(self, validate:bool=True):
+
+        '''
+        Runs CONSUSE with the parameters specified in ``pars``.
+
+        Args:
+            validate (bool): Validate that CONSUSE inputs are correct format/type. Default: True
+        '''
+
+        #If consuse parameters don't exist return none
+        if not self.consuse_logic:
+            return None
+
+        #Get a dictionary of chanloss parameter values
+        pars_dict = {}
+        for par in self.pars.loc[self.pars.type=='consuse'].name.unique():
+            pars_dict[par] = self.pars.loc[(self.pars.type=='consuse')&
+                (self.pars['name'] == par)].sort_values(by='zone')['value'].to_numpy()
+
+        #format peadj for consuse calculation 
+        peadj_cu = np.full([12, self.n_consuse], np.nan)
+        for i in range(12):
+            m = i + 1
+            for j, z in enumerate(self.consuse_name):
+                peadj_cu[i, j] = self.pars.loc[(self.pars.name == 'peadj_cu_' + f'{m:02}') & (self.pars.zone == z) &
+                        (self.pars.type == 'consuse')].value.item()
+
+        #Get natural flow
+        qnat = self.sacsnow_lagk_chanloss_run
+
+        #Convert to daily using the weighting scheme that CHPS uses of utilizing 5 points (edges assigned .5)
+        qnat_daily=(qnat.rolling(5,center=True).sum()+qnat.rolling(3,center=True).sum())/8
+        qnat_daily=qnat_daily.loc[qnat_daily.index.hour==12]
+        qnat_daily=qnat_daily.resample('1D').sum()
+
+        #Get Daily PET
+        #NOTE:  To match CHPS results have to be shifted back 1 hr so 00:00 timestep
+        #       is included in previous day
+        pet_daily=self.forcings['pet'].shift(periods=-1, freq='h').resample('1D').sum()
+
+        #Create a blank state dataframe
+        state_param = ['qadj','qdiv','qrf_in','qrf_out','qol','qcd','ce','rfstor']
+        self._consuse_states = {key:pd.DataFrame() for key in state_param}
+
+        #Run consuse for each zone individualys
+        for n, cu_name in enumerate(self.consuse_name):
+
+            #Get peadj associated with cu zones
+            peadj = self.pars.loc[(self.pars.name=='peadj')&(self.pars.zone==cu_name),'value'].squeeze()   
+
+            #Concat the two timeseries and remove any na values
+            ts_df = pd.concat([pet_daily[cu_name],qnat_daily],axis=1)
+            ts_df = ts_df[~ts_df.isna().any(axis=1)]
+
+            #Get time arrays
+            dates = ts_df.index
+            year = dates.year.to_numpy()
+            month = dates.month.to_numpy()
+            day = dates.day.to_numpy()
             
-#             #Get natural flow
-#             #Create blank simulation series
-#             qnat=pd.Series(0,index=self.dates)
-            
-#             #If there are sac/snow zone, calculate runoff
-#             if self.n_zones > 0:
-#                 qnat = qnat+self.sacsnow_run(inst=True)
-            
-#             #If there are upstream reaches to route, add them to the total flow
-#             if self.n_upflow > 0:
-#                 qnat = self.lagk_run() + qnat
+            #Get timeseries arrays
+            ts_array = ts_df.to_numpy()
 
-#             #Chanloss Adjustment
-#             qnat=self.chanloss(qnat)
+            #Create parameter dataclass
+            cu_dc = nwsrfs.consuse_pars(year=year,month=month,day=day,
+                area=pars_dict['area_km2'][n], irr_eff=pars_dict['irr_eff'][n], min_flow=pars_dict['min_flow'][n],
+                rf_accum_rate=pars_dict['rf_accum_rate'][n],rf_decay_rate=pars_dict['rf_decay_rate'][n],
+                pet_adj=peadj, pet_adj_table=peadj_cu[:,n],
+                pet=ts_array[:,0],qin=ts_array[:,1])
 
-#             #Convert to daily using the weighting scheme that CHPS uses of utilizing 5 points (edges assigned .5)
-#             qnat_daily=(qnat.rolling(5,center=True).sum()+qnat.rolling(3,center=True).sum())/8
-#             qnat_daily=qnat_daily.loc[qnat_daily.index.hour==12]
-#             qnat_daily=qnat_daily.resample('1D').sum()
-            
-#             #Get PET
-#             pet=pd.DataFrame(self.forcings.pet,columns=self.zones,index=self.dates)
-            
-#             #Create a blank state dataframe
-#             state_param=['QADJ','QDIV','QRF_in','QRF_out','QOL','QCD','CE','RFSTOR']
-#             self.consuse_states={}
-#             for count, param in  enumerate(state_param):
-#                 self.consuse_states[param]=pd.DataFrame()
-            
-#             #Run consuse for each zone individualys
-#             for n, cu_name in zip(range(self.n_consuse), self.consuse_name):
-                
-#                 #Get PET from equivalent SAC zone.  
-#                 #NOTE:  To match CHPS results have to be shifted back 1 hr so 00:00 timestep
-#                 #       is included in previous day
-#                 pet_daily=pet[cu_name].shift(periods=-1, freq='hours').resample('1D').sum()
+            cu_run = nwsrfs.consuse(cu_dc, validate=validate)
 
-#                 consuse_ts_input=pd.concat([pet_daily,qnat_daily],axis=1)
-#                 consuse_ts_input.columns=['pet','qnat']
-#                 consuse_ts_input=consuse_ts_input[~consuse_ts_input.isna().any(axis=1)]\
-                
-#                 peadj=self.pars.loc[(self.pars.name=='peadj')&(self.pars.zone==cu_name),'value'].squeeze()
-                
-#                 dates_input=consuse_ts_input.index
-                
-#                 consuse_ts_input=consuse_ts_input.astype('double').to_numpy()
-#                 consuse_ts_input=np.asfortranarray(consuse_ts_input)
-                
-#                 #pet_iput=consuse_ts_input.pet.astype('double').to_numpy()
-#                 #pet_input=np.asfortranarray(pet_input)
-                
-#                 #qnat_iput=consuse_ts_input.qnat.astype('double').to_numpy()
-#                 #qnat_input=np.asfortranarray(qnat_input)
-                
-#                 states=s.consuse(dates_input.year.astype('int'), dates_input.month.astype('int'), dates_input.day.astype('int'),
-#                              p['area_km2'][n].astype('double'),p['irr_eff'][n].astype('double'),np.double(p['min_flow_cmsd'][n]*cms_2_cfs),
-#                              p['rf_accum_rate'][n].astype('double'),p['rf_decay_rate'][n].astype('double'),
-#                              self.peadj_cu[:,n],peadj,
-#                              consuse_ts_input[:,0],consuse_ts_input[:,1])
-                
-#                 #Concat state value for CU zone to dictionary. IF QADJ 
-#                 for count, param in  enumerate(state_param):
-#                     if param=='QADJ':
-#                         self.consuse_states[param]=pd.DataFrame(states[count], index=dates_input,columns=[param])
-#                     else:
-#                         self.consuse_states[param]=pd.concat([self.consuse_states[param],
-#                                 pd.DataFrame(states[count], index=dates_input,columns=[cu_name])],axis=1)
-#                 #Update the qnat to reflect the adjusted flow (needed for basins w/multiple CU zones)
-#                 qnat_daily=self.consuse_states['QADJ']
-            
-#             return self.consuse_states
-#         else:
-#             return np.nan
+            #Concat state value for CU zone to dictionary. IF QADJ,replace value
+            for count, param in  enumerate(state_param):
+                if param=='qadj':
+                    self._consuse_states[param]=cu_run.consuse_qadj
+                else:
+                    self._consuse_states[param]= pd.concat([self._consuse_states[param],
+                                    cu_run.consuse_states[param].rename(cu_name)],axis=1)
+                    
+    @property
+    def consuse_qadj(self):
+        '''
+        Return a Series of flow adjusted by consuse (units: cfsd).
+        '''
 
-#     def chanloss(self,sim_sf):
-    
-#         #Check if there is a chanloss module
-#         if self.n_chanloss==0:
-#             sim_sf_adj=sim_sf
-#         else:
-#             p = self.p['chanloss']
-            
-#             periods =  np.column_stack((p['cl_period_start'],p['cl_period_end'])).astype(int)
-           
-#             sim_sf_adj=s.chanloss(int(self.dt_seconds), self.year.astype('int'), self.month.astype('int'), self.day.astype('int'),
-#                         p['cl_factor'],periods,p['cl_type'].astype('int'), p['cl_min_q'].astype('double'),
-#                         sim_sf.astype('double').to_numpy())
-#             sim_sf_adj=pd.Series(sim_sf_adj, index=self.dates)
-#         return sim_sf_adj
+        #If consuse parameters don't exist return none
+        if not self.consuse_logic:
+            return None
 
-#     def run_all(self,inst=True):
-        
-#         #Create blank simulation series
-#         self.sim=pd.Series(0,index=self.dates)
-        
-#         #If there are sac/snow zone, calculate runoff
-#         if self.n_zones > 0:
-#             self.sim = self.sim+self.sacsnow_run(inst=True)
-        
-#         #If there are upstream reaches to route, add them to the total flow
-#         if self.n_upflow > 0:
-#             self.sim = self.lagk_run() + self.sim
 
-#         #Chanloss Adjustment
-#         self.sim=self.chanloss(self.sim)
+        return self._consuse_states['qadj']
+ 
+    @property
+    def consuse_states(self):
+        '''
+        Returns a dictionary of DataFrames containing all CONSUSE states with a column for each CONSUSE zone.
+            The dictionary keys are:
 
-#         #If there area CONSUSE areas, adjust the flow
-#         if self.n_consuse > 0:
-#             self.consuse_run()
-#             qnat_cu_adj=self.consuse_states['QDIV'].sum(axis=1)-self.consuse_states['QRF_out'].sum(axis=1)
-#             #Shift forward a day so that the correct adjustement is applied  to the correct day
-#             qnat_cu_adj.index=qnat_cu_adj.index+pd.Timedelta(1, unit='D')
-#             #Backfill to fill all values after 00:00 and forward fill to correct missing values at end of timeseries
-#             qnat_cu_adj=qnat_cu_adj.reindex(self.sim.index).backfill().ffill()
-#             q_adj=self.sim - qnat_cu_adj
-#             self.sim = self.sim - qnat_cu_adj
-#             #Replace any negative values with zero
-#             self.sim[self.sim < 0]=0
+            * **qadj**: Streamflow with all consumptive use adjustments applied (units: cfsd)
+            * **qdiv**: Flow diverted for consumptive use (units: cfsd)
+            * **qrf_in**:  Return flow from irrigation area used as input to return flow storage (units:cfsd)
+            * **qrf_out**: Return flow to channel from return flow storage (units: cfsd)
+            * **qol**:  Diverted flow other loses [eg transport, subsurface] (units:  cfsd)
+            * **qcd**: Crop flow demand (units:  cfsd) 
+            * **ce**: Crop evapotranspiration demand (units: mm)
+            * **rfstor**: Return flow storage contents (units: mm)
+        '''
 
-#         #return instantaneous or period avg depending on chosen option
-#         if not inst:
-#             current_sim=self.sim.to_numpy().flatten()
-#             next_sim = pd.DataFrame(self.sim).shift(-1).to_numpy().flatten()
-#             sim_flow_pavg_cfs = (current_sim + next_sim) / 2
-#             self.sim = pd.Series(sim_flow_pavg_cfs, index=self.dates)
+        #If consuse parameters don't exist return none
+        if not self.consuse_logic:
+            return None
 
-#         return self.sim
+        return self._consuse_states       
+
+    @property
+    def run_all(self):
+        '''
+          Returns a Series of the sum of any sacsnow run off and upstream routed flow for each timestep with chanloss and consuse applied (units: cfs).
+        '''
+
+        #Get flow prior to potential CONSUSE adjustment
+        qnat = self.sacsnow_lagk_chanloss_run
+
+        #If there area CONSUSE areas, adjust the flow
+        if self.consuse_logic:
+            qnat_cu_adj = self.consuse_states['qdiv'].sum(axis=1)-self.consuse_states['qrf_out'].sum(axis=1)
+            #Shift forward a day so that the correct adjustement is applied  to the correct day
+            qnat_cu_adj.index = qnat_cu_adj.index+pd.Timedelta(1, unit='D')
+            #Backfill to fill all values after 00:00 and forward fill to correct missing values at end of timeseries
+            qnat_cu_adj = qnat_cu_adj.reindex(qnat.index).bfill().ffill()
+            q_adj = qnat - qnat_cu_adj
+            #Replace any negative values with zero
+            q_adj.loc[q_adj < 0] = 0
+            return q_adj.rename('qin')
+        else:
+            return qnat

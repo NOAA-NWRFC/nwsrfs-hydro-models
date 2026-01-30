@@ -193,7 +193,7 @@ class sacsnow():
             self.sacsnow_pars.validate()
 
         self.__datetime = utils._datetime_conversion(self.sacsnow_pars.year, self.sacsnow_pars.month,
-                                                self.sacsnow_pars.day, self.sacsnow_pars.hour)
+                                                self.sacsnow_pars.day, self.sacsnow_pars.hour).rename('datetime')
 
         #Set raw_output to None until run function is executed
         self.__raw_output = self.__raw_states_output =None
@@ -480,7 +480,7 @@ class lagk():
             self.lagk_pars.validate()
 
         
-        self.__datetime = utils._datetime_conversion(self.lagk_pars.year, self.lagk_pars.month, self.lagk_pars.day, self.lagk_pars.hour)
+        self.__datetime = utils._datetime_conversion(self.lagk_pars.year, self.lagk_pars.month, self.lagk_pars.day, self.lagk_pars.hour).rename('datetime')
         self._ita = self._itb = self.lagk_pars.dt_hours
         
         #!!LAGK CAN HAVE DIFFERENT INPUT/OUTPUT TIMESTEP BUT LAGK F90 WRAPPER IS CURRENTLY NOT SET UP TO ACCOMODATE!!
@@ -495,7 +495,7 @@ class lagk():
         #     self.__datetime = pd.date_range(start=dt_in.iloc[0],end=dt_in.iloc[-1],freq=f'{str(itb)}H')
 
         #Set raw_output to None until run function is executed
-        self.__raw_output = self.__raw_states_output =None
+        self.__raw_output = self.__raw_states_output = None
 
     def __run_wrapper(self):
         '''
@@ -688,61 +688,83 @@ class consuse_pars:
         if not utils._validate_positive_values(self.pet) or not utils._validate_positive_values(self.qin):
             raise ValueError("QIN and PET array inputs values must be >= 0")
 
-def consuse(pars_dataclass: consuse_pars,
-            return_states:bool = False,
+class consuse():
+
+        '''
+        Function to run the NWSRFS CONS_USE model via F2PY bindings.   Only a single consuse zone can be ran at a time.  Timestep is daily average.
+
+        Args:
+            consuse_pars (dataclass): Dataclass which contains all inputs to run CONS_USE.
+            validate (bool): Validate CONS_USE dataclass inputs are correct format/type. Default: True
+        '''
+        def __init__(self,
+            pars_dataclass: consuse_pars,
             validate:bool = True):
 
-    '''
-    Function to run the NWSRFS CONS_USE model via F2PY bindings.   Only a single consuse zone can be ran at a time.  Timestep is daily average.
+            #Assign parameters
+            self.consuse_pars = pars_dataclass
 
-    Args:
-        consuse_pars (dataclass): Dataclass which contains all inputs to run CONS_USE.
-        return_states (bool): Option to return only routed flow or all states.  Default: False
-        validate (bool): Validate CONS_USE dataclass inputs are correct format/type. Default: True
-    Returns:
-        pd.Series: If ``return_states`` is ``False``, a Series of daily streamflow with consumptive use adjustments applied (units: cfsd).
-        pd.DataFrame: If ``return_states`` is ``True``, a DataFrame with a column for daily model states.
-            The column states are:
+            #Validate consuse_pars
+            if validate:
+                self.consuse_pars.validate()
 
-            * **qadj**: Streamflow with all consumptive use adjustments applied (units: cfsd)
-            * **qdiv**: Flow diverted for consumptive use (units: cfsd)
-            * **qrf_in**:  Return flow from irrigation area used as input to return flow storage (units:cfsd)
-            * **qrf_out**: Return flow to channel from return flow storage (units: cfsd)
-            * **qol**:  Diverted flow other loses [eg transport, subsurface] (units:  cfsd)
-            * **qcd**: Crop flow demand (units:  cfsd) 
-            * **ce**: Crop evapotranspiration demand (units: mm)
-            * **rfstor**: Return flow storage contents (units: mm)
-    '''
+            self.__datetime = utils._datetime_conversion(self.consuse_pars.year, self.consuse_pars.month, self.consuse_pars.day).rename('date')
 
-    #Create a copy to prevent any changes to the par dataclass when running the nwrfs soure code
-    pars = copy.deepcopy(pars_dataclass)
+            #Set raw_output to None until run function is executed
+            self.__raw_output = None
 
-    #Validate consuse_pars
-    if validate:
-        pars.validate()
+        def __run_wrapper(self):
+            '''
+            Runs consuse wrapper
+            '''
 
-    datetime = utils._datetime_conversion(pars.year, pars.month, pars.day).rename('date')
+            #Create a copy to prevent any changes to the par dataclass when running the nwrfs soure code
+            pars = copy.deepcopy(self.consuse_pars)
+
+            self.__raw_output = nwsrfs_source.consuse(pars.year, pars.month, pars.day,
+                                 pars.area, pars.irr_eff, pars.min_flow,
+                                 pars.rf_accum_rate,pars.rf_decay_rate,
+                                 pars.pet_adj_table,pars.pet_adj,
+                                 pars.pet,pars.qin)
+
+        @property
+        def consuse_qadj(self) -> pd.Series:
+            '''
+            Returns a Series of daily streamflow with consumptive use adjustments applied (units: cfsd).
+            '''
+
+            if self.__raw_output is None:
+                self.__run_wrapper()
+
+            qadj_daily = pd.Series(self.__raw_output[0], index=self.__datetime,name='qadj')
+
+            return qadj_daily
+
+        @property
+        def consuse_states(self) -> pd.DataFrame:
+            '''
+            Returns a DataFrame with a column for each CONS_USE model states.
+                The column states are:
+
+                * **qadj**: Streamflow with all consumptive use adjustments applied (units: cfsd)
+                * **qdiv**: Flow diverted for consumptive use (units: cfsd)
+                * **qrf_in**:  Return flow from irrigation area used as input to return flow storage (units:cfsd)
+                * **qrf_out**: Return flow to channel from return flow storage (units: cfsd)
+                * **qol**:  Diverted flow other loses [eg transport, subsurface] (units:  cfsd)
+                * **qcd**: Crop flow demand (units:  cfsd) 
+                * **ce**: Crop evapotranspiration demand (units: mm)
+                * **rfstor**: Return flow storage contents (units: mm)
+            '''
+
+            if self.__raw_output is None:
+                self.__run_wrapper()
 
 
-    cu_run = nwsrfs_source.consuse(pars.year, pars.month, pars.day,
-                     pars.area, pars.irr_eff, pars.min_flow,
-                     pars.rf_accum_rate,pars.rf_decay_rate,
-                     pars.pet_adj_table,pars.pet_adj,
-                     pars.pet,pars.qin)
+            state_param=['qadj','qdiv','qrf_in','qrf_out','qol','qcd','ce','rfstor']
+            
+            state_dic = {key: array for key, array in zip(state_param, self.__raw_output)}
 
-    if return_states:
-
-        state_param=['qadj','qdiv','qrf_in','qrf_out','qol','qcd','ce','rfstor']
-        
-        state_dic = {col: array for array, col in zip(cu_run,state_param)}
-
-        return pd.DataFrame(state_dic, index=datetime)
-
-    else:
-
-        qadj_daily = pd.Series(cu_run[0], index=datetime,name='qadj')
-
-        return qadj_daily
+            return pd.DataFrame(state_dic, index=self.__datetime)
 
 @dataclass
 class chanloss_pars:
@@ -767,6 +789,7 @@ class chanloss_pars:
         year (np.ndarray): Array of years for each timestep (units: time).
         month (np.ndarray): Array of months corresponding to each timestep (units: time).
         day (np.ndarray): Array of days for each timestep (units: time).
+        hour (np.ndarray): Array of hours for each timestep (units: time).
         factors (np.ndarray): The CHANLOSS factors to be applied for each period (if cl_type=1 units: NA, otherwise units: cfs)
         periods (np.ndarray): The beginning and ending months that the CHANLOSS factors are applied (units: month).
         cl_type (numbers.Number):  1=varp (percentage of flow), 2=varc (constant value)
@@ -777,6 +800,7 @@ class chanloss_pars:
     year: np.ndarray
     month: np.ndarray
     day: np.ndarray
+    hour: np.ndarray
     periods: np.ndarray
     factors: np.ndarray
     cl_type: numbers.Number
@@ -786,8 +810,8 @@ class chanloss_pars:
     def __post_init__(self):
 
         #Convert time steps to integers
-        self.dt_seconds = int(utils._define_timestep_sec(self.year, self.month, self.day))
-        time_list = ['year','month','day'] 
+        self.dt_seconds = int(utils._define_timestep_sec(self.year, self.month, self.day, self.hour))
+        time_list = ['year','month','day','hour'] 
         utils._dtype_conversion_batch(self,  int, time_list)
 
         #Convert factors, min_flow, and qin to double dtypes
@@ -804,11 +828,11 @@ class chanloss_pars:
     def validate(self):
 
         #check that year, month, day are 1d arrays
-        if not utils._validate_1d_array(self.year, self.month, self.day):
+        if not utils._validate_1d_array(self.year, self.month, self.day, self.hour):
             raise ValueError("Time arrays (year, month, day, hour) must have a 1d shape")
 
         #check that year, month, day have the same length
-        if not utils._validate_array_length(self.year, self.month, self.day):
+        if not utils._validate_array_length(self.year, self.month, self.day, self.hour):
             raise ValueError("Time arrays (year, month, day) must have the same length")
 
         #check that periods shape contains the correct shape
@@ -829,37 +853,58 @@ class chanloss_pars:
 
         #check that qin and PET array input are valid:
         if not utils._validate_positive_values(self.qin):
-            raise ValueError("Streamflow and PET array inputs values must be >= 0")
+            raise ValueError("Streamflow inputs values must be >= 0")
 
 
-def chanloss(pars_dataclass: chanloss_pars,
-            validate:bool = True):
+class chanloss:
+
     '''
-    Function to run the NWSRFS chanloss model via F2PY bindings.
+     Class to run the NWSRFS chanloss model via F2PY bindings.
 
     Args:
         chanloss_pars (dataclass): Dataclass which contains all inputs to run CHANLOSS.
         validate (bool): Validate chanloss dataclass inputs are correct format/type. Default: True
-    Returns:
-         pd.Series: A Series of streamflow with chanloss adjustments applied (units: cfs).
     '''
+    def __init__(self,
+            pars_dataclass: chanloss_pars,
+            validate:bool = True):
 
-    #Create a copy to prevent any changes to the par dataclass when running the nwrfs soure code
-    pars = copy.deepcopy(pars_dataclass)
+        #Assign parameters
+        self.chanloss_pars = copy.deepcopy(pars_dataclass)
 
-    #Validate chanloss_pars
-    if validate:
-        pars.validate()
+        #Validate chanloss_pars
+        if validate:
+            self.chanloss_pars.validate()
 
-    datetime = utils._datetime_conversion(pars.year, pars.month, pars.day).rename('date')
+        self.__datetime = utils._datetime_conversion(self.chanloss_pars.year, self.chanloss_pars.month, self.chanloss_pars.day, self.chanloss_pars.hour).rename('datetime')
 
-    cl_run = nwsrfs_source.chanloss(pars.dt_seconds, pars.year, pars.month, pars.day,
-                pars.factors,pars.periods,pars.cl_type, pars.min_flow,
-                pars.qin)
+        #Set raw_output to None until run function is executed
+        self.__raw_output = None
 
-    qin_adj = pd.Series(cl_run, index=datetime, name='qin_adj')
+    def __run_wrapper(self):
+        '''
+        Runs chanloss wrapper
+        '''
 
-    return qin_adj
+        #Create a copy to prevent any changes to the par dataclass when running the nwrfs soure code
+        pars = copy.deepcopy(self.chanloss_pars)
+
+        self.__raw_output = nwsrfs_source.chanloss(pars.dt_seconds, pars.year, pars.month, pars.day,
+                                    pars.factors,pars.periods,pars.cl_type, pars.min_flow,
+                                    pars.qin)
+
+    @property
+    def chanloss_qadj(self) -> pd.Series:
+        '''
+        Returns a Series of streamflow with chanloss adjustments applied (units: cfs).
+        '''
+
+        if self.__raw_output is None:
+            self.__run_wrapper()
+
+        qin_adj = pd.Series(self.__raw_output, index=self.__datetime, name='qin_adj')
+
+        return qin_adj
 
 @dataclass
 class fa_pars:
@@ -1131,7 +1176,7 @@ class fa():
             self.__run_wrapper()
 
         #Calculate datetime
-        datetime = utils._datetime_conversion(self.fa_pars['map'].year, self.fa_pars['map'].month, self.fa_pars['map'].day, self.fa_pars['map'].hour).rename('date')
+        datetime = utils._datetime_conversion(self.fa_pars['map'].year, self.fa_pars['map'].month, self.fa_pars['map'].day, self.fa_pars['map'].hour).rename('datetime')
 
         #Create a dictionary of DataFrames for output purposes
         fa_param=['map_fa','mat_fa','ptps_fa','pet_fa','etd_fa']
