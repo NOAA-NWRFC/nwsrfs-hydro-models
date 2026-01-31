@@ -137,6 +137,12 @@ class sacsnow_pars:
         #check that the time set equals the dt_seconds 
         if not utils._validate_timestep(self.dt_seconds,self.year,self.month,self.day,self.hour):
             raise ValueError("year, month, day, hour timestep must be consistent and equal to dt_sec")
+
+        #check that the sac_pars and snow_pars are the correct length
+        if self.sac_pars.shape[0] != 17:
+            raise ValueError("sac_pars must have exactly 17 parameters")
+        if self.snow_pars.shape[0] != 13:
+            raise ValueError("snow_pars must have exactly 13 parameters")
        
         #check that sac-sma and snow17 parameters are 1d arrays.  
         #NOTE: "*" in front of self.sac_pars and self.snow_pars to unpack nested list
@@ -837,9 +843,9 @@ class chanloss_pars:
 
         #check that periods shape contains the correct shape
         if len(self.periods[0])!=2:
-            ValueError("periods parameter shape must be n x 2")
+            raise ValueError("periods parameter shape must be n x 2")
 
-        #check that cl_type parameter is 1 or 0
+        #check that cl_type parameter is 1 or 2
         if not self.cl_type ==1 and not self.cl_type ==2:
             raise ValueError("cl_type must have a integer value of 1 or 2")
 
@@ -1137,7 +1143,7 @@ class fa():
         '''
         #create a climo array.  Only checking MAP for climo data, assuming validate caught any climo mismatch amongst forcings
         if self.fa_pars['map'].climo is not None:
-            self.__climo_array = np.stack(self.fa_pars['map'].climo, self.fa_pars['mat'].climo, self.fa_pars['pet'].climo,self.fa_pars['ptps'].climo)
+            self.__climo_array = np.column_stack([self.fa_pars['map'].climo, self.fa_pars['mat'].climo, self.fa_pars['pet'].climo,self.fa_pars['ptps'].climo])
         else:
             #Make dummy climo input
             self.__climo_array = np.full((12, 4), -9999,dtype=np.float64)
@@ -1317,9 +1323,9 @@ class gammauh_pars:
 
 class gamma_uh():
     '''
-    class to use gamma unit hydrograph functionality
+    Class to generate Gamma Unit Hydrographs and route flows via F2PY bindings.
     Args:
-        uh_pars(dataclass): Dataclass which contains all inputs needed for gamma unit hydrograph calculations. 
+        pars_dataclass (dataclass): Dataclass which contains all inputs needed for gamma unit hydrograph calculations. 
         validate (bool): Validate gammauh dataclass inputs are correct format/type. Default: True
     Attributes:
         gamma_uh_pars (dataclass): Dataclass which contains all inputs needed for gamma unit hydrograph calculations. 
@@ -1448,17 +1454,18 @@ class gamma_uh():
             shape=pars.shape[i]
             scale=self.__scale[i]
             area=pars.area[i]
+
             col_name = f'sf_{i}'
 
             flow_routed = nwsrfs_source.duamel(tci_array[:, i], shape, scale,
-                self.dt_hours/24, n_uh, m_uh, int(1), int(0))
+                pars.dt_hours/24, n_uh, m_uh, int(1), int(0))
 
             # flow_routed units:  mm, zone_area units:  km2,  1000 is a combined conversion of km2->m2 and mm->m
             # flow routed is depth of runoff over a basin for a time step. that with area converts it to a volume
             # and dt.second (timestep in sec) is used to complete conversion of runoff to flow
             # instantaneous routed flow weighted by zone area
             sim_flow_inst_cfs = flow_routed[0:len(tci_array)] * 1000 * 3.28084 ** 3 / \
-                                (self.dt_hours*60**2) * area
+                                (pars.dt_hours*60**2) * area
 
             #return instantaneous or period avg depending on chosen option
             if return_inst:
