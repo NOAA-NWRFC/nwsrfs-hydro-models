@@ -174,6 +174,7 @@ class nwsrfs_prep:
             'map': pd.concat(map_list, axis=1),
             'mat': pd.concat(mat_list, axis=1),
             'ptps': pd.concat(ptps_list, axis=1)
+            }
 
         #If exists, read in instantaneous flow file
         if self.inst_flow_logic:
@@ -199,7 +200,7 @@ class nwsrfs_prep:
         '''
 
         #Get zone names and number , if present
-        self.zone_names = tuple(self.pars.loc[(self.pars.zone.str.contains('-'))].zone.sort_values.unique())
+        self.zone_names = tuple(self.pars.loc[(self.pars.zone.str.contains('-'))].zone.sort_values().unique())
         self.n_zones = len(self.zone_names)
         if self.n_zones > 0:
             self.sacsnow_logic = True
@@ -336,7 +337,7 @@ class nwsrfs_run(nwsrfs_prep,
         nwsrfs_prep.__init__(self, autocalb_dir, run_dir)
 
         #Set return_inst attribute
-        self.return_inst = True
+        self.return_inst = return_inst
         #Set shift_sf attribute
         self.shift_sf = shift_sf
 
@@ -716,8 +717,8 @@ class nwsrfs_run(nwsrfs_prep,
         #Rename column of Dataframe to correpond to zone names
         return raw_output.set_axis(self.zone_names, axis=1)
 
-
-    def sacsnow_sf(self):
+    @property
+    def sacsnow_sf(self)-> pd.DataFrame:
         '''
         Calculates streamflow for each zone using sacsnow and uh_gamma models. 
 
@@ -829,7 +830,7 @@ class nwsrfs_run(nwsrfs_prep,
 
         #If there are sac/snow zone, calculate runoff
         if self.sacsnow_logic:
-            qin += self.sacsnow_sf().sum(axis=1)
+            qin += self.sacsnow_sf.sum(axis=1)
 
         #If there are upstream reaches to route, add them to the total flow
         if self.upflow_logic:
@@ -933,15 +934,18 @@ class nwsrfs_run(nwsrfs_prep,
         #Get natural flow
         qnat = self._sacsnow_lagk_chanloss_sim
 
-        #Convert to daily using the weighting scheme that CHPS uses of utilizing 5 points (edges assigned .5)
-        qnat_daily=(qnat.rolling(5,center=True).sum()+qnat.rolling(3,center=True).sum())/8
-        qnat_daily=qnat_daily.loc[qnat_daily.index.hour==12]
-        qnat_daily=qnat_daily.resample('1D').sum()
+        #Convert natual streamflow to daily average
+        qnat_peravg = self.inst_to_ave(qnat.to_numpy())
+        qnat_peravg = pd.Series(qnat_peravg,index=self.dates)
+        qnat_daily = qnat_peravg.resample('1D').mean()
 
         #Get Daily PET
         #NOTE:  To match CHPS results have to be shifted back 1 hr so 00:00 timestep
         #       is included in previous day
-        pet_daily=self.forcings['pet'].shift(periods=-1, freq='h').resample('1D').sum()
+        pet_shift = self.forcings['pet'].shift(periods=-1, freq='h')
+        pet_shift.loc[self.dates[-1],:] = pet_shift.iloc[-1,:].values
+        pet_daily = pet_shift.resample('1D').sum()
+
 
         #Create a blank state dataframe
         state_param = ['qadj','qdiv','qrf_in','qrf_out','qol','qcd','ce','rfstor']
@@ -1031,8 +1035,9 @@ class nwsrfs_run(nwsrfs_prep,
             qnat_cu_adj = self.consuse_states['qdiv'].sum(axis=1)-self.consuse_states['qrf_out'].sum(axis=1)
             #Shift forward a day so that the correct adjustement is applied  to the correct day
             qnat_cu_adj.index = qnat_cu_adj.index+pd.Timedelta(1, unit='D')
-            #Backfill to fill all values after 00:00 and forward fill to correct missing values at end of timeseries
-            qnat_cu_adj = qnat_cu_adj.reindex(qnat.index).bfill().ffill()
+            #Backfill to fill all values after 00:00 and fill in nan values at the end of time sereies with last daily 
+            #qnat_cu_adj value cut off from reindex
+            qnat_cu_adj = qnat_cu_adj.reindex(qnat.index).bfill().replace({qnat_cu_adj.values[-1]:np.nan})
             q_adj = qnat - qnat_cu_adj
             #Replace any negative values with zero
             q_adj.loc[q_adj < 0] = 0

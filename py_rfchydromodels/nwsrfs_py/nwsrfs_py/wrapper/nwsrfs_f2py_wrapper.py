@@ -6,14 +6,6 @@ import numpy as np
 from . import nwsrfs_src as nwsrfs_source
 from .. import utils
 
-
-'''
-TODOS
-build documentation using Sphinx 
-pip install sphinx sphinx-autodoc-typehints
-sphinx-quickstart docs
-'''
-
 @dataclass
 class sacsnow_pars:
 
@@ -315,7 +307,7 @@ class sacsnow():
 class lagk_pars:
 
     '''
-    Container for all inputs required to run the NWSRFS LagK model via F2PY bindings.
+    Container for all inputs required to run the NWSRFS Lag-K model via F2PY bindings.
 
     This class supports vectorized execution across multiple upstream reaches and timesteps simultaneously. 
     Input arrays should adhere to the following shape conventions:
@@ -466,7 +458,7 @@ class lagk_pars:
 class lagk():
 
     '''
-    Class to run the NWSRFS LagK models via F2PY bindings.  Multiple upstream routes can be ran simultaneously.
+    Class to run the NWSRFS Lag-K models via F2PY bindings.  Multiple upstream routes can be ran simultaneously.
 
     Args:
         lagk_pars (dataclass): Dataclass which contains all inputs to run LagK.
@@ -1471,9 +1463,21 @@ class gamma_uh():
             if return_inst:
                 sf[col_name] = sim_flow_inst_cfs
             else:
-                #Using ffill() to fill in np.na values from shift(-1)
-                next_sim = pd.DataFrame(sim_flow_inst_cfs).shift(-1).ffill().to_numpy().flatten()
-                sim_flow_pavg_cfs = (sim_flow_inst_cfs + next_sim) / 2
-                sf[col_name] = sim_flow_pavg_cfs
-
+                sf[col_name] = self.inst_to_ave(sim_flow_inst_cfs)
         return sf
+
+    @staticmethod
+    def inst_to_ave(ts_inst:np.ndarray):
+        '''
+        Return a timeseries of period average data.
+        Args:
+            ts_inst (np.ndarray): A timeseries of instantaneous data.
+        Returns:
+            np.ndarray: A timeseries of period average data.
+        '''
+
+        #Using ffill() to fill in np.na values from shift(-1)
+        ts_next = pd.DataFrame(ts_inst).shift(-1).ffill().to_numpy().flatten()
+
+        return (ts_inst + ts_next)/2
+
