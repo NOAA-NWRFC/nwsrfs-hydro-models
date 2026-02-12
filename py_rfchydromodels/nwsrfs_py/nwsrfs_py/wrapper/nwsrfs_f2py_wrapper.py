@@ -30,7 +30,7 @@ class sacsnow_pars:
         * For SAC-SMA: N_pars = 17
         * For Snow17: N_pars = 13
 
-    Attributes:
+    Args:
         year (np.ndarray): Array of years for each timestep (units: time).
         month (np.ndarray): Array of months corresponding to each timestep (units: time).
         day (np.ndarray): Array of days for each timestep (units: time).
@@ -322,7 +322,7 @@ class lagk_pars:
     * **Upstream Reach** (e.g., ``qin``): Shape (T, R)
     * **Scalar Parameters** (e.g., ``tbl_keq_c``): Shape (R,)
 
-    Attributes:
+    Args:
         year (np.ndarray): Array of years for each timestep (units: time).
         month (np.ndarray): Array of months corresponding to each timestep (units: time).
         day (np.ndarray): Array of days for each timestep (units: time).
@@ -601,7 +601,7 @@ class consuse_pars:
     **Array Shapes:**
     * **Time Arrays and Streamflow** (e.g., ``year``, ``qin``): Shape (T,)
     
-    Attributes:
+    Args:
         year (np.ndarray): Array of years for each timestep (units: time).
         month (np.ndarray): Array of months corresponding to each timestep (units: time).
         day (np.ndarray): Array of days for each timestep (units: time).
@@ -779,16 +779,16 @@ class chanloss_pars:
     * **C**: Number of chanloss periods.
 
     **Array Shapes:**
-    * **Time Arrays and Streamflow** (e.g., ``year``, ``qin``): Shape (T,)
-    * **Chanloss Factors** (e.g., ``factors``): Shape (C, )
+    * **Time Arrays and Streamflow** (e.g., ``year``, ``qin``): Shape (T,1)
+    * **Chanloss Factors** (e.g., ``factors``): Shape (C,1)
     * **Chanloss Periods** (e.g., ``periods``): Shape (C,2)
 
-    Attributes:
+    Args:
         year (np.ndarray): Array of years for each timestep (units: time).
         month (np.ndarray): Array of months corresponding to each timestep (units: time).
         day (np.ndarray): Array of days for each timestep (units: time).
         hour (np.ndarray): Array of hours for each timestep (units: time).
-        factors (np.ndarray): The CHANLOSS factors to be applied for each period (if cl_type=1 units: NA, otherwise units: cfs)
+        factors (np.ndarray): The CHANLOSS factors to be applied for each period (if ``cl_type`` = 1 units: NA, otherwise units: cfs).
         periods (np.ndarray): The beginning and ending months that the CHANLOSS factors are applied (units: month).
         cl_type (numbers.Number):  1=varp (percentage of flow), 2=varc (constant value)
         min_flow (numbers.Number):  Minimum required qin flow for CHANLOSS to be applied (units: cfs).
@@ -937,7 +937,7 @@ class fa_pars:
     * **Vector Parameters** (e.g., ``pars``): Shape (N_pars, Z) - Axis 0 corresponds to the ordered parameter list.
     * **Climo Parameter** (e.g., ``climo``): Shape (12, ) - A value for each month (Jan-Dec)    
 
-    Attributes:
+    Args:
         year (np.ndarray): Array of years for each timestep (units: time).
         month (np.ndarray): Array of months corresponding to each timestep (units: time).
         day (np.ndarray): Array of days for each timestep (units: time).
@@ -1247,7 +1247,7 @@ class gammauh_pars:
 
     * **Parameters** (e.g., ``shape``): Shape (Z,)
 
-    Attributes:
+    Args:
         dt_hours (np.ndarray): UH timestep. (units: hours)
         area (np.ndarray): Array of each zone's area. (units:  km**2)
         shape (np.ndarray): Array of each zone's shape parameter. (units:  km**2)
@@ -1316,6 +1316,7 @@ class gammauh_pars:
 class gamma_uh():
     '''
     Class to generate Gamma Unit Hydrographs and route flows via F2PY bindings.
+
     Args:
         pars_dataclass (dataclass): Dataclass which contains all inputs needed for gamma unit hydrograph calculations. 
         validate (bool): Validate gammauh dataclass inputs are correct format/type. Default: True
@@ -1361,6 +1362,7 @@ class gamma_uh():
                 tstep):
         '''
         Returns a unit hydrograph as a DataFrame at a timestep specified by ``tstep``.
+
         Args:
             tstep (int): Specifies tstep of unit hydrograph to return (units: hours). 
         Returns:
@@ -1422,6 +1424,7 @@ class gamma_uh():
 
         '''
         Return a timeseries of streamflow for each zone.
+
         Args:
             tci (SACSnowTCI): Specific tci DataFrame output from sacsnow classes sacsnow_tci property (units:  mm).
             return_inst (bool): The specifies to return instaneous streamflow, rather than period average.  Default: True
@@ -1463,13 +1466,14 @@ class gamma_uh():
             if return_inst:
                 sf[col_name] = sim_flow_inst_cfs
             else:
-                sf[col_name] = self.inst_to_ave(sim_flow_inst_cfs)
+                sf[col_name] = self._inst_to_ave(sim_flow_inst_cfs)
         return sf
 
     @staticmethod
-    def inst_to_ave(ts_inst:np.ndarray):
+    def _inst_to_ave(ts_inst:np.ndarray):
         '''
         Return a timeseries of period average data.
+
         Args:
             ts_inst (np.ndarray): A timeseries of instantaneous data.
         Returns:

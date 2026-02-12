@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 '''
 These class functions replicate the FEWS/NWRFS Adjust Q tool.
 
@@ -296,7 +294,6 @@ class adjustq(_adjustq_prep):
             obs_sim_working['Daily_Ratio']=obs_sim_working.Daily_Ratio.interpolate(method='nearest',limit=1,limit_direction='both')
             obs_sim_working['Daily_Ratio']=obs_sim_working.Daily_Ratio.interpolate(limit_direction='both',limit=2)
 
-
             #update the instant flow values using the ratio
             daily_index = obs_sim_working.loc[obs_sim_working.Daily_Ratio.notna()].index
             obs_sim_working.loc[daily_index,'AdjustQ_Inst']=obs_sim_working.loc[daily_index,'AdjustQ_Inst']*obs_sim_working.loc[daily_index,'Daily_Ratio']
@@ -306,10 +303,6 @@ class adjustq(_adjustq_prep):
             #print(max_error)
             
         return obs_sim_working
-
-    ########################################################################################################
-    #########################Primary AdjustQ Function (calls other functions above)#########################
-    ########################################################################################################
 
     def adjustq_calc(self):
 
@@ -402,8 +395,6 @@ class adjustq(_adjustq_prep):
         working['AdjustQ_Inst']=working.AdjustQ_Inst.clip(lower=0)
         
         return working.AdjustQ_Inst
-
-
 
     def inst_mean_q_merge(self):
 

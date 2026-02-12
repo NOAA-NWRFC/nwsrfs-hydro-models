@@ -18,10 +18,9 @@ class nwsrfs_prep:
     If no run_dir is provided, the first "results_*" directory found within the autocalb_dir path will be used.
 
     Attributes:
-
-    autocalb_dir (str): Path to a NWRFC autocalibration directory
-    run_dir (str | None): Name of optimization run subdirectory within the autocal_dir.  postprocess.R needs to already been ran for subdirectory.  
-        If ''None'' provided, defaults to using first "results_*" directory found within the autocalb_dir 
+        autocalb_dir (str): Path to a NWRFC autocalibration directory
+        run_dir (str | None): Name of optimization run subdirectory within the autocal_dir.  postprocess.R needs to already been ran for subdirectory.  
+            If ''None'' provided, defaults to using first "results_*" directory found within the autocalb_dir 
     '''
 
     def __init__(self,
@@ -237,12 +236,10 @@ class nwsrfs_prep:
         naming convention and parameters provided.
         
         Args:
-
-        pars (pd.DataFrame): A DataFrame containing model parameters
+            pars (pd.DataFrame): A DataFrame containing model parameters
 
         Returns:
-
-        pars_edit (pd.Dataframe): A Dataframe with edits to naming convention of CHANLOSS parameters   
+            pars_edit (pd.Dataframe): A Dataframe with edits to naming convention of CHANLOSS parameters   
 
         '''
         pars_edits = pars.copy() 
@@ -293,7 +290,6 @@ class nwsrfs_prep:
         Args:
             path_ts (str):  Path to csv timeseries file.  File is expected to have ['year', 'month', 'day', 'hour'] columns.
             drop_cols (list[str]):  List of string with columns to drop from dataframe
-
         '''
         list_df = []
         for index, row in path_ts.iterrows():
@@ -316,14 +312,13 @@ class nwsrfs_run(nwsrfs_prep,
     If no run_dir is provided, the first "results_*" d irectory found within the autocalb_dir path will be used.
 
     Attributes:
-
-    autocalb_dir (str): Path to a NWRFC autocalibration directory
-    run_dir (str | None): Name of optimization run subdirectory within the autocal_dir.  postprocess.R needs to already been ran for subdirectory.  
-        If ''None'' provided, defaults to using first "results_*" directory found within the autocalb_dir
-    forcing_adj (bool | list[str]):  If ``True`` monthly climatological forcing adjustments will be applied to all forcings.  Alternatively, a list with
-        with specific forcing to apply climatological forcing adjustments can be supplied: 'map','mat', 'ptps','pet' 
-    return_inst (bool): The specifies to return instaneous streamflow, rather than period average.  Default: True
-    shift_sf (bool):  Shifts Gamma UH derived streamflow forward on timestep.  Requirement for NWRFC calibrations. Default: True
+        autocalb_dir (str): Path to a NWRFC autocalibration directory
+        run_dir (str | None): Name of optimization run subdirectory within the autocal_dir.  postprocess.R needs to already been ran for subdirectory.  
+            If ''None'' provided, defaults to using first "results_*" directory found within the autocalb_dir
+        forcing_adj (bool | list[str]):  If ``True`` monthly climatological forcing adjustments will be applied to all forcings.  Alternatively, a list with
+            with specific forcing to apply climatological forcing adjustments can be supplied: 'map','mat', 'ptps','pet' 
+        return_inst (bool): The specifies to return instaneous streamflow, rather than period average.  Default: True
+        shift_sf (bool):  Shifts Gamma UH derived streamflow forward on timestep.  Requirement for NWRFC calibrations. Default: True
     '''
 
     def __init__(self,
@@ -415,6 +410,9 @@ class nwsrfs_run(nwsrfs_prep,
         **DataFrame Format***
 
         ``new_pars`` must have a 'p_name' and 'value' column. All values in the 'p_name' columns must map to an existing row in the ``pars`` attribute
+
+        Args:
+            new_pars (pd.DataFrame): dataframe with parameters to update nwsrfs models
         '''
 
         new_pars = new_pars.sort_values(['name', 'zone'])
@@ -665,6 +663,7 @@ class nwsrfs_run(nwsrfs_prep,
     def return_uh(self,tstep):
         '''
         Returns a unit hydrograph as a DataFrame at a timestep specified by ``tstep``.
+
         Args:
             tstep (int): Specifies tstep of unit hydrograph to return (units: hours).
         Returns:
@@ -703,6 +702,7 @@ class nwsrfs_run(nwsrfs_prep,
     def return_sf(self,tci:SACSnowTCI):
         '''
         Return a timeseries of streamflow for each zone.
+        
         Args:
             tci (SACSnowTCI): Specific tci DataFrame output from sacsnow classes sacsnow_tci property (units:  mm).
         Returns:
@@ -935,7 +935,7 @@ class nwsrfs_run(nwsrfs_prep,
         qnat = self._sacsnow_lagk_chanloss_sim
 
         #Convert natual streamflow to daily average
-        qnat_peravg = self.inst_to_ave(qnat.to_numpy())
+        qnat_peravg = self._inst_to_ave(qnat.to_numpy())
         qnat_peravg = pd.Series(qnat_peravg,index=self.dates)
         qnat_daily = qnat_peravg.resample('1D').mean()
 
