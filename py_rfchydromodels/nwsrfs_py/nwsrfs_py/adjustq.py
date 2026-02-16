@@ -1,31 +1,32 @@
 '''
-These class functions replicate the FEWS/NWRFS Adjust Q tool.
+These class functions replicate the CHPS FEWS AdjustQ tool.
 
-Used as a preprocessing step to create upstream timeseries 
-for routing reaches where lagk is being optimized
+Used as a preprocessing step to create upstream streamflow timeseries for routing reaches where LAG-K is being optimized
 
-AdjustQ adjusts simulated discharges using observed instantaneous and mean daily discharges. 
+AdjustQ adjusts observed mean daily discharges using observed instantaneous and simulated discharges. If both observed 
+mean daily and instantaneous data are missing, simulated discharge is used (if available).   
 The process combines two CHPS FEWS transformations:
-1. AdjustQUsingInstantaneousDischarge: Corrects simulated discharges based on instantaneous observations.
-2. AdjustQUsingMeanDailyDischarge: Applies additional corrections if mean daily discharges exceed the error tolerance.
+
+    1. **AdjustQUsingInstantaneousDischarge**: Corrects simulated discharges based on instantaneous observations.
+    2. **AdjustQUsingMeanDailyDischarge**: Applies additional corrections if mean daily discharges exceed the error tolerance.
+
 Any resulting negative discharge values are set to zero.
 '''
 
 import os, sys, argparse, warnings
 import pandas as pd, numpy as np
-from . import nwrfc_ac
-
+from .simulation import NwsrfsRun as nwsrfs_sim
 #import pdb; pdb.set_trace()
 
-class _adjustq_prep:
+class _AdjustQPrep:
 
     '''
     Internal-only class to create Pandas Series for observed instantaneous data, observed daily data, 
     and CHPS NWSRFS simulation results. Used within the adjustq class.
 
     Args:
-        daily_flow_path (str): Path to daily average streamflow csv provided in a NWRFC autocalb directory [ex: flow_daily_[lid].csv].
-        inst_flow_path (str): Path to instantaneous streamflow csv provided in a NWRFC autocalb directory [ex: flow_instantaneous_[lid].csv].
+        daily_flow_path (str): Path to daily average observed streamflow csv provided in a NWRFC autocalb directory [ex: flow_daily_[lid].csv].
+        inst_flow_path (str): Path to instantaneous observed streamflow csv provided in a NWRFC autocalb directory [ex: flow_instantaneous_[lid].csv].
         ac_run_path (str | None): Optional path to NWRFC autocalibration results directory [ex: 2zone/[lid]/results_por_02].
     Attributes:
         obs_daily (pd.Series): The loaded daily observation timeseries. (units: cfs)
@@ -52,30 +53,33 @@ class _adjustq_prep:
 
         if ac_run_path is not None:
             ac_path, ac_run = os.path.split(ac_run_path)
-            model_inputs = nwrfc_ac.nwsrfs_prep(ac_path,ac_run)
-            ac_sim = nwrfc_ac.nwsrfs_run(model_inputs.forcings, model_inputs.pars, model_inputs.upflow, model_inputs.daily_flow)
-            ac_sim_run = ac_sim.run_all()
+            ac_sim = nwsrfs_sim(ac_path,ac_run)
+            ac_sim_run = ac_sim.sim
         else:
-            ac_sim_run = pd.Series(dtype=float)
+            ac_sim_run = None
         self.sim = ac_sim_run
         
-class adjustq(_adjustq_prep):
+class AdjustQ(_AdjustQPrep):
 
     '''
-    Class to perform an equivalent CHPS FEWS AdjustQ calculation, inheriting from _adjustq_prep. 
+    Class to perform an equivalent CHPS FEWS AdjustQ calculation, inheriting from :meth:`_adjustq_prep`. 
     
-    Intended to be used within the NWRFC Autocalibration folder/data structure. Uses two different 
-    procedures to interpolate missing instantaneous data: one for small gaps and another for large gaps. 
-    The ``blend`` input variable defines which procedure to use. Where daily observed data is available, 
-    instantaneous data (observed or interpolated) is adjusted to match the observed daily average.
+    Intended to be used within the NWRFC autocalibration folder/data structure. Uses two different 
+    procedures to determine if observed instantaneous or simulated data is used to shape daily average observed streamflow: 
+
+        * One to correct for small gaps in observed instantaneous data.
+        * Another method for correcting large gaps in observed instantaneous data. 
+
+    The ``blend`` input variable defines which procedure to use.  If both observed mean daily and instantaneous data is missing, 
+    simulated discharge is used (if available). 
 
     Args:
-        daily_flow_path (str): Path to daily average streamflow csv provided in a NWRFC autocalb directory.
-        inst_flow_path (str): Path to instantaneous streamflow csv provided in a NWRFC autocalb directory.
+        daily_flow_path (str): Path to daily average observed streamflow csv provided in a NWRFC autocalb directory.
+        inst_flow_path (str): Path to instantaneous observed streamflow csv provided in a NWRFC autocalb directory.
         ac_run_path (str | None): Optional path to NWRFC autocalibration results directory.
         blend (int): Threshold for determining how many time steps of missing observed instantaneous data constitutes a "large gap". Default: 10.
         interp_type (str): Correction procedure used to correct simulated discharges for missing gaps smaller than the blend threshold. 
-            Accepts 'ratio' or 'difference'. Default: 'ratio'.
+            Accepts ``'ratio'`` or ``'difference'``. Default: ``'ratio'``.
             
             * **ratio**: Correction factor is based on the ratio between observed and simulated discharges.
             * **difference**: Correction value is based on the difference between observed and simulated discharges.
@@ -83,11 +87,9 @@ class adjustq(_adjustq_prep):
         error_tol (float): Percent tolerance that the instantaneous daily average must match the observed daily flow average. Default: 0.01.
         max_iterations (int): Maximum number of iterations to adjust the instantaneous daily average to match the observed daily flow. Default: 15
     Attributes:
-        obs_daily (pd.Series): The loaded daily observation timeseries. (units: cfs)
-        obs_inst (pd.Series): The loaded instantaneous observation timeseries. (units: cfs)
-        sim (pd.Series): The simulation timeseries (if provided). (units: cfs)
-    Computed Attributes:
-        adjustq (pd.Series): The final adjusted discharge timeseries. Available after calling `get_adjustq()`.
+        obs_daily (pd.Series): Daily observation streamflow timeseries. (units: cfs)
+        obs_inst (pd.Series): Instantaneous observation streamflow timeseries. (units: cfs)
+        sim (pd.Series): Simulation streamflow timeseries (if provided). (units: cfs)
     '''
 
     def __init__(self,
@@ -112,26 +114,29 @@ class adjustq(_adjustq_prep):
         self.error_tol = error_tol
         self.max_iterations = int(max_iterations)
 
+        #Set raw_output to None until run function is executed
+        self.__raw_output = None
 
-    def get_adjustq(self):
+    @property
+    def adjustq(self) -> pd.Series:
 
         """
-        Performs AdjustQ calculation. 
-        
         This function detects if a simulation timeseries is provided and uses the appropriate 
-        calculation method.
+        AdjustQ calculation
+        
+            a. :meth:`adjustq_calc` is used if NWRFC autocalibration simulation (``sim``) is provided.
+            b. Otherwise :meth:`inst_mean_q_merge` is used.
 
-        Returns:
-            pd.DataFrame: A DataFrame with an adjustq timeseries (units: cfs).
+        Returns a pd.Series.
         """
 
         #Get adjustq 
-        if not self.sim.empty:
-            self.adjustq = self.adjustq_calc()
-        else:
-           self.adjustq = self.inst_mean_q_merge()
+        if (self.sim is not None) & (self.__raw_output is None):
+            self.adjustq_calc()
+        elif self.__raw_output is None:
+            self.inst_mean_q_merge()
 
-        return pd.DataFrame(self.adjustq)
+        return self.__raw_output
 
 
     def _adjustq_inst_smallgaps(self,obs_sim_working,gap_list):
@@ -307,16 +312,15 @@ class adjustq(_adjustq_prep):
     def adjustq_calc(self):
 
         '''
-        Primary AdjustQ calculation function when model simulation data is available.
+        Primary AdjustQ calculation function when NWRFC autocalibration simulation (``sim``) is provided.
 
         This method orchestrates the full adjustment process:
-        1. Identifies gaps in observed data.
-        2. Calls ``_adjustq_inst_smallgaps`` for short missing periods.
-        3. Calls ``_adjustq_inst_largegaps`` for long missing periods.
-        4. Calls ``_adjustq_daily`` to match daily volumes.
-        5. Clips any negative results to zero.
 
-        Any resulting negative discharge values are set to zero.
+            1. Identifies gaps in observed data.
+            2. Calls :meth:`_adjustq_inst_smallgaps` for short missing periods.
+            3. Calls :meth:`_adjustq_inst_largegaps` for long missing periods.
+            4. Calls :meth:`_adjustq_daily` to match daily volumes.
+            5. Clips any negative results to zero.
 
         Returns:
             pd.Series:  A Series with a adjustq timeseries (units: cfs)
@@ -393,22 +397,28 @@ class adjustq(_adjustq_prep):
         
         #Replace any negative flow value with zero
         working['AdjustQ_Inst']=working.AdjustQ_Inst.clip(lower=0)
-        
-        return working.AdjustQ_Inst
+
+        self.__raw_output = working.AdjustQ_Inst
+
+        return self.__raw_output
 
     def inst_mean_q_merge(self):
 
         '''
-        Merges instantaneous data with daily mean flow for locations without simulation data.
+        Merges instantaneous observed streamflow data with daily mean streamflow data when NWRFC autocalibration simulation (``sim``) is ``'None'``.
 
-        For locations like project outflows where no simulation exists, this method fills 
-        missing 6-hour data from the instantaneous dataset using daily mean flow. 
-        The resulting merged dataset is then smoothed using ``_adjustq_daily``.
+        For locations like reservoir outflows. 
+
+        Where available this method uses instantaneous data to shape daily mean flow using :meth:`_adjustq_daily`. 
 
         Returns:
             pd.Series: A Series containing the merged and adjusted discharge timeseries (units: cfs).
         '''
         
+        #If simulation data is not provided, then return None.
+        if self.sim is None:
+            return None
+
         ###############PREP Data################################
         
         #Format the daily observed flow
@@ -444,4 +454,6 @@ class adjustq(_adjustq_prep):
         #Replace any negative flow value with zero
         inst_q_6h_merge['AdjustQ_Inst']=inst_q_6h_merge.AdjustQ_Inst.clip(lower=0)
         
-        return inst_q_6h_merge.AdjustQ_Inst
+        self.__raw_output = inst_q_6h_merge.AdjustQ_Inst
+
+        return self.__raw_output

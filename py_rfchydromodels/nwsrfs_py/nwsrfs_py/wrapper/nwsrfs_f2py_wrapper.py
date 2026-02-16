@@ -6,11 +6,21 @@ import numpy as np
 from . import nwsrfs_src as nwsrfs_source
 from .. import utils
 
+#create a new type for sacsnow_tci output
+SACSnowTCI = NewType('SACSnowTCI',pd.DataFrame)
+"""
+Custom type alias for total channel inflow (tci) output.
+
+This type represents a pandas DataFrame containing tci values with a column 
+for each zone (units: mm). It is strictly used to ensure type safety 
+when passing tci data between the :class:`SacSnow` and :class:`GammaUh` classes.
+"""
+
 @dataclass
-class sacsnow_pars:
+class SacSnowPars:
 
     '''
-    Container for all inputs required to run the NWSRFS SAC-SMA and Snow17 models via F2PY bindings. 
+    Container for all inputs required to run the NWSRFS SAC-SMA and SNOW-17 models via F2PY bindings. 
 
     This class supports vectorized execution across multiple zones and timesteps simultaneously. 
     Input arrays should adhere to the following shape conventions:
@@ -28,7 +38,11 @@ class sacsnow_pars:
     * **Scalar Parameters** (e.g., ``alat``): Shape (Z,)
     * **Vector Parameters** (e.g., ``sac_pars``, ``snow_pars``): Shape (N_pars, Z) - Axis 0 corresponds to the ordered parameter list.
         * For SAC-SMA: N_pars = 17
-        * For Snow17: N_pars = 13
+        * For SNOW-17: N_pars = 13
+
+    **ADC Table Equation:**
+
+    swe/ai = a * AESC**b+(1-a)*AESC**c
 
     Args:
         year (np.ndarray): Array of years for each timestep (units: time).
@@ -37,7 +51,8 @@ class sacsnow_pars:
         hour (np.ndarray): Array of hours corresponding to each timestep (units: time).
         alat (np.ndarray): array of each zone's centroid latitude (units: decimal degrees).
         elev (np.ndarray): array of each zone's centroid elevation (units: m).
-        sac_pars (np.ndarray): SAC model parameters (ordered array).
+        sac_pars (np.ndarray): SAC-SMA model parameters (ordered array).
+
             0. **uztwm**: Upper zone tension water capacity (units: mm).
             1. **uzfwm**: Upper zone free water capacity (units: mm).
             2. **lztwm**: Lower zone tension water capacity (units: mm).
@@ -55,7 +70,9 @@ class sacsnow_pars:
             14. **side**: Fraction of non-channel baseflow (deep groundwater recharge) to channel baseflow (units: fraction 0-1).
             15. **rserv**: Fraction of lower zone free water which cannot be transferred to lztw (units: fraction 0-1).
             16. **efc**:  fraction of effective forest cover (units: fraction 0-1).
-        snow_pars (np.ndarray): Snow model parameters (ordered array).
+
+        snow_pars (np.ndarray): SNOW-17 model parameters (ordered array).
+
             0. **scf**: Snowfall correction factor (units: NA).
             1. **mfmax**: Maximum non-rain melt factor per time step (units: mm/degc).
             2. **mfmin**: Minimum non-rain melt factor per time step (units: mm/degc).
@@ -66,9 +83,10 @@ class sacsnow_pars:
             7. **mbase**: Base temperature for non-rain melt factor (units: degc).
             8. **plwhc**: Maximum amount of liquid waterheld against gravity drainage (units:  fraction 0-1).
             9. **daygm**: Daily melt at the snow-soil interface (units: mm).
-            10. **adc_a**: Parameter used to calculate the areal depletion curve parameter [swe/ai = a * AESC**b+(1-a)*AESC**c] (units: NA).
-            11. **adc_b**: Parameter used to calculate the areal depletion curve parameter  [swe/ai = a * AESC**b+(1-a)*AESC**c] (units: NA).
-            12. **adc_c**: Parameter used to calculate the areal depletion curve parameter  [swe/ai = a * AESC**b+(1-a)*AESC**c] (units: NA).
+            10. **adc_a**: Parameter used to calculate the areal depletion curve parameter (units: NA).
+            11. **adc_b**: Parameter used to calculate the areal depletion curve parameter (units: NA).
+            12. **adc_c**: Parameter used to calculate the areal depletion curve parameter (units: NA).
+
         init_swe (np.ndarray): Initial snow water equivalent values (units: NA).
         pxadj (np.ndarray): Precipitation adjustment factor (units: NA).
         peadj (np.ndarray): Evapotranspiration adjustment factor (units: NA).
@@ -113,6 +131,7 @@ class sacsnow_pars:
         utils._arrayasfortran(self)  
 
     def validate(self):
+        """Checks that all inputs meet shape, type, and value constraints."""
 
         #check that time step is postitive
         if self.dt_seconds <= 0:
@@ -166,21 +185,20 @@ class sacsnow_pars:
         if (self.forcings_ptps.min() < 0) |  (1 < self.forcings_ptps.max()):
             raise ValueError("PTPS forcings values must be between 0 and 1")
 
-#create a new type for sacsnow_tci output
-SACSnowTCI = NewType('SACSnowTCI',pd.DataFrame)
-
-class sacsnow():
+class SacSnow():
 
     '''
-    Class to run the NWSRFS SAC-SMA and Snow17 models via F2PY bindings.  Multiple SAC-SMA and Snow17 parameter sets can be ran simultaneously. 
+    Class to run the NWSRFS SAC-SMA and SNOW-17 models via F2PY bindings.  Multiple SAC-SMA and SNOW-17 parameter sets can be ran simultaneously. 
 
     Args:
-        sacsnow_pars (dataclass): Dataclass which contains all inputs to run SAC-SMA and Snow17
-        validate (bool): Validate sacsnow_pars dataclass inputs are correct format/type. Default: True
+        pars_dataclass (SacSnowPars): Dataclass which contains all inputs to run SAC-SMA and SNOW-17.
+        validate (bool): Validate :class:`SacSnowPars` dataclass inputs are correct format/type. Default: ``True``.
+    Attributes:
+        sacsnow_dataclass (SacSnowPars): Dataclass which contains all inputs to run SAC-SMA and SNOW-17.
     '''
 
     def __init__(self,
-        pars_dataclass: sacsnow_pars,
+        pars_dataclass: SacSnowPars,
         validate:bool = True):
 
         #Assign parameters
@@ -198,7 +216,7 @@ class sacsnow():
 
     def __run_wrapper(self):
         '''
-        Runs sacsnow wrapper
+        Runs sacsnow wrapper and returns tci
         '''
         #Create a copy to prevent any changes to the par dataclass when running the nwrfs soure code
         pars = copy.deepcopy(self.sacsnow_pars)
@@ -246,9 +264,9 @@ class sacsnow():
             int(1))
 
     @property
-    def sacsnow_tci(self) -> pd.DataFrame:
+    def sacsnow_tci(self) -> 'SACSnowTCI':
         '''
-        Returns total channel inflow (tci) as a DataFrame with a column for each zone (units: mm).
+        Generates total channel inflow (tci) as a DataFrame with a column for each zone (units - mm).
         '''
 
         if self.__raw_output is None:
@@ -262,6 +280,7 @@ class sacsnow():
     def sacsnow_states(self) -> dict[str, pd.DataFrame]:
         '''
         Returns a dictionary of DataFrames containing all model states with a column for each zone.
+
             The dictionary keys are:
 
             * **tci**: Total channel inflow (units: mm).
@@ -304,7 +323,7 @@ class sacsnow():
         return sacsnow_states
 
 @dataclass
-class lagk_pars:
+class LagkPars:
 
     '''
     Container for all inputs required to run the NWSRFS Lag-K model via F2PY bindings.
@@ -318,23 +337,28 @@ class lagk_pars:
     * **R**: Number of upstream reaches.
 
     **Array Shapes:**
+
     * **Time Arrays** (e.g., ``year``): Shape (T,)
     * **Upstream Reach** (e.g., ``qin``): Shape (T, R)
     * **Scalar Parameters** (e.g., ``tbl_keq_c``): Shape (R,)
+
+    **Lag/K Table Equation:**
+
+    Lag/K_table=a*(Q-d)**2+b*Q+c
 
     Args:
         year (np.ndarray): Array of years for each timestep (units: time).
         month (np.ndarray): Array of months corresponding to each timestep (units: time).
         day (np.ndarray): Array of days for each timestep (units: time).
         hour (np.ndarray): Array of hours corresponding to each timestep (units: time).
-        tbl_lageq_a (np.ndarray): Parameter used to calculate the lag table [lag_table=a*(Q-d)**2+b*Q+c] (units: NA).
-        tbl_lageq_b (np.ndarray): Parameter used to calculate the lag table [lag_table=a*(Q-d)**2+b*Q+c] (units: NA).
-        tbl_lageq_c (np.ndarray): Parameter used to calculate the lag table [lag_table=a*(Q-d)**2+b*Q+c] (units: NA).
-        tbl_lageq_d (np.ndarray): Parameter used to calculate the lag table [lag_table=a*(Q-d)**2+b*Q+c] (units: NA).
-        tbl_keq_a (np.ndarray): Parameter used to calculate the k table [k_table=a*(Q-d)**2+b*Q+c] (units: NA).
-        tbl_keq_b (np.ndarray): Parameter used to calculate the k table [k_table=a*(Q-d)**2+b*Q+c] (units: NA).
-        tbl_keq_c (np.ndarray): Parameter used to calculate the k table [k_table=a*(Q-d)**2+b*Q+c] (units: NA).
-        tbl_keq_d (np.ndarray): Parameter used to calculate the k table [k_table=a*(Q-d)**2+b*Q+c] (units: NA).
+        tbl_lageq_a (np.ndarray): Parameter used to calculate the lag table (units: NA).
+        tbl_lageq_b (np.ndarray): Parameter used to calculate the lag table (units: NA).
+        tbl_lageq_c (np.ndarray): Parameter used to calculate the lag table (units: NA).
+        tbl_lageq_d (np.ndarray): Parameter used to calculate the lag table (units: NA).
+        tbl_keq_a (np.ndarray): Parameter used to calculate the k table (units: NA).
+        tbl_keq_b (np.ndarray): Parameter used to calculate the k table [(units: NA).
+        tbl_keq_c (np.ndarray): Parameter used to calculate the k table (units: NA).
+        tbl_keq_d (np.ndarray): Parameter used to calculate the k table (units: NA).
         tbl_lagmax (np.ndarray):  max lag value for lag table (units: hours).
         tbl_lagmin (np.ndarray):  min lag value for lag table (units: hours).
         tbl_kmax (np.ndarray):  max k value for k table (units: hours).
@@ -397,6 +421,7 @@ class lagk_pars:
         utils._arrayasfortran(self)
 
     def validate(self):
+        """Checks that all inputs meet shape, type, and value constraints."""
 
         #check that time step is postitive
         if self.dt_hours <= 0:
@@ -455,18 +480,20 @@ class lagk_pars:
         if self.qin.min() < 0:
             raise ValueError("Upstream flow values cannot be less than 0")
 
-class lagk():
+class Lagk():
 
     '''
     Class to run the NWSRFS Lag-K models via F2PY bindings.  Multiple upstream routes can be ran simultaneously.
 
     Args:
-        lagk_pars (dataclass): Dataclass which contains all inputs to run LagK.
-        validate (bool): Validate lagk dataclass inputs are correct format/type. Default: True
+        pars_dataclass (LagkPars): Dataclass which contains all inputs to run Lag-K.
+        validate (bool): Validate :class:`LagkPars` dataclass inputs are correct format/type. Default: ``True``.
+    Attributes:
+        lagk_pars (LagkPars): Dataclass which contains all inputs to run Lag-K.
     '''
 
     def __init__(self,
-        pars_dataclass: lagk_pars,
+        pars_dataclass: LagkPars,
         validate:bool = True):
         #,output_timestep: numbers.Number | None = None):)
 
@@ -523,7 +550,7 @@ class lagk():
 
     def __run_wrapper_states(self):
         '''
-        Runs lagk and return states
+        Runs Lag-K and return states
         '''
 
         #Create a copy to prevent any changes to the par dataclass when running the nwrfs soure code
@@ -550,7 +577,7 @@ class lagk():
     @property
     def lagk_route(self) -> pd.DataFrame:
         '''
-        Returns routed flows as a DataFrame with a column for each upstream reach (units: cfs).
+        Generates routed flows as a DataFrame with a column for each upstream reach (units - cfs).
         '''
 
         if self.__raw_output is None:
@@ -563,7 +590,8 @@ class lagk():
     @property
     def lagk_states(self) -> dict[str, pd.DataFrame]:
         '''
-        Returns a dictionary of DataFrames containing all model states with a column for each upstream reach.
+        Generates a dictionary of DataFrames containing all model states with a column for each upstream reach.
+
             The dictionary keys are:
 
             * **routed**: Routed flow with lag and k applied (units: cfs).
@@ -584,14 +612,13 @@ class lagk():
         return lagk_states
 
 @dataclass
-class consuse_pars:
+class ConsusePars:
 
     '''
     Container for all inputs required to run the NWSRFS CONS_USE model via F2PY bindings.  
 
-    Only a single CONS_USE zone can be ran at a time.
+    This class supports vectorized all timesteps simultaneously. Only a single CONS_USE zone can be ran at a time.
 
-    This class supports vectorized execution across all timesteps simultaneously. However only a single CONS_USE zone can be ran at a time.
     Input arrays should adhere to the following shape conventions:
 
     **Dimensions:**
@@ -599,7 +626,9 @@ class consuse_pars:
     * **T**: Number of timesteps.
 
     **Array Shapes:**
-    * **Time Arrays and Streamflow** (e.g., ``year``, ``qin``): Shape (T,)
+
+    * **Time Arrays, Streamflow, and PET** (e.g., ``year``, ``qin``): Shape (T,)
+    * **PEadj_table**: Shape (12,)
     
     Args:
         year (np.ndarray): Array of years for each timestep (units: time).
@@ -611,7 +640,7 @@ class consuse_pars:
         rf_accum_rate (numbers.Number): Return flow accumulation rate (units:  fraction 0-1).
         rf_decay_rate (numbers.Number): Return flow decay rate (units: NA).
         pet_adj (numbers.Number):  Potential evaporation (PET) adjustment factor (units: NA).
-        pet_adj_table (np.ndarray):  Monthly pe adjust table (units: NA).
+        peadj_m (np.ndarray):  Monthly pe adjust table (units: NA).
         pet (np.ndarray):  Input CONS_USE zone pet (units:  mm).
         qin (np.ndarray):  Input daily average streamflow to adjust for CONS_USE (units: cfs).
     '''
@@ -625,12 +654,11 @@ class consuse_pars:
     rf_accum_rate: numbers.Number
     rf_decay_rate: numbers.Number
     pet_adj: numbers.Number
-    pet_adj_table :np.ndarray
+    peadj_m :np.ndarray
     pet: np.ndarray
     qin: np.ndarray
 
     def __post_init__(self):
-
 
         #Convert dt_seconds, year, month, day, hour to integer dtype
         time_list = ['year','month','day'] 
@@ -638,7 +666,7 @@ class consuse_pars:
 
         #Convert all CONS_USE parameters to double
         param_list = ['area','irr_eff','min_flow','rf_accum_rate',
-                    'rf_decay_rate','pet_adj','pet_adj_table']
+                    'rf_decay_rate','pet_adj','peadj_m']
         utils._dtype_conversion_batch(self,  np.float64, param_list)
 
         #Convert all input timeseries to double
@@ -649,6 +677,7 @@ class consuse_pars:
         utils._arrayasfortran(self)
 
     def validate(self):
+        """Checks that all inputs meet shape, type, and value constraints."""
 
         #check that year, month, day are 1d arrays
         if not utils._validate_1d_array(self.year, self.month, self.day):
@@ -658,12 +687,12 @@ class consuse_pars:
         if not utils._validate_array_length(self.year, self.month, self.day):
             raise ValueError("Time arrays (year, month, day) must have the same length")
 
-        #check that pet_adj_table is a 1d array.  
-        if not utils._validate_1d_array(self.pet_adj_table):
-            raise ValueError("pet_adj_table array must have a 1d shape")
+        #check that peadj_m is a 1d array.  
+        if not utils._validate_1d_array(self.peadj_m):
+            raise ValueError("peadj_m array must have a 1d shape")
 
-        #check that pet_adj_table has a lengh of 12.  
-        if len(self.pet_adj_table) != 12:
+        #check that peadj_m has a lengh of 12.  
+        if len(self.peadj_m) != 12:
             raise ValueError("peadj_table array must have a length of 12")
 
         #check that CONS_USE  parameters are a single value
@@ -686,17 +715,20 @@ class consuse_pars:
         if not utils._validate_positive_values(self.pet) or not utils._validate_positive_values(self.qin):
             raise ValueError("QIN and PET array inputs values must be >= 0")
 
-class consuse():
+class Consuse():
 
         '''
-        Function to run the NWSRFS CONS_USE model via F2PY bindings.   Only a single consuse zone can be ran at a time.  Timestep is daily average.
+        Function to run the NWSRFS CONS_USE model via F2PY bindings.   Only a single CONS_USE zone can be ran at a time.  Timestep is daily average.
 
         Args:
-            consuse_pars (dataclass): Dataclass which contains all inputs to run CONS_USE.
-            validate (bool): Validate CONS_USE dataclass inputs are correct format/type. Default: True
+            pars_dataclass (ConsusePars): Dataclass which contains all inputs to run CONS_USE.
+            validate (bool): Validate :class:`ConsusePars` dataclass inputs are correct format/type. Default: ``True``.
+        Attributes:
+            consuse_pars (ConsusePars): Dataclass which contains all inputs to run CONS_USE.
+            
         '''
         def __init__(self,
-            pars_dataclass: consuse_pars,
+            pars_dataclass: ConsusePars,
             validate:bool = True):
 
             #Assign parameters
@@ -722,13 +754,13 @@ class consuse():
             self.__raw_output = nwsrfs_source.consuse(pars.year, pars.month, pars.day,
                                  pars.area, pars.irr_eff, pars.min_flow,
                                  pars.rf_accum_rate,pars.rf_decay_rate,
-                                 pars.pet_adj_table,pars.pet_adj,
+                                 pars.peadj_m,pars.pet_adj,
                                  pars.pet,pars.qin)
 
         @property
         def consuse_qadj(self) -> pd.Series:
             '''
-            Returns a Series of daily streamflow with consumptive use adjustments applied (units: cfsd).
+            Generates a Series of daily streamflow with consumptive use adjustments applied (units - cfsd).
             '''
 
             if self.__raw_output is None:
@@ -741,7 +773,8 @@ class consuse():
         @property
         def consuse_states(self) -> pd.DataFrame:
             '''
-            Returns a DataFrame with a column for each CONS_USE model states.
+            Generates a DataFrame with a column for each CONS_USE model states.
+
                 The column states are:
 
                 * **qadj**: Streamflow with all consumptive use adjustments applied (units: cfsd)
@@ -765,23 +798,24 @@ class consuse():
             return pd.DataFrame(state_dic, index=self.__datetime)
 
 @dataclass
-class chanloss_pars:
+class ChanlossPars:
 
     '''
     Container for all inputs required to run the NWSRFS CHANLOSS model via F2PY bindings.
 
-    This class supports vectorized execution across multiple chanloss periods and timesteps simultaneously. 
+    This class supports vectorized execution across multiple CHANLOSS periods and timesteps simultaneously. 
     Input arrays should adhere to the following shape conventions:
 
     **Dimensions:**
 
     * **T**: Number of timesteps.
-    * **C**: Number of chanloss periods.
+    * **C**: Number of CHANLOSS periods.
 
     **Array Shapes:**
-    * **Time Arrays and Streamflow** (e.g., ``year``, ``qin``): Shape (T,1)
-    * **Chanloss Factors** (e.g., ``factors``): Shape (C,1)
-    * **Chanloss Periods** (e.g., ``periods``): Shape (C,2)
+
+    * **Time Arrays and Streamflow** (e.g., ``year``, ``qin``): Shape (T,)
+    * **CHANLOSS Factors** (e.g., ``factors``): Shape (C,)
+    * **CHANLOSS Periods** (e.g., ``periods``): Shape (C,2)
 
     Args:
         year (np.ndarray): Array of years for each timestep (units: time).
@@ -791,7 +825,7 @@ class chanloss_pars:
         factors (np.ndarray): The CHANLOSS factors to be applied for each period (if ``cl_type`` = 1 units: NA, otherwise units: cfs).
         periods (np.ndarray): The beginning and ending months that the CHANLOSS factors are applied (units: month).
         cl_type (numbers.Number):  1=varp (percentage of flow), 2=varc (constant value)
-        min_flow (numbers.Number):  Minimum required qin flow for CHANLOSS to be applied (units: cfs).
+        min_flow (numbers.Number):  Minimum required ``qin`` flow for CHANLOSS to be applied (units: cfs).
         qin (np.ndarray):  Input streamflow to adjust for CHANLOSS (units: cfs).
     '''
 
@@ -824,6 +858,7 @@ class chanloss_pars:
         utils._arrayasfortran(self)
 
     def validate(self):
+        """Checks that all inputs meet shape, type, and value constraints."""
 
         #check that year, month, day are 1d arrays
         if not utils._validate_1d_array(self.year, self.month, self.day, self.hour):
@@ -854,17 +889,19 @@ class chanloss_pars:
             raise ValueError("Streamflow inputs values must be >= 0")
 
 
-class chanloss:
+class Chanloss:
 
     '''
-     Class to run the NWSRFS chanloss model via F2PY bindings.
+     Class to run the NWSRFS CHANLOSS model via F2PY bindings.
 
     Args:
-        chanloss_pars (dataclass): Dataclass which contains all inputs to run CHANLOSS.
-        validate (bool): Validate chanloss dataclass inputs are correct format/type. Default: True
+        pars_dataclass (ChanlossPars): Dataclass which contains all inputs to run CHANLOSS.
+        validate (bool): Validate :class:`ChanlossPars` dataclass inputs are correct format/type. Default: ``True``.
+    Attributes:
+        chanloss_pars (ChanlossPars): Dataclass which contains all inputs to run CHANLOSS.
     '''
     def __init__(self,
-            pars_dataclass: chanloss_pars,
+            pars_dataclass: ChanlossPars,
             validate:bool = True):
 
         #Assign parameters
@@ -881,7 +918,7 @@ class chanloss:
 
     def __run_wrapper(self):
         '''
-        Runs chanloss wrapper
+        Runs CHANLOSS wrapper
         '''
 
         #Create a copy to prevent any changes to the par dataclass when running the nwrfs soure code
@@ -894,7 +931,7 @@ class chanloss:
     @property
     def chanloss_qadj(self) -> pd.Series:
         '''
-        Returns a Series of streamflow with chanloss adjustments applied (units: cfs).
+        Generates a Series of streamflow with CHANLOSS adjustments applied (units - cfs).
         '''
 
         if self.__raw_output is None:
@@ -905,10 +942,10 @@ class chanloss:
         return qin_adj
 
 @dataclass
-class fa_pars:
+class FAPars:
 
     '''
-    Container for all inputs required to apply monthly climatological forcing adjustments to either MAP, MAT, PTPS, or PET.  This dataclass is designed to handle multiple zones.
+    Container for all inputs required to apply monthly climatological forcing adjustments (FA) to either MAP, MAT, PTPS, or PET.  This dataclass can handle multiple zones.
 
     This dataclass is designed to be generic to all four forcing types. The units for ``limits``, ``forcings``, 
     and ``climo`` depend on the forcing type being processed:
@@ -943,15 +980,17 @@ class fa_pars:
         day (np.ndarray): Array of days for each timestep (units: time).
         hour (np.ndarray): Array of hours corresponding to each timestep (units: time).
         pars (np.ndarray): Contains the forcing adjustment parameters (ordered array).
+
             0. **scale**:  Multiplication factor to apply directly to the forcing (units: NA).
             1. **p_redist**: The percentage of the climatological forcing to redistribute (units: fraction 0-1).
             2. **std**:  Controls the weighting factor on how the p_redist is partitioned out to each climatological month based on ranking (units: NA).
             3. **shift**: Shift the climatological values by x numbers of days in the positive or negative (units: days)
+
         area (np.ndarray): Array of each zone's area (units: km**2).
         alat (np.ndarray): Array of each zone's centroid latitude (units: decimal degrees).
         limits (np.ndarray): Contains the forcing adjustment upper and lower limits for each of the 12 months. Units vary by forcing type (see above).
         forcings (np.ndarray | None):  Input forcings to adjust using pars and limits. ``None`` must be passed for pet.  Units vary by forcing type (see above).
-        peadj_m (np.ndarray | None):  Input required for PET forcing adjustment.  Contains potential evaporation adjustment factors [pet -> etd] for each of the 12 months [Not required for other forcing types] (units: NA).
+        peadj_m (np.ndarray | None):  Input required for ``PET`` forcing adjustment.  Contains potential evaporation adjustment factors [pet -> etd] for each of the 12 months [Not required for other forcing types] (units: NA).
         climo (np.ndarray | None): Optional input to provide the monthly climatology which will be used the limits parameter to establish allowable adjustments.  Otherwise climatology 
                                    will be calculated with ``forcings`` inputs.  Units vary by forcing type (see above).
     '''
@@ -995,6 +1034,7 @@ class fa_pars:
         utils._arrayasfortran(self)
 
     def validate(self):
+        """Checks that all inputs meet shape, type, and value constraints."""
 
         #check that year, month, day, and hour are 1d arrays
         if not utils._validate_1d_array(self.year, self.month, self.day):
@@ -1055,23 +1095,25 @@ class fa_pars:
             if len(self.peadj_m) != 12:
                 raise ValueError("peadj_m parameter must have a length of 12")
 
-class fa():
+class FA():
     '''
-    Class to apply monthly climatological forcing adjustments to forcings via F2PY bindings.
+    Class to apply monthly climatological forcing adjustments (FA) to forcings via F2PY bindings.
 
     Args:
-        map_dataclass (fa_pars): Dataclass containing inputs for precipitation adjustments.
-        mat_dataclass (fa_pars): Dataclass containing inputs for temperature adjustments.
-        ptps_dataclass (fa_pars): Dataclass containing inputs for precipitation typing adjustments.
-        pet_dataclass (fa_pars): Dataclass containing inputs for potential evaporation adjustments.
-        validate (bool): Validate that map, mat, ptps, and pet dataclass inputs are correct format/type. Default: True
+        map_dataclass (FAPars): Dataclass containing inputs for precipitation adjustments.
+        mat_dataclass (FAPars): Dataclass containing inputs for temperature adjustments.
+        ptps_dataclass (FAPars): Dataclass containing inputs for precipitation typing adjustments.
+        pet_dataclass (FAPars): Dataclass containing inputs for potential evaporation adjustments.
+        validate (bool): Validate that map, mat, ptps, and pet :class:`FAPars` dataclass inputs are correct format/type. Default: ``True``.
+    Attributes:
+        fa_pars (dict[str, FAPars]): Dictionary of dataclasses representing ``'map'``, ``'mat'``, ``'ptps'``, and ``'pet'`` parameters.
     '''
 
     def __init__(self,
-        map_dataclass: fa_pars,
-        mat_dataclass: fa_pars,
-        ptps_dataclass: fa_pars,
-        pet_dataclass: fa_pars,
+        map_dataclass: FAPars,
+        mat_dataclass: FAPars,
+        ptps_dataclass: FAPars,
+        pet_dataclass: FAPars,
         validate:bool = True):
 
         #Create a copy to prevent any changes to the par dataclass when running the nwrfs soure code
@@ -1159,9 +1201,10 @@ class fa():
     @property
     def forcings(self) -> dict[str, pd.DataFrame]:
         '''
-        Returns a dictionary of adjusted forcings as DataFrames. 
+        Generates a dictionary of adjusted forcings as DataFrames. 
 
         The dictionary keys are:
+
         * **map_fa**: Precipitation (units: mm) 
         * **mat_fa**: Air temperature (units: degc)
         * **ptps_fa**: Fraction of precipitation as snow (units: fraction 0-1)
@@ -1187,9 +1230,10 @@ class fa():
     @property
     def fa_factors(self) -> pd.DataFrame:
         '''
-        Returns a DataFrame (index 1-12) of monthly adjustment factors (index 1-12).
+        Generates a DataFrame of monthly adjustment factors (index 1-12).
         
         The columns correspond to:
+
         * **map_fac**: Monthly precipitation adjustment factors (units: NA)
         * **mat_fac**: Monthly temperature adjustment shifts (units: degc)
         * **pet_fac**: Monthly potential evaporation adjustment factors (units: NA)
@@ -1217,6 +1261,7 @@ class fa():
         12-month climatology values as DataFrame (index 1-12). 
         
         The columns correspond to:
+
         * **map_climo**: Monthly precipitation climatology (units: mm/month total)
         * **mat_climo**: Monthly temperature climatology (units: degc monthly avg)
         * **pet_climo**: Monthly potential evaporation climatology (units: mm/month)
@@ -1231,10 +1276,10 @@ class fa():
 
 
 @dataclass
-class gammauh_pars:
+class GammaUhPars:
 
     '''
-    Container for all inputs required to create a gamma unit hydrograph models via F2PY bindings. Multiple gamma unit hydrograph parameter sets can be ran simultaneously. 
+    Container for all inputs required to create a gamma UNIT-HG models via F2PY bindings. Multiple gamma unit hydrograph parameter sets can be ran simultaneously. 
 
     This class supports vectorized execution across multiple zones. 
     Input arrays should adhere to the following shape conventions:
@@ -1250,9 +1295,9 @@ class gammauh_pars:
     Args:
         dt_hours (np.ndarray): UH timestep. (units: hours)
         area (np.ndarray): Array of each zone's area. (units:  km**2)
-        shape (np.ndarray): Array of each zone's shape parameter. (units:  km**2)
-        scale (np.ndarray | None): Optional array of each zone's scale parameter.  If scale is None, toc parameter must be provided. (units: NA)
-        toc  (np.ndarray | None): Optional array of each zone's time of concentration (toc) parameter.  If toc is None, the scale parameter must be provided. (units: hours)
+        shape (np.ndarray): Array of each zone's shape parameter. (units: NA)
+        scale (np.ndarray | None): Optional array of each zone's scale parameter.  If ``scale`` is None, ``toc`` parameter must be provided. (units: NA)
+        toc  (np.ndarray | None): Optional array of each zone's time of concentration (toc) parameter.  If ``toc`` is None, the ``scale`` parameter must be provided. (units: hours)
     '''
     
     dt_hours: numbers.Number
@@ -1262,7 +1307,6 @@ class gammauh_pars:
     toc:  np.ndarray | None = None
 
     def __post_init__(self):
-
 
         #Convert dt_hours to float dtype
         self.dt_hours = np.float64(self.dt_hours)
@@ -1283,6 +1327,7 @@ class gammauh_pars:
         utils._arrayasfortran(self)
 
     def validate(self):
+        """Checks that all inputs meet shape, type, and value constraints."""
 
         #check that time step is postitive
         if self.dt_hours <= 0:
@@ -1313,35 +1358,35 @@ class gammauh_pars:
         if np.vstack([self.area,self.shape,opt_attr]).min() <= 0:
             raise ValueError(f"Area, shape, and {opt_var} parameter parameters must be greater than zero")
 
-class gamma_uh():
+class GammaUh():
     '''
-    Class to generate Gamma Unit Hydrographs and route flows via F2PY bindings.
+    Class to generate Gamma UNIT-HG and route flows via F2PY bindings.
 
     Args:
-        pars_dataclass (dataclass): Dataclass which contains all inputs needed for gamma unit hydrograph calculations. 
-        validate (bool): Validate gammauh dataclass inputs are correct format/type. Default: True
+        pars_dataclass (GammaUhPars): Dataclass which contains all inputs needed for gamma UNIT-HG calculations. 
+        validate (bool): Validate :class:`GammaUhPars` dataclass inputs are correct format/type. Default: ``True``.
     Attributes:
-        gamma_uh_pars (dataclass): Dataclass which contains all inputs needed for gamma unit hydrograph calculations. 
+        gamma_uh_pars (GammaUhPars): Dataclass which contains all inputs needed for gamma UNIT-HG calculations. 
     '''
     def __init__(self, 
-                pars_dataclass: gammauh_pars, 
+                pars_dataclass: GammaUhPars, 
                 validate:bool=True):
 
         #Assign parameters
-        self.gamma_uh_pars = pars_dataclass
+        self.gammauh_pars = pars_dataclass
 
         #Validate gammauh_pars
         if validate:
-            self.gamma_uh_pars.validate()
+            self.gammauh_pars.validate()
 
         #Get the number of zones
-        self.__n_zones = len(self.gamma_uh_pars.shape)
+        self.__n_zones = len(self.gammauh_pars.shape)
 
         #If scale parameter is none, calcuate it
-        if self.gamma_uh_pars.scale is None:
+        if self.gammauh_pars.scale is None:
             self._get_shape_par()   
         else:
-            self.__scale = self.gamma_uh_pars.scale
+            self.__scale = self.gammauh_pars.scale
 
         #Create attribute to track it uh has been ran
         self.__uh = None
@@ -1350,7 +1395,7 @@ class gamma_uh():
     def _get_shape_par(self):
 
         #Create a copy of the parameters
-        pars = copy.deepcopy(self.gamma_uh_pars)
+        pars = copy.deepcopy(self.gammauh_pars)
 
         self.__scale = np.zeros(self.__n_zones)
         for i in range(self.__n_zones):
@@ -1364,13 +1409,13 @@ class gamma_uh():
         Returns a unit hydrograph as a DataFrame at a timestep specified by ``tstep``.
 
         Args:
-            tstep (int): Specifies tstep of unit hydrograph to return (units: hours). 
+            tstep (int): Specifies timestep of unit hydrograph (units: hours). 
         Returns:
-             pd.DataFrame: A DataFrame containing unit hydrograph (uh) with a column for each zone (units: cfs).
+             pd.DataFrame: A DataFrame containing unit hydrograph (uh) with a column for each zone (units: cfs/in).
         '''
 
         #Create a copy of the parameters
-        pars = copy.deepcopy(self.gamma_uh_pars)
+        pars = copy.deepcopy(self.gammauh_pars)
 
         #convert tstep to integer
         tstep = int(tstep)
@@ -1408,12 +1453,12 @@ class gamma_uh():
     @property
     def uh(self) -> pd.DataFrame:
         '''
-        Returns a unit hydrograph at as a DataFrame at a timestep specified by the ``dt_hours`` attribute.
+        Generates a unit hydrograph as a DataFrame at a timestep specified by the ``dt_hours`` attribute (units - cfs/in).
         '''
 
         if self.__uh is None:
             #Create a copy of the parameters
-            pars = copy.deepcopy(self.gamma_uh_pars)
+            pars = copy.deepcopy(self.gammauh_pars)
             self.__uh = self.return_uh(tstep=pars.dt_hours)
 
         return self.__uh 
@@ -1426,14 +1471,14 @@ class gamma_uh():
         Return a timeseries of streamflow for each zone.
 
         Args:
-            tci (SACSnowTCI): Specific tci DataFrame output from sacsnow classes sacsnow_tci property (units:  mm).
-            return_inst (bool): The specifies to return instaneous streamflow, rather than period average.  Default: True
+            tci (SACSnowTCI):  Custom type alias for total channel inflow from :class:`SacSnow`  (units:  mm).
+            return_inst (bool): Specifies to return instaneous streamflow, rather than period average.  Default: ``True``.
         Returns:
             pd.DataFrame: A DataFrame containing streamflow with a column for each zone (units: cfs).
         '''
 
         #Create a copy of the parameters
-        pars = copy.deepcopy(self.gamma_uh_pars)
+        pars = copy.deepcopy(self.gammauh_pars)
 
         #Format tci into a FORTRAN friendly datatype
         tci_array = utils._dtype_conversion(tci.to_numpy(),np.float64)

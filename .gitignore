@@ -50,3 +50,8 @@ py-rfchydromodels/.idea/
 # example python csv and other files
 py-rfchydromodels/EXAMPLE-*_Sim.csv
 py-rfchydromodels/utilities/__pycache__/
+
+# python package docs
+/py_rfchydromodels/nwsrfs_py/docs/build/
+/py_rfchydromodels/nwsrfs_py/docs/_build/
+

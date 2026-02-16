@@ -2,25 +2,34 @@ import os, sys, copy
 from typing import NewType
 import pandas as pd
 import numpy as np
-from .wrapper import nwsrfs_src as s
 from . import nwsrfs
 from . import utils
 #import pdb; pdb.set_trace()
 
-class nwsrfs_prep:
+#create a new type for sacsnow_tci output
+SACSnowTCI = NewType('SACSnowTCI',pd.DataFrame)
+"""
+Custom type alias for total channel inflow (tci) output.
+
+This type represents a pandas DataFrame containing tci values with a column 
+for each zone (units: mm). It is strictly used to ensure type safety 
+when passing tci data between the :class:`~nwsrfs_py.nwsrfs.SacSnow` and :class:`~nwsrfs_py.nwsrfs.GammaUh` classes.
+"""
+
+class _NwrfcAcPrep:
 
     '''
-    This function reads in a files created by the NWRFC autocalibration process to DataFrames stored as attribues.  
+    This function reads in forcing, streamflow, and optimzed parameters from the NWRFC autocalibration process.  
 
-    Files must must follow file conventions of the NOAA-NWRFC/nwsrfs-hydro-autocalibration repository optimization tools. Forcing csv files
-    must be in the directory (forcing_por_*), even if it a routing only reach (i.e. no local inflow modeled by SAC-SMA, Snow17, UH).
+    Files and folders in ``autocalb_dir`` must must follow file conventions of the NOAA-NWRFC/nwsrfs-hydro-autocalibration repository 
+    optimization tools. The forcing csv files must be in the directory ``'forcing_por_*'``, even if it is a routing only reach 
+    (i.e. no local inflow modeled by SAC-SMA, Snow17, UH).
 
-    If no run_dir is provided, the first "results_*" directory found within the autocalb_dir path will be used.
+    If no ``run_dir`` is provided, the first ``'results_*'`` directory found within the ``autocalb_dir`` path will be used.
 
-    Attributes:
+    Arguments:
         autocalb_dir (str): Path to a NWRFC autocalibration directory
-        run_dir (str | None): Name of optimization run subdirectory within the autocal_dir.  postprocess.R needs to already been ran for subdirectory.  
-            If ''None'' provided, defaults to using first "results_*" directory found within the autocalb_dir 
+        run_dir (str | None): Name of optimization run subdirectory within the ``autocal_dir``. If ``'None'`` is provided, defaults to using first ``'results_*'``' directory found within the ``autocalb_dir``.
     '''
 
     def __init__(self,
@@ -59,13 +68,13 @@ class nwsrfs_prep:
             self.autocalb_files = self.autocalb_files.loc[self.autocalb_files.folder.isin([self._autocalb_dir_basename,self.run_dir])]
 
             #Validate autocalb_dir and run_dir contents
-            self.validate_contents()
+            self._validate_contents()
 
             #Read in files
-            self.load_files()
+            self._load_files()
 
             #Catalog nwsrfs model being utilized
-            self.interrogate_pars()
+            self._interrogate_pars()
 
             #Extract time vectors
             self.dates = self.forcings_raw['map'].index.rename('datetime')
@@ -78,7 +87,7 @@ class nwsrfs_prep:
             self.dt_hours = int(utils._define_timestep_sec(self.year, self.month, self.day, self.hour)/3600)
 
             # If a routing only reach only set forcings to None, otherwise assign zones to each DataFrame's column names
-            if not self.sacsnow_logic:
+            if not self.localflow_logic:
                 self.forcings_raw = None
             else:
                 self.forcings_raw = {key: df.set_axis(self.zone_names, axis=1) for key, df in self.forcings_raw.items()}
@@ -88,7 +97,7 @@ class nwsrfs_prep:
                 self.upflow = self.upflow.set_axis(self.upflow_names, axis=1)
 
 
-    def validate_contents(self):
+    def _validate_contents(self):
 
         '''
         Validates that necessary files and within ``autocalb_dir``, and checks which auxilary file are present
@@ -137,7 +146,7 @@ class nwsrfs_prep:
         else:
             self.upflow_logic = True
      
-    def load_files(self):
+    def _load_files(self):
        
         drop_cols = ['year','month','day','hour']
 
@@ -192,7 +201,7 @@ class nwsrfs_prep:
         else:
             self.upflow = None
 
-    def interrogate_pars(self):
+    def _interrogate_pars(self):
 
         '''
         Using the parfile, gathers number of zones, zone names, number of upstream points, upstream point names, if CONSUSE is used, and/or if CHANLOSS is used
@@ -202,9 +211,9 @@ class nwsrfs_prep:
         self.zone_names = tuple(self.pars.loc[(self.pars.zone.str.contains('-'))].zone.sort_values().unique())
         self.n_zones = len(self.zone_names)
         if self.n_zones > 0:
-            self.sacsnow_logic = True
+            self.localflow_logic = True
         else:
-            self.sacsnow_logic = False
+            self.localflow_logic = False
         
         #Catalog routing, if present
         if self.upflow_logic:
@@ -217,11 +226,11 @@ class nwsrfs_prep:
         #Catalog CONSUSE, if present
         if self.pars.zone.str.contains('-CU').any():
             self.consuse_logic = True
-            self.consuse_name = tuple(self.pars.loc[self.pars.type=='consuse'].zone.unique())
-            self.n_consuse = len(self.consuse_name)
+            self.consuse_names = tuple(self.pars.loc[self.pars.type=='consuse'].zone.unique())
+            self.n_consuse = len(self.consuse_names)
         else:
             self.consuse_logic = False
-            self.consuse_name = None
+            self.consuse_names = None
             self.n_consuse=0
 
         #Catalog CHANLOSS info if present
@@ -300,25 +309,55 @@ class nwsrfs_prep:
         return list_df
 
 
-class nwsrfs_run(nwsrfs_prep,
-                nwsrfs.fa,
-                nwsrfs.sacsnow,
-                nwsrfs.gamma_uh,
-                nwsrfs.lagk,
-                nwsrfs.chanloss):
+class NwsrfsRun(_NwrfcAcPrep,
+                nwsrfs.FA,
+                nwsrfs.SacSnow,
+                nwsrfs.GammaUh,
+                nwsrfs.Lagk,
+                nwsrfs.Chanloss):
     '''
     Orchestrates the execution of NWSRFS models (SAC-SMA, Snow17, lagk, etc.) using NWRFC autocalibration data.
 
-    If no run_dir is provided, the first "results_*" d irectory found within the autocalb_dir path will be used.
 
-    Attributes:
-        autocalb_dir (str): Path to a NWRFC autocalibration directory
-        run_dir (str | None): Name of optimization run subdirectory within the autocal_dir.  postprocess.R needs to already been ran for subdirectory.  
-            If ''None'' provided, defaults to using first "results_*" directory found within the autocalb_dir
+    Files and folders in ``autocalb_dir`` must follow file conventions of the 
+    `NOAA-NWRFC/nwsrfs-hydro-autocalibration repository <https://github.com/NOAA-NWRFC/nwsrfs-hydro-autocalibration>`_ optimization tools.
+
+    If no ``run_dir`` is provided, the first ``'results_*'`` directory found within the ``autocalb_dir`` path will be used.
+
+    Arguments:
+        autocalb_dir (str): Path to a NWRFC autocalibration run directory
+        run_dir (str | None): Name of optimization run subdirectory within the ``autocal_dir``. If ``'None'`` is provided, defaults to using first ``'results_*'``' directory found within the ``autocalb_dir``.
         forcing_adj (bool | list[str]):  If ``True`` monthly climatological forcing adjustments will be applied to all forcings.  Alternatively, a list with
-            with specific forcing to apply climatological forcing adjustments can be supplied: 'map','mat', 'ptps','pet' 
-        return_inst (bool): The specifies to return instaneous streamflow, rather than period average.  Default: True
-        shift_sf (bool):  Shifts Gamma UH derived streamflow forward on timestep.  Requirement for NWRFC calibrations. Default: True
+            with specific forcing to apply climatological forcing adjustments can be supplied: ``'map'``, ``'mat'``, ``'ptps'``, ``'pet'``. Default: ``True``.
+        return_inst (bool): Specifies to return instaneous streamflow, rather than period average.  Default: ``True``.
+        shift_sf (bool):  Shifts :class:`~nwsrfs_py.nwsrfs.GammaUh` derived streamflow forward on one timestep.  Requirement for NWRFC calibrations. Default: ``True``.
+    Attributes:
+        pars (pd.DataFrame):  Contains all parameters used with NWSRFS models
+        forcings_raw (dict[str, pd.DataFrame]):  A dictionary with forcings prior to applying :class:`~nwsrfs_py.nwsrfs.FA` adjustments
+           
+           The dictionary keys are:
+           
+            * **map**: Precipitation (units: mm) 
+            * **mat**: Air temperature (units: degc)
+            * **ptps**: Fraction of precipitation as snow (units: fraction 0-1)
+        
+        zone_names (tuple):  Names of zones modeled in basin.
+        cu_names (tuple):  Names of consuse zones modeled in basin.
+        daily_flow (pd.DataFrame):  Daily mean observed flow.
+        inst_flow (pd.DataFrame|None):  Instantaneous observed flow.
+        upflow (pd.DataFrame|None): Upstream flow derived from the :class:`adjustq.AdjustQ`.
+        fa_pars (dict[str, nwsrfs.FAPars]|None):  If ``localflow_logic`` is ``True``, than dictionary of :class:`~nwsrfs_py.nwsrfs.FAPars` classes representing ``'map'``, ``'mat'``, ``'ptps'``, and ``'pet'``, otherwise ``'None'``.
+        sacsnow_pars (nwsrfs.SacSnowPars|None): If ``localflow_logic`` is ``True``, than :class:`~nwsrfs_py.nwsrfs.SacSnowPars` class, otherwise ``'None'``.
+        gammauh_pars (nwsrfs.GammmaUhPars|None): If ``localflow_logic`` is ``True``, than :class:`~nwsrfs_py.nwsrfs.GammmaUhPars` class, otherwise ``'None'``.
+        lagk_pars (nwsrfs.LagkPars|None): If ``upflow_logic`` is ``True``, than :class:`~nwsrfs_py.nwsrfs.LagkPars` class, otherwise ``'None'``.
+        chanloss_pars (nwsrfs.ChanlossPars|None): If ``chanloss_logic`` is ``True``, than :class:`~nwsrfs_py.nwsrfs.ChanlossPars` class, otherwise ``'None'``.
+        consuse_pars (dict[str, nwsrfs.ConsusePars]|None): If ``consuse_logic`` is ``True``, than dictionary of :class:`~nwsrfs_py.nwsrfs.ConsusePars` classes representing each ``cu_names``, otherwise ``'None'``.
+        localflow_logic (bool): Logic if :class:`~nwsrfs_py.nwsrfs.FAPars`, :class:`~nwsrfs_py.nwsrfs.SacSnow`, and :class:`~nwsrfs_py.nwsrfs.GammaUh` models exist in configuration.
+        upflow_logic (bool): Logic if :class:`~nwsrfs_py.nwsrfs.Lagk` model exist in configuration.
+        chanloss_logic (bool): Logic if :class:`~nwsrfs_py.nwsrfs.Chanloss` model exist in configuration.
+        consuse_logic (bool): Logic if :class:`~nwsrfs_py.nwsrfs.Consuse` model exist in configuration.
+        n_zones (integer):  Number of zones in the configuration.
+
     '''
 
     def __init__(self,
@@ -329,7 +368,7 @@ class nwsrfs_run(nwsrfs_prep,
                 shift_sf: bool = True):
 
         #Initiate nwsrfs_prep  
-        nwsrfs_prep.__init__(self, autocalb_dir, run_dir)
+        _NwrfcAcPrep.__init__(self, autocalb_dir, run_dir)
 
         #Set return_inst attribute
         self.return_inst = return_inst
@@ -353,7 +392,7 @@ class nwsrfs_run(nwsrfs_prep,
         '''
 
         #Validate forcing_adj argument
-        if not self.sacsnow_logic:
+        if not self.localflow_logic:
                 self.forcing_adj_logic = None
                 self.forcing_adj_types = ()
         elif isinstance(forcing_adj,bool):
@@ -381,11 +420,14 @@ class nwsrfs_run(nwsrfs_prep,
 
     def nwsrfs_run(self):
         '''
-        Prepares and creates instances of all nwsrfs models with parameters provided in the ''pars'' attribute.
+        Prepares and creates instances of all nwsrfs models with parameters provided in the ``pars`` attribute.
         '''
 
+        #Set all dataclass attributes to None
+        self.fa_pars = self.sacsnow_pars = self.gammauh_pars = self.lagk_pars = self.chanloss_pars = self.consuse_pars = None
+
         #If there is a sac-snow model, perform forcing adjustments and activate SAC-SMA, SNOW17, UH Gamma models
-        if not self.sacsnow_logic:
+        if not self.localflow_logic:
             self.fa_factors = self.forcings_climo = None            
         else:
             self._fa_run()
@@ -407,9 +449,9 @@ class nwsrfs_run(nwsrfs_prep,
         '''
         Updates the ``pars`` file with new values.  
 
-        **DataFrame Format***
+        **DataFrame Format**
 
-        ``new_pars`` must have a 'p_name' and 'value' column. All values in the 'p_name' columns must map to an existing row in the ``pars`` attribute
+        ``new_pars`` must have a ``'p_name'`` and ``'value'`` column. All values in the ``'p_name'`` columns must map to an row in the exiting ``pars`` DataFrame attribute.
 
         Args:
             new_pars (pd.DataFrame): dataframe with parameters to update nwsrfs models
@@ -447,7 +489,7 @@ class nwsrfs_run(nwsrfs_prep,
         '''
 
         #If SAC-SMA and SNOW17 parameter don't exist return none
-        if not self.sacsnow_logic:
+        if not self.localflow_logic:
             return None
 
         #If forcing_adj_types is None or then set all fa_pars values to scale=1, p_redist=0, std=10, shift=0
@@ -496,7 +538,7 @@ class nwsrfs_run(nwsrfs_prep,
         #Create a dictionary for each forcings dataclass
         fa_dc = {}
         for f in ['map','mat','ptps','pet']:
-            fa_dc[f] = nwsrfs.fa_pars(year = self.year,month =self.month,day = self.day,hour = self.hour,
+            fa_dc[f] = nwsrfs.FAPars(year = self.year,month =self.month,day = self.day,hour = self.hour,
                             pars = fa_pars[f],
                             area = area,
                             alat = alat,
@@ -506,7 +548,7 @@ class nwsrfs_run(nwsrfs_prep,
                             climo = climo)
 
         #Initiate fa wrapper class
-        nwsrfs.fa.__init__(self,
+        nwsrfs.FA.__init__(self,
             map_dataclass = fa_dc['map'],
             mat_dataclass = fa_dc['mat'],
             ptps_dataclass = fa_dc['ptps'],
@@ -516,22 +558,24 @@ class nwsrfs_run(nwsrfs_prep,
     @property
     def forcings(self) -> dict[str, pd.DataFrame]:
         '''
-        Returns a dictionary of adjusted forcings as DataFrames. 
+        Generates a dictionary of :class:`~nwsrfs_py.nwsrfs.FA` adjusted forcings as DataFrames. 
 
         The dictionary keys are:
+
         * **map**: Precipitation (units: mm) 
         * **mat**: Air temperature (units: degc)
         * **ptps**: Fraction of precipitation as snow (units: fraction 0-1)
+        * **pet**: Potential evaporation (units: mm)
         * **etd**: Evaporation demand (units: mm)
         '''
         
         #If SAC-SMA and SNOW17 parameter don't exist return none
-        if not self.sacsnow_logic:
+        if not self.localflow_logic:
             return None
 
         #Get forcings from fa class
         #Use .fget (Function Get) to grab the actual function inside because forcings is a property object
-        raw_output = nwsrfs.fa.forcings.fget(self)
+        raw_output = nwsrfs.FA.forcings.fget(self)
 
         #Remove "_fa" from dictionary keys and rename columns based on zone_names
         fixed_output = {key.split('_')[0]:value.set_axis(self.zone_names, axis=1) for key, value in raw_output.items()}
@@ -548,7 +592,7 @@ class nwsrfs_run(nwsrfs_prep,
         '''
 
         #If SAC-SMA and SNOW17 parameter don't exist return none
-        if not self.sacsnow_logic:
+        if not self.localflow_logic:
             return None
 
         #Get a nested dictionary for SAC-SMA, Snow17, and gamma UH with parameter values
@@ -563,11 +607,11 @@ class nwsrfs_run(nwsrfs_prep,
         toc = pars_dict['uh']['unit_toc'] * pars_dict['uh']['unit_toc_adj'] 
 
         #Initate gammauh_pars data class
-        gammauh_dc = nwsrfs.gammauh_pars(dt_hours = self.dt_hours, area = pars_dict['uh']['zone_area'], 
+        gamma_dc = nwsrfs.GammaUhPars(dt_hours = self.dt_hours, area = pars_dict['uh']['zone_area'], 
                         shape = pars_dict['uh']['unit_shape'], toc = toc)
 
-        #Initiate gamma_uh wrapper class
-        nwsrfs.gamma_uh.__init__(self,pars_dataclass = gammauh_dc,validate = validate)        
+        #Initiate GammaUh wrapper class
+        nwsrfs.GammaUh.__init__(self,pars_dataclass = gamma_dc,validate = validate)        
 
         #Format required dataclass inputs sac_pars and snow_pars
         sac_pars = np.concatenate([[pars_dict['sac']['uztwm']], [pars_dict['sac']['uzfwm']], [pars_dict['sac']['lztwm']],
@@ -585,8 +629,8 @@ class nwsrfs_run(nwsrfs_prep,
                             [pars_dict['snow']['adc_c']]
                             ],axis=0)
 
-        #Initate sacsnow_pars data class
-        sacsnow_dc = nwsrfs.sacsnow_pars(year = self.year,month =self.month,day = self.day,hour = self.hour,
+        #Initate SacSnowPars data class
+        sacsnow_dc = nwsrfs.SacSnowPars(year = self.year,month =self.month,day = self.day,hour = self.hour,
                                 alat = pars_dict['snow']['alat'], elev = pars_dict['snow']['elev'], 
                                 sac_pars =  sac_pars, snow_pars = snow_pars,
                                 init_swe = pars_dict['snow']['init_swe'], 
@@ -597,23 +641,23 @@ class nwsrfs_run(nwsrfs_prep,
                                 forcings_etd = self.forcings['etd'].to_numpy())
 
         #Initiate sacsnow wrapper class
-        nwsrfs.sacsnow.__init__(self,
+        nwsrfs.SacSnow.__init__(self,
             pars_dataclass = sacsnow_dc,
             validate = validate)
 
     @property
-    def sacsnow_tci(self) -> pd.DataFrame:
+    def sacsnow_tci(self) -> 'SACSnowTCI':
         '''
-        Returns total channel inflow (tci) as a DataFrame with a column for each zone (units: mm).
+        Generates a custom type alias for total channel inflow (tci) using :class:`~nwsrfs_py.nwsrfs.SacSnow` with a column for each zone (units - mm).
         '''
 
         #If SAC-SMA and SNOW17 parameters don't exist return none
-        if not self.sacsnow_logic:
+        if not self.localflow_logic:
             return None
 
         #Get tci from sacsnow class
         #Use .fget (Function Get) to grab the actual function inside because forcings is a property object
-        raw_output = nwsrfs.sacsnow.sacsnow_tci.fget(self) 
+        raw_output = nwsrfs.SacSnow.sacsnow_tci.fget(self) 
 
         #Rename column of Dataframe to correpond to zone names
         return raw_output.set_axis(self.zone_names, axis=1)    
@@ -621,7 +665,8 @@ class nwsrfs_run(nwsrfs_prep,
     @property
     def sacsnow_states(self) -> dict[str, pd.DataFrame]:
         '''
-        Returns a dictionary of DataFrames containing all SAC-SMA model states with a column for each zone. 
+        Returns a dictionary of DataFrames containing all :class:`~nwsrfs_py.nwsrfs.SacSnow` model states with a column for each zone. 
+            
             The dictionary keys are:
 
             * **tci**: Total channel inflow (units: mm).
@@ -650,31 +695,31 @@ class nwsrfs_run(nwsrfs_prep,
         '''
 
         #If SAC-SMA and SNOW17 parameters don't exist return none
-        if not self.sacsnow_logic:
+        if not self.localflow_logic:
             return None
 
         #Get states from sacsnow class
         #Use .fget (Function Get) to grab the actual function inside because forcings is a property object
-        raw_output = nwsrfs.sacsnow.sacsnow_states.fget(self)
+        raw_output = nwsrfs.SacSnow.sacsnow_states.fget(self)
 
         #For each dictionary value, rename column of Dataframe to correpond to zone names
         return {key: df.set_axis(self.zone_names, axis=1) for key, df in raw_output.items()}
 
     def return_uh(self,tstep):
         '''
-        Returns a unit hydrograph as a DataFrame at a timestep specified by ``tstep``.
+        Generates a unit hydrograph as a DataFrame, using :class:`~nwsrfs_py.nwsrfs.GammaUh`, at a timestep specified by ``tstep``.
 
         Args:
-            tstep (int): Specifies tstep of unit hydrograph to return (units: hours).
+            tstep (int): Specifies timestep of unit hydrograph (units: hours).
         Returns:
-             pd.DataFrame: A DataFrame containing unit hydrograph (uh) with a column for each zone (units: cfs).
+             pd.DataFrame: A DataFrame containing unit hydrograph (uh) with a column for each zone (units: cfs/in).
         '''
 
         #If SAC-SMA and SNOW17 parameter don't exist return none
-        if not self.sacsnow_logic:
+        if not self.localflow_logic:
             return None
 
-        raw_output = nwsrfs.gamma_uh.return_uh(self,tstep)
+        raw_output = nwsrfs.GammaUh.return_uh(self,tstep)
 
         #Rename column of Dataframe to correpond to zone names
         return raw_output.set_axis(self.zone_names, axis=1)
@@ -682,52 +727,46 @@ class nwsrfs_run(nwsrfs_prep,
     @property
     def uh(self) -> pd.DataFrame:
         '''
-        Returns a unit hydrograph at as a DataFrame at a timestep specified by the ``dt_hours`` attribute.
+        Generates a unit hydrograph as a DataFrame, using :class:`~nwsrfs_py.nwsrfs.GammaUh`, at a timestep specified by the ``dt_hours`` attribute (units - cfs/in).
         '''
 
         #If SAC-SMA and SNOW17 parameters don't exist return none
-        if not self.sacsnow_logic:
+        if not self.localflow_logic:
             return None
 
         #Get uh from gamma_uh class
         #Use .fget (Function Get) to grab the actual function inside because forcings is a property object
-        raw_output = nwsrfs.gamma_uh.uh.fget(self)
+        raw_output = nwsrfs.GammaUh.uh.fget(self)
 
         #Rename column of Dataframe to correpond to zone names
         return raw_output.set_axis(self.zone_names, axis=1)
 
-    #create a new type for sacsnow_tci output
-    SACSnowTCI = NewType('SACSnowTCI',pd.DataFrame)
-
     def return_sf(self,tci:SACSnowTCI):
         '''
-        Return a timeseries of streamflow for each zone.
-        
+        Generates a timeseries of streamflow as a Series using :class:`~nwsrfs_py.nwsrfs.GammaUh` and input ``tci``.
+
         Args:
-            tci (SACSnowTCI): Specific tci DataFrame output from sacsnow classes sacsnow_tci property (units:  mm).
+            tci (SACSnowTCI): Custom type alias for total channel inflow from :class:`~nwsrfs_py.nwsrfs.SacSnow`  (units:  mm).
         Returns:
             pd.DataFrame: A DataFrame containing streamflow with a column for each zone (units: cfs).
         '''
 
         #If SAC-SMA and SNOW17 parameter don't exist return none
-        if not self.sacsnow_logic:
+        if not self.localflow_logic:
             return None
 
-        raw_output = nwsrfs.gamma_uh.return_sf(self,tci,self.return_inst)
+        raw_output = nwsrfs.GammaUh.return_sf(self,tci,self.return_inst)
         #Rename column of Dataframe to correpond to zone names
         return raw_output.set_axis(self.zone_names, axis=1)
 
     @property
     def sacsnow_sf(self)-> pd.DataFrame:
         '''
-        Calculates streamflow for each zone using sacsnow and uh_gamma models. 
-
-        Returns:
-            pd.DataFrame: Returns streamflow as a DataFrame with a column for each zone (units: cfs).
+        Calculates streamflow for each zone using :class:`~nwsrfs_py.nwsrfs.SacSnow` and :class:`~nwsrfs_py.nwsrfs.UhGamma` models (units - cfs). 
         '''
 
         #If SAC-SMA and SNOW17 parameters don't exist return none
-        if not self.sacsnow_logic:
+        if not self.localflow_logic:
             return None
 
         #Get tci from sacsnow class
@@ -763,7 +802,7 @@ class nwsrfs_run(nwsrfs_prep,
                 (self.pars['name'] == par)].sort_values(by='zone')['value'].to_numpy()
 
 
-        lagk_dc = nwsrfs.lagk_pars(year = self.year,month =self.month,day = self.day,hour = self.hour,
+        lagk_dc = nwsrfs.LagkPars(year = self.year,month =self.month,day = self.day,hour = self.hour,
                     tbl_lageq_a = pars_dict['lagtbl_a'], tbl_lageq_b = pars_dict['lagtbl_b'],
                     tbl_lageq_c = pars_dict['lagtbl_c'], tbl_lageq_d = pars_dict['lagtbl_d'],
                     tbl_keq_a = pars_dict['ktbl_a'], tbl_keq_b = pars_dict['ktbl_b'],
@@ -775,14 +814,14 @@ class nwsrfs_run(nwsrfs_prep,
                     init_qin = pars_dict['init_if'], init_qout = pars_dict['init_of'],
                     qin = self.upflow.to_numpy())
 
-        nwsrfs.lagk.__init__(self,
+        nwsrfs.Lagk.__init__(self,
             pars_dataclass = lagk_dc,
             validate = validate)
 
     @property
     def lagk_route(self) -> pd.DataFrame:
         '''
-        Returns routed flows as a DataFrame with a column for each upstream reach (units: cfs).
+        Generates routed flows as a DataFrame using :class:`~nwsrfs_py.nwsrfs.Lagk` with a column for each upstream reach (units - cfs).
         '''
 
         #If lagk parameters don't exist return none
@@ -791,7 +830,7 @@ class nwsrfs_run(nwsrfs_prep,
 
         #Get routings from lagk class
         #Use .fget (Function Get) to grab the actual function inside because forcings is a property object
-        raw_output = nwsrfs.lagk.lagk_route.fget(self) 
+        raw_output = nwsrfs.Lagk.lagk_route.fget(self) 
 
         #Rename column of Dataframe to correpond to upstream reach name
         return raw_output.set_axis(self.upflow_names, axis=1)    
@@ -799,7 +838,8 @@ class nwsrfs_run(nwsrfs_prep,
     @property
     def lagk_states(self) -> dict[str, pd.DataFrame]:
         '''
-        Returns a dictionary of DataFrames containing all lagk model states with a column for each upstream reach.
+        Generates a dictionary of DataFrames containing all :class:`~nwsrfs_py.nwsrfs.Lagk` model states with a column for each upstream reach.
+            
             The dictionary keys are:
 
             * **routed**: Routed flow with lag and k applied (units: cfs).
@@ -814,13 +854,13 @@ class nwsrfs_run(nwsrfs_prep,
 
         #Get states from lagk class
         #Use .fget (Function Get) to grab the actual function inside because forcings is a property object
-        raw_output = nwsrfs.lagk.lagk_states.fget(self)
+        raw_output = nwsrfs.Lagk.lagk_states.fget(self)
 
         #For each dictionary value, rename column of Dataframe to correpond to zone names
         return {key: df.set_axis(self.upflow_names, axis=1) for key, df in raw_output.items()}
 
     @property
-    def _sacsnow_lagk_sim(self):
+    def _sacsnow_lagk_sim(self) -> pd.Series:
         '''
           Returns a Series of the sum of any sacsnow run off and upstream routed flow for each timestep (units: cfs)
         '''
@@ -829,7 +869,7 @@ class nwsrfs_run(nwsrfs_prep,
         qin=pd.Series(0,index=self.dates)
 
         #If there are sac/snow zone, calculate runoff
-        if self.sacsnow_logic:
+        if self.localflow_logic:
             qin += self.sacsnow_sf.sum(axis=1)
 
         #If there are upstream reaches to route, add them to the total flow
@@ -861,22 +901,22 @@ class nwsrfs_run(nwsrfs_prep,
 
         qin = self._sacsnow_lagk_sim
 
-        self._chanloss_dc = nwsrfs.chanloss_pars(year = self.year,month =self.month,day = self.day,hour = self.hour,
+        chanloss_dc = nwsrfs.ChanlossPars(year = self.year,month =self.month,day = self.day,hour = self.hour,
                                 periods = periods, factors = pars_dict['cl_factor'],
                                 cl_type = pars_dict['cl_type'], min_flow = pars_dict['cl_min_q'],
                                 qin = qin)
 
-        nwsrfs.chanloss.__init__(self,
-            pars_dataclass = self._chanloss_dc,
+        nwsrfs.Chanloss.__init__(self,
+            pars_dataclass = chanloss_dc,
             validate = validate)
 
     def chanloss_apply(self, qin:pd.Series, validate:bool=True):
         '''
-        Runs chanloss with the parameters specified in ``pars`` and qin supplied.
+        Runs :class:`~nwsrfs_py.nwsrfs.Chanloss` with ``qin`` supplied (units: cfs).
 
         Args:
-            qin (pd.Series):  Input streamflow to adjust for CHANLOSS (units: cfs).
-            validate (bool): Validate that chanloss inputs are correct format/type. Default: True
+            qin (pd.Series):  Input streamflow to adjust (units: cfs).
+            validate (bool): Validate that chanloss inputs are correct format/type. Default: ``True``
         '''
 
         #If chanloss parameters don't exist return none
@@ -884,17 +924,17 @@ class nwsrfs_run(nwsrfs_prep,
             return None
 
         #create a copy of the existing pars dataclass and replace qin with the supplied qin argument
-        dc_pars = copy.deepcopy(self._chanloss_dc)
+        dc_pars = copy.deepcopy(self.chanloss_pars)
         dc_pars.qin = qin.to_numpy()
 
         #Initiate the chanloss class
-        cl_class = nwsrfs.chanloss(pars_dataclass = dc_pars,validate=validate)
+        cl_class = nwsrfs.Chanloss(pars_dataclass = dc_pars,validate=validate)
 
         #Return adjustments
         return cl_class.chanloss_qadj
 
     @property
-    def _sacsnow_lagk_chanloss_sim(self):
+    def _sacsnow_lagk_chanloss_sim(self) -> pd.Series:
         '''
           Returns a Series of the sum of any sacsnow run off and upstream routed flow for each timestep with chanloss applied (units: cfs)
         '''
@@ -917,8 +957,11 @@ class nwsrfs_run(nwsrfs_prep,
         if not self.consuse_logic:
             return None
 
+        #Create dictionary of ConsusePars dataclass
+        self.consuse_pars = dict()
+
         #Get a dictionary of chanloss parameter values
-        pars_dict = {}
+        pars_dict = dict()
         for par in self.pars.loc[self.pars.type=='consuse'].name.unique():
             pars_dict[par] = self.pars.loc[(self.pars.type=='consuse')&
                 (self.pars['name'] == par)].sort_values(by='zone')['value'].to_numpy()
@@ -927,7 +970,7 @@ class nwsrfs_run(nwsrfs_prep,
         peadj_cu = np.full([12, self.n_consuse], np.nan)
         for i in range(12):
             m = i + 1
-            for j, z in enumerate(self.consuse_name):
+            for j, z in enumerate(self.consuse_names):
                 peadj_cu[i, j] = self.pars.loc[(self.pars.name == 'peadj_cu_' + f'{m:02}') & (self.pars.zone == z) &
                         (self.pars.type == 'consuse')].value.item()
 
@@ -952,7 +995,7 @@ class nwsrfs_run(nwsrfs_prep,
         self._consuse_states = {key:pd.DataFrame() for key in state_param}
 
         #Run consuse for each zone individualys
-        for n, cu_name in enumerate(self.consuse_name):
+        for n, cu_name in enumerate(self.consuse_names):
 
             #Get peadj associated with cu zones
             peadj = self.pars.loc[(self.pars.name=='peadj')&(self.pars.zone==cu_name),'value'].squeeze()   
@@ -971,13 +1014,13 @@ class nwsrfs_run(nwsrfs_prep,
             ts_array = ts_df.to_numpy()
 
             #Create parameter dataclass
-            cu_dc = nwsrfs.consuse_pars(year=year,month=month,day=day,
+            self.consuse_pars[cu_name] = nwsrfs.ConsusePars(year=year,month=month,day=day,
                 area=pars_dict['area_km2'][n], irr_eff=pars_dict['irr_eff'][n], min_flow=pars_dict['min_flow'][n],
                 rf_accum_rate=pars_dict['rf_accum_rate'][n],rf_decay_rate=pars_dict['rf_decay_rate'][n],
-                pet_adj=peadj, pet_adj_table=peadj_cu[:,n],
+                pet_adj=peadj, peadj_m=peadj_cu[:,n],
                 pet=ts_array[:,0],qin=ts_array[:,1])
 
-            cu_run = nwsrfs.consuse(cu_dc, validate=validate)
+            cu_run = nwsrfs.Consuse(self.consuse_pars[cu_name], validate=validate)
 
             #Concat state value for CU zone to dictionary. IF QADJ,replace value
             for count, param in  enumerate(state_param):
@@ -988,9 +1031,9 @@ class nwsrfs_run(nwsrfs_prep,
                                     cu_run.consuse_states[param].rename(cu_name)],axis=1)
                     
     @property
-    def consuse_qadj(self):
+    def consuse_qadj(self) -> pd.Series:
         '''
-        Return a Series of flow adjusted by consuse (units: cfsd).
+        Generates a Series of flow adjusted by :class:`~nwsrfs_py.nwsrfs.Consuse` (units - cfsd).
         '''
 
         #If consuse parameters don't exist return none
@@ -1000,9 +1043,10 @@ class nwsrfs_run(nwsrfs_prep,
         return self._consuse_states['qadj']
  
     @property
-    def consuse_states(self):
+    def consuse_states(self) -> dict[str, pd.DataFrame]:
         '''
-        Returns a dictionary of DataFrames containing all CONSUSE states with a column for each CONSUSE zone.
+        Generates a dictionary of DataFrames containing all :class:`~nwsrfs_py.nwsrfs.Consuse` states with a column for each zone.
+            
             The dictionary keys are:
 
             * **qadj**: Streamflow with all consumptive use adjustments applied (units: cfsd)
@@ -1022,9 +1066,10 @@ class nwsrfs_run(nwsrfs_prep,
         return self._consuse_states       
 
     @property
-    def sim(self):
+    def sim(self) -> pd.Series:
         '''
-          Returns a Series of the sum of any sacsnow run off and upstream routed flow for each timestep with chanloss and consuse applied (units: cfs).
+        Generates a Series of the sum of any local flow runoff (:class:`~nwsrfs_py.nwsrfs.SacSnow` + :class:`~nwsrfs_py.nwsrfs.GammaUh`)  and upstream routed (:class:`~nwsrfs_py.nwsrfs.Lagk`) flow for each timestep
+        with chanloss (:class:`~nwsrfs_py.nwsrfs.Chanloss`) and consuse (:class:`~nwsrfs_py.nwsrfs.Consuse`) applied (units - cfs).
         '''
 
         #Get flow prior to potential CONSUSE adjustment
@@ -1032,12 +1077,13 @@ class nwsrfs_run(nwsrfs_prep,
 
         #If there area CONSUSE areas, adjust the flow
         if self.consuse_logic:
+
             qnat_cu_adj = self.consuse_states['qdiv'].sum(axis=1)-self.consuse_states['qrf_out'].sum(axis=1)
             #Shift forward a day so that the correct adjustement is applied  to the correct day
             qnat_cu_adj.index = qnat_cu_adj.index+pd.Timedelta(1, unit='D')
             #Backfill to fill all values after 00:00 and fill in nan values at the end of time sereies with last daily 
             #qnat_cu_adj value cut off from reindex
-            qnat_cu_adj = qnat_cu_adj.reindex(qnat.index).bfill().replace({qnat_cu_adj.values[-1]:np.nan})
+            qnat_cu_adj = qnat_cu_adj.reindex(qnat.index).bfill().replace({np.nan:qnat_cu_adj.values[-1]})
             q_adj = qnat - qnat_cu_adj
             #Replace any negative values with zero
             q_adj.loc[q_adj < 0] = 0

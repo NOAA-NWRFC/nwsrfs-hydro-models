@@ -17,10 +17,18 @@ dependencies = [                                               # Runtime depende
     "scipy"
 ]
 
+[project.optional-dependencies]
+docs = [
+    "sphinx",
+    "sphinx-autodoc-typehints",
+    "sphinx-rtd-theme"
+]
 
 [tool.setuptools]
 packages = ["nwsrfs_py"]                     # List of packages to include (can also use find:)
 include-package-data = true                 # Include non-code files (like .so, .txt, etc.)
+
+
 
 [table]
 description = """
