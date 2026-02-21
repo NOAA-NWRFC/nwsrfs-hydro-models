@@ -1,7 +1,6 @@
 [build-system]
-requires = ["setuptools", "wheel"]          # What packages are needed to build this project
-build-backend = "setuptools.build_meta"     # The tool that runs the build process (here, setuptools)
-
+requires = ["meson-python", "numpy", "ninja"] # What packages are needed to build this project
+build-backend = "mesonpy"  # The tool that runs the build process (here, setuptools)
 
 [project]
 name = "nwsrfspy"                                              # The name of the installable package (used by pip)
@@ -23,12 +22,6 @@ docs = [
     "sphinx-autodoc-typehints",
     "sphinx-rtd-theme"
 ]
-
-[tool.setuptools]
-packages = ["nwsrfs_py"]                     # List of packages to include (can also use find:)
-include-package-data = true                 # Include non-code files (like .so, .txt, etc.)
-
-
 
 [table]
 description = """
