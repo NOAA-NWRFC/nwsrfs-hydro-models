@@ -16,6 +16,7 @@ Any resulting negative discharge values are set to zero.
 import os, sys, argparse, warnings
 import pandas as pd, numpy as np
 from .simulation import NwsrfsRun as nwsrfs_sim
+from . import utils
 #import pdb; pdb.set_trace()
 
 class _AdjustQPrep:
@@ -415,10 +416,6 @@ class AdjustQ(_AdjustQPrep):
             pd.Series: A Series containing the merged and adjusted discharge timeseries (units: cfs).
         '''
         
-        #If simulation data is not provided, then return None.
-        if self.sim is None:
-            return None
-
         ###############PREP Data################################
         
         #Format the daily observed flow
@@ -457,3 +454,53 @@ class AdjustQ(_AdjustQPrep):
         self.__raw_output = inst_q_6h_merge.AdjustQ_Inst
 
         return self.__raw_output
+
+    @classmethod
+    def load_example(cls, sim:bool=True, **kwargs):
+        '''
+        Generates a :class:`AdjustQ` for the package provided example data.
+
+        Example data are NWRFC auto calibration results for location:
+
+        * **NRKW1**: Nooksack River at North Cedarville, WA (USGS-12210700).  The simulated timeseries is utilizing the following models: :class:`~nwsrfs_py.nwsrfs.SacSnow`, :class:`~nwsrfs_py.nwsrfs.GammaUh`, :class:`~nwsrfs_py.nwsrfs.Lagk`.
+
+        Any optional arguments associated with :class:`AdjustQ`, can be passed.
+
+        Args:
+            sim (bool):  Incorporate the model simulation results in the AdjustQ calculation.  Default: ``True``.
+            **kwargs: Optional keyword arguments passed to :class:`AdjustQ`. 
+
+                Common options include:
+
+                * **blend** (int): Threshold for determining how many time steps of missing observed instantaneous data constitutes a "large gap". Default: 10.
+                * **interp_type** (str): Correction procedure used to correct simulated discharges for missing gaps smaller than the blend threshold. Accepts ``'ratio'`` or ``'difference'``. Default: ``'ratio'``.        
+                * **error_tol** (float): Percent tolerance that the instantaneous daily average must match the observed daily flow average. Default: 0.01.
+                * **max_iterations** (int): Maximum number of iterations to adjust the instantaneous daily average to match the observed daily flow. Default: 15.
+        '''
+
+        # Define the mapping within the method to keep it clean
+        config = {
+            'daily_flow_csv': 'flow_daily_NRKW1.csv',
+            'inst_flow_csv': 'flow_instantaneous_NRKW1.csv',
+            'sim_flow_dir': 'results_por_02',
+        }
+
+        #If the sim option is set to False then set the sim_flow_dir key to None
+        if not sim:
+            config['sim_flow_dir'] = None
+
+
+        #Return :class:`nwsrfs_py.adjustq.Adjust` for NRKW1.
+        with utils._get_example_dir('NRKW1') as example_dir:
+            # Note: Ensure __init__ loads all data BEFORE the context manager closes
+            
+            #Set paths
+            daily_flow_path = os.path.join(example_dir,config['daily_flow_csv'])
+            inst_flow_path = os.path.join(example_dir,config['inst_flow_csv'])
+            #If the sim option is set to False then set the sim_path to None
+            if sim:
+                sim_path = os.path.join(example_dir,config['sim_flow_dir'])
+            else:
+                sim_path = None
+
+            return cls(daily_flow_path, inst_flow_path, sim_path, **kwargs)

@@ -1,0 +1,7 @@
+p_name,name,type,zone,value
+pxtemp_SFLN2-1,pxtemp,rsnwelev,SFLN2-1,0.500000000002325
+talr_SFLN2-1,talr,rsnwelev,SFLN2-1,0.550000000000326
+pxtemp_SFLN2-2,pxtemp,rsnwelev,SFLN2-2,0.499999999999535
+talr_SFLN2-2,talr,rsnwelev,SFLN2-2,0.549999999999768
+pxtemp_SFLN2-CU,pxtemp,rsnwelev,SFLN2-CU,0.499999999999535
+talr_SFLN2-CU,talr,rsnwelev,SFLN2-CU,0.550000000000068

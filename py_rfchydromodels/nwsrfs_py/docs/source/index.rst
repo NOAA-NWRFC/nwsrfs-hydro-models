@@ -36,10 +36,10 @@ Here is a simple example of initializing a run using the NWRFC AutoCalibration t
 
 .. code-block:: python
 
-   from nwsrfs_py.nwrfc_ac import NwsrfsRun
+   from nwsrfs_py import simulation
 
-   # Initialize a run pointing to your calibration directory
-   model_run = NwsrfsRun(autocalb_dir='/path/to/calibration')
+   # Initialize a run with package example data
+   model_run = simulation.NwsrfsRun.load_example('NRKW1')
 
    # Access the simulated streamflow
    sim_flow = model_run.sim

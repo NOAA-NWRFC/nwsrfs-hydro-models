@@ -95,3 +95,71 @@ py.install_sources(
   'nwsrfs_py/wrapper/nwsrfs_f2py_wrapper.py',
   subdir: 'nwsrfs_py/wrapper'
 )
+
+py.install_sources(
+  'nwsrfs_py/data/__init__.py',
+  'nwsrfs_py/data/README.md',
+  subdir: 'nwsrfs_py/data'
+)
+
+# Install files into data/SFLN2
+data_SFLN2_files = [
+  'nwsrfs_py/data/SFLN2/__init__.py',
+  'nwsrfs_py/data/SFLN2/flow_instantaneous_SFLN2.csv',
+  'nwsrfs_py/data/SFLN2/forcing_por_SFLN2-1.csv',
+  'nwsrfs_py/data/SFLN2/forcing_por_SFLN2-2.csv',
+  'nwsrfs_py/data/SFLN2/forcing_por_SFLN2-CU.csv',
+  'nwsrfs_py/data/SFLN2/flow_daily_SFLN2.csv',
+]
+py.install_sources(
+  data_SFLN2_files,
+  subdir: 'nwsrfs_py/data/SFLN2'
+)
+
+# Install files into data/SFLN2/results_por_01
+data_SFLN2_results_por_01_files = [
+  'nwsrfs_py/data/SFLN2/results_por_01/__init__.py',
+  'nwsrfs_py/data/SFLN2/results_por_01/pars_optimal.csv',
+  'nwsrfs_py/data/SFLN2/results_por_01/adc_SFLN2-1.csv',
+  'nwsrfs_py/data/SFLN2/results_por_01/fa_factors.csv',
+  'nwsrfs_py/data/SFLN2/results_por_01/optimal_6hr_inst.csv',
+  'nwsrfs_py/data/SFLN2/results_por_01/optimal_consuse_states.csv',
+  'nwsrfs_py/data/SFLN2/results_por_01/rsnwelev_pars.csv',
+  'nwsrfs_py/data/SFLN2/results_por_01/uh_1hr_SFLN2-2.csv',
+  'nwsrfs_py/data/SFLN2/results_por_01/uh_6hr_SFLN2-CU.csv',
+]
+py.install_sources(
+  data_SFLN2_results_por_01_files,
+  subdir: 'nwsrfs_py/data/SFLN2/results_por_01'
+)
+
+# Install files into data/NRKW1
+data_NRKW1_files = [
+  'nwsrfs_py/data/NRKW1/__init__.py',
+  'nwsrfs_py/data/NRKW1/flow_instantaneous_NRKW1.csv',
+  'nwsrfs_py/data/NRKW1/upflow_NSSW1.csv',
+  'nwsrfs_py/data/NRKW1/upflow_MFNW1.csv',
+  'nwsrfs_py/data/NRKW1/forcing_por_NRKW1-2.csv',
+  'nwsrfs_py/data/NRKW1/forcing_por_NRKW1-1.csv',
+  'nwsrfs_py/data/NRKW1/upflow_NFNW1.csv',
+  'nwsrfs_py/data/NRKW1/flow_daily_NRKW1.csv',
+]
+py.install_sources(
+  data_NRKW1_files,
+  subdir: 'nwsrfs_py/data/NRKW1'
+)
+
+# Install files into data/NRKW1/results_por_02
+data_NRKW1_results_por_02_files = [
+  'nwsrfs_py/data/NRKW1/results_por_02/__init__.py',
+  'nwsrfs_py/data/NRKW1/results_por_02/pars_optimal.csv',
+  'nwsrfs_py/data/NRKW1/results_por_02/optimal_routed_flow.csv',
+  'nwsrfs_py/data/NRKW1/results_por_02/optimal_routed_states.csv',
+  'nwsrfs_py/data/NRKW1/results_por_02/optimal_6hr_inst.csv',
+  'nwsrfs_py/data/NRKW1/results_por_02/optimal_states_6hr.csv',
+  'nwsrfs_py/data/NRKW1/results_por_02/lagk_tables.csv',
+]
+py.install_sources(
+  data_NRKW1_results_por_02_files,
+  subdir: 'nwsrfs_py/data/NRKW1/results_por_02'
+)

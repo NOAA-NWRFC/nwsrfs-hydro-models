@@ -326,7 +326,7 @@ class NwsrfsRun(_NwrfcAcPrep,
 
     Arguments:
         autocalb_dir (str): Path to a NWRFC autocalibration run directory
-        run_dir (str | None): Name of optimization run subdirectory within the ``autocal_dir``. If ``'None'`` is provided, defaults to using first ``'results_*'``' directory found within the ``autocalb_dir``.
+        run_dir (str | None): Name of optimization run subdirectory within the ``autocal_dir``. If ``'None'`` is provided, defaults to using first ``'results_*'`` directory found within the ``autocalb_dir``.
         forcing_adj (bool | list[str]):  If ``True`` monthly climatological forcing adjustments will be applied to all forcings.  Alternatively, a list with
             with specific forcing to apply climatological forcing adjustments can be supplied: ``'map'``, ``'mat'``, ``'ptps'``, ``'pet'``. Default: ``True``.
         return_inst (bool): Specifies to return instaneous streamflow, rather than period average.  Default: ``True``.
@@ -1090,3 +1090,45 @@ class NwsrfsRun(_NwrfcAcPrep,
             return q_adj.rename('sqin')
         else:
             return qnat.rename('sqin')
+
+    @classmethod
+    def load_example(cls, lid:str='NRKW1', **kwargs):
+        '''
+        Generates a :class:`NwsrfsRun` for the package provided example data.
+
+        Example data are NWRFC auto calibration results for two locations:
+
+        * **NRKW1**: Nooksack River at North Cedarville, WA (USGS-12210700).  The following models are being utilized: :class:`~nwsrfs_py.nwsrfs.SacSnow`, :class:`~nwsrfs_py.nwsrfs.GammaUh`, :class:`~nwsrfs_py.nwsrfs.Lagk`.
+        * **SFLN2**: Salmon Falls Creek NR San Jacinto NV (USGS 13105000).  The following models are being utilized: :class:`~nwsrfs_py.nwsrfs.SacSnow`, :class:`~nwsrfs_py.nwsrfs.GammaUh`, :class:`~nwsrfs_py.nwsrfs.Chanloss`, :class:`~nwsrfs_py.nwsrfs.Consuse`.
+
+        Any optional arguments associated with :class:`NwsrfsRun`, can be passed.
+
+        Args:
+            lid (str):  Five letter identifier of example data.  Input can either be ``'NRKW1'`` or ``'SFLN2'``.  Default: ``'NRKW1'``.
+            **kwargs: Optional keyword arguments passed to :class:`NwsrfsRun`. 
+
+                Common options include:
+
+                * **forcing_adj** (bool | list[str]): Apply monthly climatological adjustments. Default: ``True``. 
+                * **return_inst** (bool): Return instantaneous vs. period-average flow. Default: ``True``. 
+                * **shift_sf** (bool): Shift streamflow forward one timestep. Default: ``True``.
+        '''
+
+        lid = lid.upper()
+        # Define the mapping within the method to keep it clean
+        config = {
+            'NRKW1': 'results_por_02',
+            'SFLN2': 'results_por_01'
+        }
+
+        #Throw an error if the lid argument passed is not recognized.
+        if lid not in config:
+            msg = f"Station ID '{lid}' not recognized. Available: {list(config.keys())}"
+            raise ValueError(msg)
+
+        #Return :class:`nwsrfs_py.simulation.Nwsrfs` for the lid specified.
+        with utils._get_example_dir(lid) as example_dir:
+            # Note: Ensure __init__ loads all data BEFORE the context manager closes
+            return cls(example_dir, config[lid], **kwargs)
+
+

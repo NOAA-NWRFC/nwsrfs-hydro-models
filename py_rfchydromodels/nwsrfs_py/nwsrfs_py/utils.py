@@ -1,5 +1,8 @@
-import numbers
+import os, numbers
 from dataclasses import is_dataclass, fields
+from importlib import resources
+from contextlib import contextmanager
+from pathlib import Path
 from typing import Any, List
 import pandas as pd
 import numpy as np
@@ -186,5 +189,15 @@ def _arrayasfortran(arg):
     	except Exception:
     		continue
 
-
+@contextmanager
+def _get_example_dir(subfolder):
+    """
+    Returns the absolute path to a bundled data directory.
+    Example: get_example_dir("NRKW1") returns the path to nwsrfs_py/data/NRKW1
+    """
+    # We target the __init__.py within the subfolder to find the directory
+    pkg = f"nwsrfs_py.data.{subfolder}"
+    init_file = resources.files(pkg) / "__init__.py"
+    with resources.as_file(init_file) as p:
+        yield str(Path(p).parent)
 
