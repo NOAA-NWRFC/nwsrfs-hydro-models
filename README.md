@@ -47,7 +47,7 @@ conda install -c conda-forge fortran-compiler meson ninja
 git clone https://github.com/NOAA-NWRFC/nwsrfs-hydro-models.git
 cd nwsrfs-hydro-models/py_rfchydromodels/nwsrfs_py
 pip install .
-python -c "import nwsrfs_py; print('Success!')"
+python -c "import nwsrfs_py; print('Success')"
 ```
 
 Examples: `py_rfchydromodels/nwsrfs_py/examples`
