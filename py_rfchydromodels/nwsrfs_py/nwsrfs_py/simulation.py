@@ -131,7 +131,7 @@ class _NwrfcAcPrep:
         if len(self._inst_flow_df) == 0:
             self.inst_flow_logic = False
             self.inst_flow_path = None
-        if len(self._inst_flow_df) == 1:
+        elif len(self._inst_flow_df) == 1:
             self.inst_flow_logic = True
             self.inst_flow_path = os.path.join(self._inst_flow_df.path.squeeze(),self._inst_flow_df.file_name.squeeze())
         else:
@@ -457,7 +457,7 @@ class NwsrfsRun(_NwrfcAcPrep,
             new_pars (pd.DataFrame): dataframe with parameters to update nwsrfs models
         '''
 
-        new_pars = new_pars.sort_values(['name', 'zone'])
+        new_pars = new_pars.sort_values('p_name')
         #Make par file edits for CHANLOSS
         new_pars = self._cl_parfile_edits(new_pars)
 
