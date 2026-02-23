@@ -762,7 +762,7 @@ class NwsrfsRun(_NwrfcAcPrep,
     @property
     def sacsnow_sf(self)-> pd.DataFrame:
         '''
-        Calculates streamflow for each zone using :class:`~nwsrfs_py.nwsrfs.SacSnow` and :class:`~nwsrfs_py.nwsrfs.UhGamma` models (units - cfs). 
+        Calculates streamflow for each zone using :class:`~nwsrfs_py.nwsrfs.SacSnow` and :class:`~nwsrfs_py.nwsrfs.GammaUh` models (units - cfs). 
         '''
 
         #If SAC-SMA and SNOW17 parameters don't exist return none
