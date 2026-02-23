@@ -17,11 +17,10 @@ differences from current operational models.
 Installation
 ------------
 
-You can install the development version from
-[GitHub](https://github.com/) with:
+You can install the development version from GitHub with:
 
     # install.packages("devtools")
-    devtools::install_github("cameronbracken/NWS_hydro_models",subdir='rfchydromodels')
+    devtools::install_github("NOAA-NWRFC/nwsrfs-hydro-models", subdir = "rfchydromodels")
 
 Example
 -------

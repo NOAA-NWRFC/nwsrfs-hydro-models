@@ -1,47 +1,52 @@
 # NWSRFS Example Data Directory
-This directory contains bundled example datasets for validating the nwsrfs_py models. These datasets follow the NOAA-NWRFC autocalibration conventions.
+
+This directory contains bundled datasets for validating `nwsrfs_py` behavior against known outputs. The layout follows NOAA-NWRFC autocalibration conventions.
 
 ## Available Locations
 
-### **NRKW1**: Nooksack River at North Cedarville, WA (USGS 12210700).
+### `NRKW1` (Nooksack River at North Cedarville, WA; USGS 12210700)
 
-**Models**: SacSnow, GammaUh, Lagk.
+* Models: SacSnow, GammaUh, Lagk
+* Data source folder: `results_por_02`
 
-**Data Source**: NWRFC Autocalibration Results (Folder: results_por_02).
+### `SFLN2` (Salmon Falls Creek near San Jacinto, NV; USGS 13105000)
 
+* Models: SacSnow, GammaUh, Chanloss, Consuse
+* Data source folder: `results_por_01`
 
-### **SFLN2**: Salmon Falls Creek NR San Jacinto NV (USGS 13105000).
+## Station File Conventions
 
-**Models**: SacSnow, GammaUh, Chanloss, Consuse.
+Required:
 
-**Data Source**: NWRFC Autocalibration Results (Folder: results_por_01).
+* `pars_optimal.csv`
+* `forcing_por_*.csv`
+* `flow_daily_*.csv`
 
-## File Structure per Station
+Optional (workflow-dependent):
 
-Each station subdirectory contains the following standardized CSV files:
+* `flow_instantaneous_*.csv`
+* `upflow_*.csv`
 
-**forcing_por_*.csv**: Precipitation (MAP), Temperature (MAT), and Percent Snow (PTPS) for each modeled zone.
+Notes:
 
-**pars_optimal.csv**: Calibrated model parameters.
+* The package is currently validated with a 6-hour model timestep.
+* `flow_instantaneous_*.csv` is required for `AdjustQ`, but may be absent in some simulation-only workflows.
 
-**flow_daily_*.csv**: Observed daily averaged streamflow.
+## How To Use
 
-**flow_instantaneous_*.csv**: Observed instantaneous streamflow.
-
-**upflow_*.csv**: Upstream reach routing inputs (if applicable).
-
-## How to use
-
-These files are intended to be accessed via the NwsrfsRun.load_example() and the AdjustQ.load_example() method:
+Use helper loaders rather than hard-coding paths:
 
 ```python
 from nwsrfs_py.simulation import NwsrfsRun
-sim = NwsrfsRun.load_example('NRKW1')
+from nwsrfs_py.adjustq import AdjustQ
+
+sim = NwsrfsRun.load_example("NRKW1")
+adj = AdjustQ.load_example(sim=True)
 ```
 
-## Adjustq_check Directory
+## `Adjustq_check` Directory
 
-Contains baseline adjustq timeseries for pytest.
+Contains baseline time series used by pytest:
 
-**NRKW1_w_sim.csv**:  used to compare against NwsrfsRun.load_example(sim=True)
-**NRKW1_wout_sim.csv**:  used to compare against NwsrfsRun.load_example(sim=False)
+* `NRKW1_w_sim.csv`: baseline for `AdjustQ.load_example(sim=True)`
+* `NRKW1_wout_sim.csv`: baseline for `AdjustQ.load_example(sim=False)`

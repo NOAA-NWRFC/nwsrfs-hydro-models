@@ -1,28 +1,41 @@
 # NWSRFSpy Examples
 
-# run_simulation.py
-
-Initializes a nwsrfs_py.simulation.NwsrfsRun class and returns Unit Hydrograph, Monthly Climatological Forcing Adjustments, and Simulation
+Run commands from this directory:
 
 ```bash
-
-   python run_simulation.py
+cd py_rfchydromodels/nwsrfs_py/examples
 ```
 
-# run_adjustq.py
+## `run_simulation.py`
 
-Initializes a nwsrfs_py.adjustq.AdjustQ class and returns inputs and adjustq timeseries 
+Creates a `nwsrfs_py.simulation.NwsrfsRun` object and prints:
+
+* model configuration
+* unit hydrograph output
+* climatological forcing adjustment factors
+* simulation output preview
 
 ```bash
-
-   python run_adjustq.py
+python run_simulation.py
 ```
 
-# run_nwsrfs_wrapper.py
+## `run_adjustq.py`
 
-Initializes a nwsrfs_py.nwsrfs.SacSnowPars and nwsrfs_py.nwsrfs.SacSnow classes and returns tci timeseries 
+Creates a `nwsrfs_py.adjustq.AdjustQ` object and prints:
+
+* input time series summary
+* AdjustQ output preview
 
 ```bash
+python run_adjustq.py
+```
 
-   python run_nwsrfs_wrapper.py
+## `run_nwsrfs_wrapper.py`
+
+Creates low-level wrapper classes (`SacSnowPars`, `SacSnow`) and prints:
+
+* total channel inflow (`tci`) preview
+
+```bash
+python run_nwsrfs_wrapper.py
 ```
