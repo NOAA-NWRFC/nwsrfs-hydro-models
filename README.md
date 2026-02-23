@@ -67,7 +67,7 @@ If adapting this code, please credit this repository as the original source.
 
 ### NWSRFS References
 
-For model background, see the [NWSRFS User Manual](https://www.weather.gov/owp/oh_hrl_nwsrfs_users_manual_htm_xrfsdocpdf).5.
+For model background, see the [NWSRFS User Manual](https://www.weather.gov/owp/oh_hrl_nwsrfs_users_manual_htm_xrfsdocpdf)
 
 ## Acknowledgment
 
