@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 from . import nwsrfs_src as nwsrfs_source
 from .. import utils
+#import pdb; pdb.set_trace()
 
 #create a new type for sacsnow_tci output
 SACSnowTCI = NewType('SACSnowTCI',pd.DataFrame)
@@ -1249,7 +1250,7 @@ class FA():
 
         #Create a DataFrame with a column for each factor
         fac_parameters=['map_fac','mat_fac','pet_fac','ptps_fac']
-        fac_df=pd.DataFrame(columns=fac_parameters,index=range(1,13))
+        fac_df=pd.DataFrame(columns=fac_parameters,index=pd.Index(range(1,13),name='month'))
         for i, col in enumerate(fac_parameters,0):
             fac_df[col]=fa_run[i]
 

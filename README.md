@@ -4,7 +4,7 @@
 
 The Northwest River Forecast Center (NWRFC) utilizes the National Weather Service River Forecasting System (NWSRFS) to provide timely information related to flooding, water supply, drought, recreation, navigation, and environmental flows. Originally developed in the late 1970s, NWSRFS remains a core component of the NWS Community Hydrologic Prediction System (CHPS). The system includes a suite of models that simulate soil moisture, snow accumulation and melt, flow routing, channel loss, and consumptive water use. For additional details on each model, see [this link](https://www.weather.gov/owp/oh_hrl_nwsrfs_users_manual_htm_xrfsdocpdf) .
 
-To support hydrologic model calibration and development, NWRFC has created FORTRAN 90 wrappers to execute the original NWSRFS FORTRAN 77 source code. This repository contains the original FORTRAN 77 model code which has been verified to be is functionally equivalent to the Java-based implementation used in CHPS. The wrapped suite of available models includes SAC-SMA, SNOW17, Unit Hydrograph, LAGK, CHANLOSS, and CONS_USE.
+To support hydrologic model calibration and development, NWRFC has created FORTRAN 90 wrappers to execute the original NWSRFS FORTRAN 77 source code. This repository contains the original FORTRAN 77 model code which has been verified to be is functionally equivalent to the Java-based implementation used in CHPS. The wrapped suite of available models includes SAC-SMA, SNOW-17, UNIT-HG, LAG-K, CHANLOSS, and CONS_USE.
 
 Also included in this repository are Python and R packages that compile and interact with the FORTRAN 90 wrappers. These tools are intended to facilitate coupling the hydrologic models with modern optimization packages, supporting model calibration and evaluation.
 
@@ -38,19 +38,38 @@ See the documentation `?rfchydromodels` and `?sac_snow_uh` for examples.
 
 ### Python Package Installation
 
-**Tested Python Version:** 3.10.3\
-**Package Dependencies:**  numpy, pandas\
-**Dependencies:** numpy, pandas
-numpy's `f2py` is used to compile the source code and FORTRAN wrappers. To compile the FORTRAN source:
+**Supported Python Version:** 3.10+
 
+**Package Dependencies:**  numpy, pandas, scipy
+
+**Fortran Compiler**:  gfortran is required
+
+**Build Tools**:  meson and ninja
+
+It is highly recommended to install the package in a virtual environment.
 ```bash
-git clone https://github.com/NOAA-NWRFC/nwsrfs-hydro-models.git
-cd nwsrfs-hydro-models/py-rfchydromodels/utilities
-make
+conda create -n nwsrfs_env python=3.10
+conda activate nwsrfs_env
+conda install -c conda-forge fortran-compiler meson ninj
 ```
-See `nwsrfs-hydro-models/py-rfchydromodels/run_example.py` for example code demonstrating how to execute the NWSRFS models.
 
-*Note:  An equivalent Python version of the R package is planned for a future release of this repository.*
+Alternatively the compiler can be installed directly on you system:
+
+* `macOS`: `brew install gcc`
+* `Linux`: `sudo apt-get install gfortran`
+
+Installation from 
+```bash
+# Optional activation on virtual environment
+conda activate nwsrfs_env
+# Clone repository
+git clone https://github.com/NOAA-NWRFC/nwsrfs-hydro-models.git
+cd nwsrfs-hydro-models/py-rfchydromodels/nwsrfs_py
+pip install .
+# Verify build
+python -c "import nwsrfs_py; print('Success!')"
+```
+See `nwsrfs-hydro-models/py-rfchydromodels/nwsrfs_py/examples` for example code demonstrating how to execute the NWSRFS models.
 
 ## Credits and References
 

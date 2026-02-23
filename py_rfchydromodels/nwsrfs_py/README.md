@@ -6,7 +6,6 @@ It utilizes **F2PY** to wrap the original Fortran source code for models like **
 
 ## Key Features
 
-
 * **Vectorized Execution:** Run models across multiple zones and timesteps simultaneously using NumPy arrays.
 * **Pandas Integration:** Inputs and outputs are handled via Pandas DataFrames for easy analysis.
 * **Core Models:**
@@ -18,10 +17,36 @@ It utilizes **F2PY** to wrap the original Fortran source code for models like **
 
 ## Installation
 
+**Supported Python Version:** 3.10+
 
+**Package Dependencies:**  numpy, pandas, scipy
+
+**Fortran Compiler**:  gfortran is required
+
+**Build Tools**:  meson and ninja
+
+It is highly recommended to install the package in a virtual environment.
 ```bash
+conda create -n nwsrfs_env python=3.10
+conda activate nwsrfs_env
+conda install -c conda-forge fortran-compiler meson ninj
+```
 
-   pip install nwsrfs_py
+Alternatively the compiler can be installed directly on you system:
+
+* `macOS`: `brew install gcc`
+* `Linux`: `sudo apt-get install gfortran`
+
+Installation from 
+```bash
+# Optional activation on virtual environment
+conda activate nwsrfs_env
+# Clone repository
+git clone https://github.com/NOAA-NWRFC/nwsrfs-hydro-models.git
+cd nwsrfs-hydro-models/py-rfchydromodels/nwsrfs_py
+pip install .
+# Verify build
+python -c "import nwsrfs_py; print('Success!')"
 ```
 
 ## Usage Example
@@ -39,3 +64,5 @@ Here is a simple example of initializing a run using the NWRFC AutoCalibration t
    sim_flow = model_run.sim
    print(sim_flow.head())
 ```
+
+See `nwsrfs-hydro-models/py-rfchydromodels/nwsrfs_py/examples` for more example codes demonstrating how to execute the NWSRFS models.

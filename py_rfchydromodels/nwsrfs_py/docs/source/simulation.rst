@@ -1,5 +1,5 @@
-simulation
-================
+simulation module
+=================
 
 .. automodule:: nwsrfs_py.simulation
    :members:

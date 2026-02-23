@@ -22,6 +22,7 @@ docs = [
     "sphinx-autodoc-typehints",
     "sphinx-rtd-theme"
 ]
+test = ["pytest"]
 
 [table]
 description = """

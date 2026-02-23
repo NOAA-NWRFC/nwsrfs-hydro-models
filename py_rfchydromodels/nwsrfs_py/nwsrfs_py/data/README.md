@@ -32,9 +32,16 @@ Each station subdirectory contains the following standardized CSV files:
 
 ## How to use
 
-These files are intended to be accessed via the NwsrfsRun.load_example()  method:
+These files are intended to be accessed via the NwsrfsRun.load_example() and the AdjustQ.load_example() method:
 
 ```python
 from nwsrfs_py.simulation import NwsrfsRun
 sim = NwsrfsRun.load_example('NRKW1')
 ```
+
+## Adjustq_check Directory
+
+Contains baseline adjustq timeseries for pytest.
+
+**NRKW1_w_sim.csv**:  used to compare against NwsrfsRun.load_example(sim=True)
+**NRKW1_wout_sim.csv**:  used to compare against NwsrfsRun.load_example(sim=False)

@@ -163,3 +163,31 @@ py.install_sources(
   data_NRKW1_results_por_02_files,
   subdir: 'nwsrfs_py/data/NRKW1/results_por_02'
 )
+
+# Install files into data/NRKW1/results_por_02
+data_Adjustq_check_files = [
+  'nwsrfs_py/data/Adjustq_check/__init__.py',
+  'nwsrfs_py/data/Adjustq_check/NRKW1_w_sim.csv',
+  'nwsrfs_py/data/Adjustq_check/NRKW1_wout_sim.csv',
+]
+py.install_sources(
+  data_Adjustq_check_files,
+  subdir: 'nwsrfs_py/data/Adjustq_check'
+)
+
+# -----------------------------------------
+# 5. Unit Testing with Pytest
+# -----------------------------------------
+
+# Define the test execution
+test('pytest_suite', 
+  py, 
+  args: [
+    '-m', 'pytest', 
+    meson.current_source_dir() / 'tests',
+    '-v', 
+    '-s'
+  ],
+  workdir: meson.current_source_dir(),
+  timeout: 100 # Adjust if your simulations take a long time to run
+)

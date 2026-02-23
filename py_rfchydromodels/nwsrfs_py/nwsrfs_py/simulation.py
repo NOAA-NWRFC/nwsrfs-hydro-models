@@ -903,7 +903,7 @@ class NwsrfsRun(_NwrfcAcPrep,
 
         chanloss_dc = nwsrfs.ChanlossPars(year = self.year,month =self.month,day = self.day,hour = self.hour,
                                 periods = periods, factors = pars_dict['cl_factor'],
-                                cl_type = pars_dict['cl_type'], min_flow = pars_dict['cl_min_q'],
+                                cl_type = pars_dict['cl_type'].item(), min_flow = pars_dict['cl_min_q'].item(),
                                 qin = qin)
 
         nwsrfs.Chanloss.__init__(self,
