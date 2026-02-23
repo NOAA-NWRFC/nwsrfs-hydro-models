@@ -301,7 +301,7 @@ class SacSnow():
             * **bfs**: Baseflow supplemental runoff prior to riparian vegetation adjustment (units:  mm).
             * **bfp**: Baseflow primary runoff prior to riparian vegetation adjustment (units:  mm).
             * **swe**: Snow water equivalent (units: mm).
-            * **aesc**: Areal exent of snow cover (units: fraction 0-1).
+            * **aesc**: Areal extent of snow cover (units: fraction 0-1).
             * **neghs**: Snowpack heat deficit (units:  mm).
             * **liqw**: Liquid water held by snow against gravity drainage (units: mm).
             * **raim**: Total rain plus snowmelt (units: mm).
@@ -1473,7 +1473,7 @@ class GammaUh():
 
         Args:
             tci (SACSnowTCI):  Custom type alias for total channel inflow from :class:`SacSnow`  (units:  mm).
-            return_inst (bool): Specifies to return instaneous streamflow, rather than period average.  Default: ``True``.
+            return_inst (bool): Specifies to return instantaneous streamflow, rather than period average.  Default: ``True``.
         Returns:
             pd.DataFrame: A DataFrame containing streamflow with a column for each zone (units: cfs).
         '''

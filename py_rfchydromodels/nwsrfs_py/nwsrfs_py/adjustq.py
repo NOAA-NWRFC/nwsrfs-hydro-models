@@ -63,7 +63,7 @@ class _AdjustQPrep:
 class AdjustQ(_AdjustQPrep):
 
     '''
-    Class to perform an equivalent CHPS FEWS AdjustQ calculation, inheriting from :meth:`_adjustq_prep`. 
+    Class to perform an equivalent CHPS FEWS AdjustQ calculation, inheriting from :class:`_AdjustQPrep`. 
     
     Intended to be used within the NWRFC autocalibration folder/data structure. Uses two different 
     procedures to determine if observed instantaneous or simulated data is used to shape daily average observed streamflow: 
@@ -125,8 +125,8 @@ class AdjustQ(_AdjustQPrep):
         This function detects if a simulation timeseries is provided and uses the appropriate 
         AdjustQ calculation
         
-            a. :meth:`adjustq_calc` is used if NWRFC autocalibration simulation (``sim``) is provided.
-            b. Otherwise :meth:`inst_mean_q_merge` is used.
+            a. :meth:`.AdjustQ.adjustq_calc` is used if NWRFC autocalibration simulation (``sim``) is provided.
+            b. Otherwise :meth:`.AdjustQ.inst_mean_q_merge` is used.
 
         Returns a pd.Series.
         """
@@ -190,7 +190,7 @@ class AdjustQ(_AdjustQPrep):
                     #print('Ratio Procedure Initiated')
                     interp_period['Inst_Ratio']=interp_period.Inst_Ratio.interpolate()
                     interp_period['AdjustQ_Inst']=interp_period.simulated*interp_period.Inst_Ratio
-                #If you get here, an erronous interpolation type was selected 
+                #If you get here, an erroneous interpolation type was selected 
                 else:
                     msg = "Interp method must be 'ratio' or 'difference', got '{self.interp_type}'."
                     raise ValueError(msg)
@@ -291,7 +291,7 @@ class AdjustQ(_AdjustQPrep):
             #Get the pbias to track the tolerance
             daily_avg['Pbias']=abs((daily_avg.Daily_Sim-daily_avg.Daily_Obs)/daily_avg.Daily_Sim)
             
-            #Convet the index to a include a hour timestep.  
+            #Convert the index to a include a hour timestep.  
             daily_avg.index=daily_avg.index+pd.Timedelta(12, unit='h')
 
             #Add the daily ratio to the obs_sim_working dataframe set at non 00:00 time values
@@ -318,9 +318,9 @@ class AdjustQ(_AdjustQPrep):
         This method orchestrates the full adjustment process:
 
             1. Identifies gaps in observed data.
-            2. Calls :meth:`_adjustq_inst_smallgaps` for short missing periods.
-            3. Calls :meth:`_adjustq_inst_largegaps` for long missing periods.
-            4. Calls :meth:`_adjustq_daily` to match daily volumes.
+            2. Calls :meth:`.AdjustQ._adjustq_inst_smallgaps` for short missing periods.
+            3. Calls :meth:`.AdjustQ._adjustq_inst_largegaps` for long missing periods.
+            4. Calls :meth:`.AdjustQ._adjustq_daily` to match daily volumes.
             5. Clips any negative results to zero.
 
         Returns:
@@ -410,7 +410,7 @@ class AdjustQ(_AdjustQPrep):
 
         For locations like reservoir outflows. 
 
-        Where available this method uses instantaneous data to shape daily mean flow using :meth:`_adjustq_daily`. 
+        Where available this method uses instantaneous data to shape daily mean flow using :meth:`.AdjustQ._adjustq_daily`. 
 
         Returns:
             pd.Series: A Series containing the merged and adjusted discharge timeseries (units: cfs).
@@ -437,12 +437,12 @@ class AdjustQ(_AdjustQPrep):
         inst_q_6h=pd.DataFrame(index=pd.date_range(start=inst_q_6h_begin,end=inst_q_6h_end,freq='6h'))
         inst_q_6h.index.rename('datetime_local_tz',inplace=True)
         
-        #Grab the nearest available the instananeous data within 15min of the 6hr timesteps
+        #Grab the nearest available the instantaneous data within 15min of the 6hr timesteps
         inst_q_6h=pd.merge_asof(inst_q_6h,inst_q,left_index=True,right_index=True,tolerance=pd.Timedelta('15m'),direction='nearest')
         #Remove any values below zero
         inst_q_6h=inst_q_6h[inst_q_6h.Inst_Streamflow_cfs>0]
         
-        #For timestep where instaneous data was not available, supplement with daily data
+        #For timestep where instantaneousdata was not available, supplement with daily data
         inst_q_6h_merge=pd.DataFrame({'AdjustQ_Inst':inst_q_6h.Inst_Streamflow_cfs.combine_first(daily_q_6h)})
         
         ####################AdjustQ Mean Daily#################
@@ -490,7 +490,7 @@ class AdjustQ(_AdjustQPrep):
             config['sim_flow_dir'] = None
 
 
-        #Return :class:`nwsrfs_py.adjustq.Adjust` for NRKW1.
+        #Return :class:`nwsrfs_py.adjustq.AdjustQ` for NRKW1.
         with utils._get_example_dir('NRKW1') as example_dir:
             # Note: Ensure __init__ loads all data BEFORE the context manager closes
             
