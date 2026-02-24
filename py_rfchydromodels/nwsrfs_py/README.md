@@ -37,6 +37,11 @@ cd nwsrfs-hydro-models/py_rfchydromodels/nwsrfs_py
 pip install .
 python -c "import nwsrfs_py; print('Success!')"
 ```
+Note regarding installing in edit mode, use `--no-build-isolation` flag
+
+```bash
+pip install -e . --no-build-isolation -v
+```
 
 ## Usage Example
 
