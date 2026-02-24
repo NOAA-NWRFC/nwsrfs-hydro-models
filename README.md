@@ -55,7 +55,7 @@ Examples: `nwsrfs-hydro-models/nwsrfs_py/examples`
 ## Package-Specific Docs
 
 * Python package README: `nwsrfs-hydro-models/nwsrfs_py/README.md`
-* R package README: `rfchydromodels/README.md`
+* R package README: `nwsrfs-hydro-models/rfchydromodels/README.md`
 
 ## Credits and References
 
