@@ -200,39 +200,39 @@ function glomin_uh2p( a, b, c, m, machep, e, t, x, shape, toc, dt_hours)
 !
   implicit none
 
-  real ( kind = 8 ) a
-  real ( kind = 8 ) a0
-  real ( kind = 8 ) a2
-  real ( kind = 8 ) a3
-  real ( kind = 8 ) b
-  real ( kind = 8 ) c
-  real ( kind = 8 ) d0
-  real ( kind = 8 ) d1
-  real ( kind = 8 ) d2
-  real ( kind = 8 ) e
-  real ( kind = 8 ) glomin_uh2p
-  real ( kind = 8 ) h
-  integer ( kind = 4 ) k
-  real ( kind = 8 ) m
-  real ( kind = 8 ) m2
-  real ( kind = 8 ) machep
-  real ( kind = 8 ) p
-  real ( kind = 8 ) q
-  real ( kind = 8 ) qs
-  real ( kind = 8 ) r
-  real ( kind = 8 ) s
-  real ( kind = 8 ) sc
-  real ( kind = 8 ) t
-  real ( kind = 8 ), intent(out):: x
-  real ( kind = 8 ) y
-  real ( kind = 8 ) y0
-  real ( kind = 8 ) y1
-  real ( kind = 8 ) y2
-  real ( kind = 8 ) y3
-  real ( kind = 8 ) yb
-  real ( kind = 8 ) z0
-  real ( kind = 8 ) z1
-  real ( kind = 8 ) z2
+  double precision a
+  double precision a0
+  double precision a2
+  double precision a3
+  double precision b
+  double precision c
+  double precision d0
+  double precision d1
+  double precision d2
+  double precision e
+  double precision glomin_uh2p
+  double precision h
+  integer k
+  double precision m
+  double precision m2
+  double precision machep
+  double precision p
+  double precision q
+  double precision qs
+  double precision r
+  double precision s
+  double precision sc
+  double precision t
+  double precision, intent(out):: x
+  double precision y
+  double precision y0
+  double precision y1
+  double precision y2
+  double precision y3
+  double precision yb
+  double precision z0
+  double precision z1
+  double precision z2
   double precision:: shape, toc, dt_hours
 
   a0 = b
@@ -301,7 +301,7 @@ function glomin_uh2p( a, b, c, m, machep, e, t, x, shape, toc, dt_hours)
 
         k = mod ( 1611 * k, 1048576 )
         q = 1.0D+00
-        r = ( b - a ) * 0.00001D+00 * real ( k, kind = 8 )
+        r = ( b - a ) * 0.00001D+00 * dble(k)
 
         if ( z2 <= r ) then
           exit
@@ -313,7 +313,7 @@ function glomin_uh2p( a, b, c, m, machep, e, t, x, shape, toc, dt_hours)
 
       k = mod ( 1611 * k, 1048576 )
       q = 1.0D+00
-      r = ( b - a ) * 0.00001D+00 * real ( k, kind = 8 )
+      r = ( b - a ) * 0.00001D+00 * dble(k)
 
       do while ( r < z2 )
 
@@ -330,7 +330,7 @@ function glomin_uh2p( a, b, c, m, machep, e, t, x, shape, toc, dt_hours)
 
         k = mod ( 1611 * k, 1048576 )
         q = 1.0D+00
-        r = ( b - a ) * 0.00001D+00 * real ( k, kind = 8 )
+        r = ( b - a ) * 0.00001D+00 * dble(k)
 
       end do
 
@@ -470,26 +470,26 @@ function zero_uh2p ( a, b, machep, t, shape, toc, dt_hours)
 !
   implicit none
 
-  real ( kind = 8 ) a
-  real ( kind = 8 ) b
-  real ( kind = 8 ) c
-  real ( kind = 8 ) d
-  real ( kind = 8 ) e
-  ! real ( kind = 8 ) f
-  real ( kind = 8 ) fa
-  real ( kind = 8 ) fb
-  real ( kind = 8 ) fc
-  real ( kind = 8 ) m
-  real ( kind = 8 ) machep
-  real ( kind = 8 ) p
-  real ( kind = 8 ) q
-  real ( kind = 8 ) r
-  real ( kind = 8 ) s
-  real ( kind = 8 ) sa
-  real ( kind = 8 ) sb
-  real ( kind = 8 ) t
-  real ( kind = 8 ) tol
-  real ( kind = 8 ) zero_uh2p
+  double precision a
+  double precision b
+  double precision c
+  double precision d
+  double precision e
+  ! double precision f
+  double precision fa
+  double precision fb
+  double precision fc
+  double precision m
+  double precision machep
+  double precision p
+  double precision q
+  double precision r
+  double precision s
+  double precision sa
+  double precision sb
+  double precision t
+  double precision tol
+  double precision zero_uh2p
   double precision:: shape, toc, dt_hours
 !
 !  Make local copies of A and B.
@@ -657,11 +657,11 @@ function dgamma_burkardt ( x )
 !
   implicit none
 
-  real ( kind = 8 ) dgamma_burkardt
-  integer ( kind = 4 ) i
-  integer ( kind = 4 ) n
-  logical ( kind = 4 ) parity
-  real ( kind = 8 ) &
+  double precision dgamma_burkardt
+  integer i
+  integer n
+  logical parity
+  double precision &
       c,conv,eps,fact,half,one,p,pi,q,res,sqrtpi,sum,twelve, &
       two,x,xbig,xden,xinf,xminin,xnum,y,y1,ysq,z,zero
   dimension c(7),p(8),q(8)

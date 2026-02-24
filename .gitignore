@@ -47,6 +47,10 @@ __pycache__
 .DS_Store
 py-rfchydromodels/.idea/
 
+# random dotfiles and shell scripts
+.*
+setup*.sh
+
 # example python csv and other files
 py-rfchydromodels/EXAMPLE-*_Sim.csv
 py-rfchydromodels/utilities/__pycache__/
