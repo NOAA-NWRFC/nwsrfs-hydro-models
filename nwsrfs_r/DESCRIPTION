@@ -1,4 +1,4 @@
-Package: rfchydromodels
+Package: nwsrfsr
 Title: NWS Hydrology Models: SAC-SMA, SNOW17, UH, CONSUSE, CHANLOSS
 Version: 0.1.0
 Authors@R: c(

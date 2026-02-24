@@ -2,7 +2,7 @@
 # Cross-package comparison test: R vs Python NWSRFS baselines
 # Run from repo root: Rscript tests/cross_package_test.R
 
-library(rfchydromodels)
+library(nwsrfsr)
 
 py_data = file.path("nwsrfs_py", "nwsrfs_py", "data")
 pass = TRUE

@@ -7,7 +7,7 @@ The Northwest River Forecast Center (NWRFC) uses the National Weather Service Ri
 This repository contains:
 
 * Original NWSRFS FORTRAN source code and wrappers used for modern integrations.
-* An R package (`rfchydromodels`).
+* An R package (`nwsrfsr`).
 * A Python package (`nwsrfs_py`) built with `meson-python` and `f2py`.
 
 The wrapped model suite includes SAC-SMA, SNOW-17, UNIT-HG, LAG-K, CHANLOSS, and CONS_USE.
@@ -21,12 +21,12 @@ The wrapped model suite includes SAC-SMA, SNOW-17, UNIT-HG, LAG-K, CHANLOSS, and
 
 ## Quick Start
 
-### R (rfchydromodels)
+### R (nwsrfsr)
 
 From R:
 
 ```r
-devtools::install_github("NOAA-NWRFC/nwsrfs-hydro-models", subdir = "rfchydromodels")
+devtools::install_github("NOAA-NWRFC/nwsrfs-hydro-models", subdir = "nwsrfs_r")
 ```
 
 From shell:
@@ -34,7 +34,7 @@ From shell:
 ```bash
 git clone https://github.com/NOAA-NWRFC/nwsrfs-hydro-models.git
 cd nwsrfs-hydro-models
-R CMD INSTALL rfchydromodels
+R CMD INSTALL nwsrfs_r
 ```
 
 ### Python (nwsrfs_py)
@@ -55,7 +55,7 @@ Examples: `nwsrfs-hydro-models/nwsrfs_py/examples`
 ## Package-Specific Docs
 
 * Python package README: `nwsrfs-hydro-models/nwsrfs_py/README.md`
-* R package README: `nwsrfs-hydro-models/rfchydromodels/README.md`
+* R package README: `nwsrfs-hydro-models/nwsrfs_r/README.md`
 
 ## Credits and References
 

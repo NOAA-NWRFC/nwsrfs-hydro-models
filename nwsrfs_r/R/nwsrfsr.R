@@ -1,4 +1,4 @@
-#' rfchydromodels: NWS River Forecast System Hydrologic Models
+#' nwsrfsr: NWS River Forecast System Hydrologic Models
 #'
 #' R wrappers for NWSRFS Fortran hydrologic models used operationally by NOAA's
 #' National Weather Service River Forecast Centers. Includes SAC-SMA soil moisture
@@ -17,8 +17,8 @@
 #' [adjustq()] replicates the CHPS FEWS AdjustQ tool for creating upstream
 #' flow timeseries from observed and simulated data.
 #'
-#' @name rfchydromodels
-#' @useDynLib rfchydromodels
+#' @name nwsrfsr
+#' @useDynLib nwsrfsr
 "_PACKAGE"
 
 utils::globalVariables(c(

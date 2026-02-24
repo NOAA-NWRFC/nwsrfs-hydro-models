@@ -84,7 +84,7 @@ sac_snow_states <- function(dt_hours, forcing, pars) {
 #' dt_hours <- 6
 #' flow <- sac_snow(dt_hours, nrkw1_forcing, nrkw1_pars)
 #' }
-#' @useDynLib rfchydromodels sacsnow_
+#' @useDynLib nwsrfsr sacsnow_
 sac_snow <- function(dt_hours, forcing, pars, return_states = FALSE) {
   pars <- as.data.frame(pars)
 
@@ -347,7 +347,7 @@ uh2p_get_scale_r <- function(shape, toc, dt_hours) {
 #'
 #' @examples
 #' uh2p_get_scale(2, 50, 1)
-#' @useDynLib rfchydromodels uh2p_get_scale_root_
+#' @useDynLib nwsrfsr uh2p_get_scale_root_
 uh2p_get_scale <- function(shape, toc, dt_hours) {
   scale <- .Fortran("uh2p_get_scale_root",
     shape = shape,
@@ -400,7 +400,7 @@ uh2p_seek <- function(scale, shape, dt_hours, toc) {
 #' @param toc blah
 #'
 #' @return function value for root finding
-#' @useDynLib rfchydromodels uh2p_len_obj_root_test_
+#' @useDynLib nwsrfsr uh2p_len_obj_root_test_
 uh2p_seek2 <- function(scale, shape, dt_hours, toc) {
   obj <- .Fortran("uh2p_len_obj_root_test",
     scale = scale,
@@ -451,7 +451,7 @@ uh2p_root <- function(scale, shape, dt_hours, toc) {
 #' tci <- sac_snow(dt_hours, nrkw1_forcing, nrkw1_pars)
 #' flow_cfs <- uh(dt_hours, tci, nrkw1_pars)
 #' }
-#' @useDynLib rfchydromodels duamel_
+#' @useDynLib nwsrfsr duamel_
 uh <- function(dt_hours, tci, pars, sum_zones = TRUE, start_of_timestep = TRUE, backfill = TRUE) {
   sec_per_day <- 86400
   dt_seconds <- sec_per_day / (24 / dt_hours)
@@ -531,7 +531,7 @@ uh <- function(dt_hours, tci, pars, sum_zones = TRUE, start_of_timestep = TRUE, 
 #' @return Vector of flow modified by the chanloss pattern
 #' @export
 #'
-#' @useDynLib rfchydromodels chanloss_
+#' @useDynLib nwsrfsr chanloss_
 chanloss <- function(flow, forcing, dt_hours, pars) {
   sim_length <- nrow(forcing[[1]])
 
@@ -583,7 +583,7 @@ chanloss <- function(flow, forcing, dt_hours, pars) {
 #' @return data frame with consuse variables
 #' @export
 #'
-#' @useDynLib rfchydromodels consuse_
+#' @useDynLib nwsrfsr consuse_
 consuse <- function(input, pars, cfs = TRUE) {
   input <- as.data.frame(input)
   zones <- unique(pars$zone)
@@ -653,7 +653,7 @@ consuse <- function(input, pars, cfs = TRUE) {
 #' @export
 #'
 #' @examples NULL
-#' @useDynLib rfchydromodels lagk_
+#' @useDynLib nwsrfsr lagk_
 lagk <- function(dt_hours, uptribs, pars, sum_routes = TRUE, return_states = FALSE) {
   sec_per_day <- 86400
   dt_seconds <- sec_per_day / (24 / dt_hours)
@@ -1062,7 +1062,7 @@ forcing_adjust_mat <- function(climo, pars, ll = climo * ifelse(climo > 0, 0.9, 
 #' dt_hours <- 6
 #' forcing_adj <- fa_nwrfc(dt_hours, nrkw1_forcing, nrkw1_pars)
 #' }
-#' @useDynLib rfchydromodels fa_ts_
+#' @useDynLib nwsrfsr fa_ts_
 #' @importFrom stats reshape
 fa_nwrfc <- function(dt_hours, forcing, pars, climo = NULL, dry_run = FALSE,
                      return_adj = FALSE, return_climo = FALSE) {
@@ -1269,7 +1269,7 @@ fa_adj_nwrfc <- function(dt_hours, forcing, pars, climo = NULL, dry_run = FALSE,
 #' data(nrkw1_pars)
 #' forcing_adj <- rsnwelev(nrkw1_forcing, nrkw1_pars, area_elev_curve)
 #' }
-#' @useDynLib rfchydromodels rsnwelev_
+#' @useDynLib nwsrfsr rsnwelev_
 #' @importFrom reshape2 melt
 rsnwelev <- function(forcing, pars, ae_tbl) {
   # rsnwelev(n_hrus,sim_length, &

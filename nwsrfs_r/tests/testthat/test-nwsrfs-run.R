@@ -30,7 +30,7 @@ test_that("NRKW1 simulation matches Python baseline within tolerance", {
   skip_on_cran()
   run = load_example("NRKW1")
   baseline_path = system.file(
-    package = "rfchydromodels"
+    package = "nwsrfsr"
   )
 
   # Read Python baseline from nwsrfs_py data directory

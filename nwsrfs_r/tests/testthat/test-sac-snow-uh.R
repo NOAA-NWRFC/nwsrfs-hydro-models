@@ -1,6 +1,6 @@
 test_that("sac_snow + uh chain produces non-zero flow", {
-  data("nrkw1_forcing", package = "rfchydromodels")
-  data("nrkw1_pars", package = "rfchydromodels")
+  data("nrkw1_forcing", package = "nwsrfsr")
+  data("nrkw1_pars", package = "nwsrfsr")
 
   adj = fa_nwrfc(6, nrkw1_forcing, nrkw1_pars)
   tci = sac_snow(6, adj, nrkw1_pars)
@@ -16,8 +16,8 @@ test_that("sac_snow + uh chain produces non-zero flow", {
 
 
 test_that("lagk with return_states works (bug fix: uptribs reference)", {
-  data("nrkw1_upflow", package = "rfchydromodels")
-  data("nrkw1_pars", package = "rfchydromodels")
+  data("nrkw1_upflow", package = "nwsrfsr")
+  data("nrkw1_pars", package = "nwsrfsr")
 
   result = lagk(6, nrkw1_upflow, nrkw1_pars, sum_routes = FALSE, return_states = TRUE)
 
@@ -29,8 +29,8 @@ test_that("lagk with return_states works (bug fix: uptribs reference)", {
 
 
 test_that("chanloss returns same length as input", {
-  data("nrkw1_forcing", package = "rfchydromodels")
-  data("nrkw1_pars", package = "rfchydromodels")
+  data("nrkw1_forcing", package = "nwsrfsr")
+  data("nrkw1_pars", package = "nwsrfsr")
 
   n = 100
   flow = rep(500, n)
@@ -42,8 +42,8 @@ test_that("chanloss returns same length as input", {
 
 
 test_that("chanloss period parameter passed as integer (SFLN2 regression)", {
-  data("sfln2_pars", package = "rfchydromodels")
-  data("sfln2_forcing", package = "rfchydromodels")
+  data("sfln2_pars", package = "nwsrfsr")
+  data("sfln2_forcing", package = "nwsrfsr")
 
   forcing = sfln2_forcing[c("SFLN2-1", "SFLN2-2")]
   adj = fa_nwrfc(6, forcing, sfln2_pars)

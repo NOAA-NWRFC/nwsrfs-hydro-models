@@ -1,5 +1,5 @@
 
-rfchydromodels
+nwsrfsr
 ==============
 
 R package wrapping NWSRFS (National Weather Service River Forecast System) Fortran
@@ -14,13 +14,13 @@ Installation
 
 ```r
 # install.packages(“devtools”)
-devtools::install_github(“NOAA-NWRFC/nwsrfs-hydro-models”, subdir = “rfchydromodels”)
+devtools::install_github(“NOAA-NWRFC/nwsrfs-hydro-models”, subdir = “nwsrfs_r”)
 ```
 
 Or from a local clone:
 
 ```bash
-R CMD INSTALL rfchydromodels
+R CMD INSTALL nwsrfs_r
 ```
 
 Quick Start
@@ -29,7 +29,7 @@ Quick Start
 ### Run a bundled example
 
 ```r
-library(rfchydromodels)
+library(nwsrfsr)
 
 # Run NRKW1 (2 local zones + 3 upstream tributaries via Lag-K)
 run = load_example(“NRKW1”)
@@ -86,5 +86,5 @@ Testing
 -------
 
 ```r
-devtools::test(“rfchydromodels”)
+devtools::test(“nwsrfs_r”)
 ```
