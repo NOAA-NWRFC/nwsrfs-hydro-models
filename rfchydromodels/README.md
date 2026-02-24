@@ -14,13 +14,13 @@ Installation
 
 ```r
 # install.packages(“devtools”)
-devtools::install_github(“NOAA-NWRFC/nwsrfs-hydro-models”, subdir = “R_rfchydromodels”)
+devtools::install_github(“NOAA-NWRFC/nwsrfs-hydro-models”, subdir = “rfchydromodels”)
 ```
 
 Or from a local clone:
 
 ```bash
-R CMD INSTALL R_rfchydromodels
+R CMD INSTALL rfchydromodels
 ```
 
 Quick Start
@@ -86,5 +86,5 @@ Testing
 -------
 
 ```r
-devtools::test(“R_rfchydromodels”)
+devtools::test(“rfchydromodels”)
 ```

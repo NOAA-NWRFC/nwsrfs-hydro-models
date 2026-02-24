@@ -19,15 +19,25 @@ release = '0.1.0'
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
-	'sphinx.ext.autodoc',      # Core library to parse docstrings
-    'sphinx.ext.napoleon',     # Support for Google-style docstrings
-    'sphinx.ext.viewcode',     # Add links to source code
-    'sphinx_autodoc_typehints',# Automatically document type hints
+    'sphinx.ext.autodoc',       # Core library to parse docstrings
+    'sphinx.ext.napoleon',      # Support for Google-style docstrings
+    'sphinx.ext.viewcode',      # Add links to source code
+    'sphinx_autodoc_typehints', # Automatically document type hints
 ]
 
 # Napoleon settings (optional but good for explicit Google style)
 napoleon_google_docstring = True
 napoleon_numpy_docstring = False
+
+autodoc_typehints = 'description'
+autodoc_default_options = {
+    'members': True,
+    'show-inheritance': True,
+}
+
+# Existing module docstrings include many non-public/custom cross-references.
+# Suppress unresolved reference warnings in rendered docs.
+suppress_warnings = ['ref.class', 'ref.meth']
 
 templates_path = ['_templates']
 exclude_patterns = []

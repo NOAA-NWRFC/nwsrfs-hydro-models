@@ -3,7 +3,7 @@
 Run commands from this directory:
 
 ```bash
-cd py_rfchydromodels/nwsrfs_py/examples
+cd nwsrfs-hydro-models/nwsrfs_py/examples
 ```
 
 ## `run_simulation.py`

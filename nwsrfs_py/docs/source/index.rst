@@ -8,7 +8,7 @@ Welcome to NWSRFSpy
 
 **NWSRFSpy** is a Python library that provides a high-performance interface to the National Weather Service River Forecast System (NWSRFS) hydrologic models.
 
-It utilizes **F2PY** to wrap the original Fortran source code for models like **SAC-SMA**, **SNOW-1717**, **Lag-K**, and **UNIT-HG**, enabling vectorized execution directly within Python. This library is designed to support the **NWS-NWRFC** autocalibration workflow.
+It utilizes **F2PY** to wrap the original Fortran source code for models like **SAC-SMA**, **SNOW-17**, **Lag-K**, and **UNIT-HG**, enabling vectorized execution directly within Python. This library is designed to support the **NWS-NWRFC** autocalibration workflow.
 
 Key Features
 ------------
@@ -27,7 +27,9 @@ Installation
 
 .. code-block:: bash
 
-   pip install nwsrfs_py
+   git clone https://github.com/NOAA-NWRFC/nwsrfs-hydro-models.git
+   cd nwsrfs-hydro-models/nwsrfs_py
+   pip install .
 
 Usage Example
 -------------

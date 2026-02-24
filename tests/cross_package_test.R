@@ -4,7 +4,7 @@
 
 library(rfchydromodels)
 
-py_data = file.path("py_rfchydromodels", "nwsrfs_py", "nwsrfs_py", "data")
+py_data = file.path("nwsrfs_py", "nwsrfs_py", "data")
 pass = TRUE
 
 # %%

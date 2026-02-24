@@ -125,7 +125,11 @@ data_SFLN2_results_por_01_files = [
   'nwsrfs_py/data/SFLN2/results_por_01/optimal_6hr_inst.csv',
   'nwsrfs_py/data/SFLN2/results_por_01/optimal_consuse_states.csv',
   'nwsrfs_py/data/SFLN2/results_por_01/rsnwelev_pars.csv',
+  'nwsrfs_py/data/SFLN2/results_por_01/uh_1hr_SFLN2-1.csv',
   'nwsrfs_py/data/SFLN2/results_por_01/uh_1hr_SFLN2-2.csv',
+  'nwsrfs_py/data/SFLN2/results_por_01/uh_1hr_SFLN2-CU.csv',
+  'nwsrfs_py/data/SFLN2/results_por_01/uh_6hr_SFLN2-1.csv',
+  'nwsrfs_py/data/SFLN2/results_por_01/uh_6hr_SFLN2-2.csv',
   'nwsrfs_py/data/SFLN2/results_por_01/uh_6hr_SFLN2-CU.csv',
 ]
 py.install_sources(

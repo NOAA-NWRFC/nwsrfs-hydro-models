@@ -19,9 +19,9 @@ when passing tci data between the :class:`~nwsrfs_py.nwsrfs.SacSnow` and :class:
 class _NwrfcAcPrep:
 
     '''
-    This function reads in forcing, streamflow, and optimzed parameters from the NWRFC autocalibration process.  
+    This function reads in forcing, streamflow, and optimized parameters from the NWRFC autocalibration process.  
 
-    Files and folders in ``autocalb_dir`` must must follow file conventions of the NOAA-NWRFC/nwsrfs-hydro-autocalibration repository 
+    Files and folders in ``autocalb_dir`` must follow file conventions of the NOAA-NWRFC/nwsrfs-hydro-autocalibration repository 
     optimization tools. The forcing csv files must be in the directory ``'forcing_por_*'``, even if it is a routing only reach 
     (i.e. no local inflow modeled by SAC-SMA, Snow17, UH).
 
@@ -100,10 +100,10 @@ class _NwrfcAcPrep:
     def _validate_contents(self):
 
         '''
-        Validates that necessary files and within ``autocalb_dir``, and checks which auxilary file are present
+        Validates that necessary files and within ``autocalb_dir``, and checks which auxiliary file are present
         '''
 
-        #Check for optimial parameter file
+        #Check for optimal parameter file
         self.pars_path = os.path.join(self.autocalb_dir,self.run_dir,'pars_optimal.csv')
         if not os.path.isfile(self.pars_path):
             msg = f'{self.pars_path} is missing'
@@ -329,7 +329,7 @@ class NwsrfsRun(_NwrfcAcPrep,
         run_dir (str | None): Name of optimization run subdirectory within the ``autocal_dir``. If ``'None'`` is provided, defaults to using first ``'results_*'`` directory found within the ``autocalb_dir``.
         forcing_adj (bool | list[str]):  If ``True`` monthly climatological forcing adjustments will be applied to all forcings.  Alternatively, a list with
             with specific forcing to apply climatological forcing adjustments can be supplied: ``'map'``, ``'mat'``, ``'ptps'``, ``'pet'``. Default: ``True``.
-        return_inst (bool): Specifies to return instaneous streamflow, rather than period average.  Default: ``True``.
+        return_inst (bool): Specifies to return instantaneous streamflow, rather than period average.  Default: ``True``.
         shift_sf (bool):  Shifts :class:`~nwsrfs_py.nwsrfs.GammaUh` derived streamflow forward on one timestep.  Requirement for NWRFC calibrations. Default: ``True``.
     Attributes:
         pars (pd.DataFrame):  Contains all parameters used with NWSRFS models
@@ -348,7 +348,7 @@ class NwsrfsRun(_NwrfcAcPrep,
         upflow (pd.DataFrame|None): Upstream flow derived from the :class:`adjustq.AdjustQ`.
         fa_pars (dict[str, nwsrfs.FAPars]|None):  If ``localflow_logic`` is ``True``, than dictionary of :class:`~nwsrfs_py.nwsrfs.FAPars` classes representing ``'map'``, ``'mat'``, ``'ptps'``, and ``'pet'``, otherwise ``'None'``.
         sacsnow_pars (nwsrfs.SacSnowPars|None): If ``localflow_logic`` is ``True``, than :class:`~nwsrfs_py.nwsrfs.SacSnowPars` class, otherwise ``'None'``.
-        gammauh_pars (nwsrfs.GammmaUhPars|None): If ``localflow_logic`` is ``True``, than :class:`~nwsrfs_py.nwsrfs.GammmaUhPars` class, otherwise ``'None'``.
+        gammauh_pars (nwsrfs.GammaUhPars|None): If ``localflow_logic`` is ``True``, than :class:`~nwsrfs_py.nwsrfs.GammmaUhPars` class, otherwise ``'None'``.
         lagk_pars (nwsrfs.LagkPars|None): If ``upflow_logic`` is ``True``, than :class:`~nwsrfs_py.nwsrfs.LagkPars` class, otherwise ``'None'``.
         chanloss_pars (nwsrfs.ChanlossPars|None): If ``chanloss_logic`` is ``True``, than :class:`~nwsrfs_py.nwsrfs.ChanlossPars` class, otherwise ``'None'``.
         consuse_pars (dict[str, nwsrfs.ConsusePars]|None): If ``consuse_logic`` is ``True``, than dictionary of :class:`~nwsrfs_py.nwsrfs.ConsusePars` classes representing each ``cu_names``, otherwise ``'None'``.
@@ -383,7 +383,7 @@ class NwsrfsRun(_NwrfcAcPrep,
 
     def _interrogate_fa_arg(self,forcing_adj):
         '''
-        Add approprate attributes regarding climatological forcing adjustments as specificed by the forcing_adj argument and if 
+        Add appropriate attributes regarding climatological forcing adjustments as specified by the forcing_adj argument and if 
         SAC-SMA, Snow17, UH are being utilized.
 
         Args:
@@ -408,7 +408,7 @@ class NwsrfsRun(_NwrfcAcPrep,
             forcing_adj = [s.lower() for s in forcing_adj]
             forcing_adj = list(set(forcing_adj))
 
-            #Check if forcing_adj string inputs match xpected forcing types
+            #Check if forcing_adj string inputs match expected forcing types
             forcing_types = {'map','mat','ptps','pet'}
             validate_types = set(forcing_adj).issubset(forcing_types)
             #validate_types is true than assign forcing_adj_types else return error
@@ -469,7 +469,7 @@ class NwsrfsRun(_NwrfcAcPrep,
         #Get old parameter dataframe and rename values column
         old_pars = self.pars.rename({'value':'old_value'},axis=1)
 
-        #Merge old paramter file with new parameter file
+        #Merge old parameter file with new parameter file
         pars = old_pars.merge(new_pars.loc[:,['p_name','value']],on='p_name',how='left')
 
         #For row with which no new value was provided use the old value
@@ -603,7 +603,7 @@ class NwsrfsRun(_NwrfcAcPrep,
                 pars_dict[par_type][par] = self.pars.loc[(self.pars.type==par_type)&
                     (self.pars['name'] == par)].sort_values(by='zone')['value'].to_numpy()
 
-        #Apply toc adjutment to toc parameter
+        #Apply toc adjustment to toc parameter
         toc = pars_dict['uh']['unit_toc'] * pars_dict['uh']['unit_toc_adj'] 
 
         #Initate gammauh_pars data class
@@ -686,7 +686,7 @@ class NwsrfsRun(_NwrfcAcPrep,
             * **bfs**: Baseflow supplemental runoff prior to riparian vegetation adjustment (units:  mm).
             * **bfp**: Baseflow primary runoff prior to riparian vegetation adjustment (units:  mm).
             * **swe**: Snow water equivalent (units: mm).
-            * **aesc**: Areal exent of snow cover (units: fraction 0-1).
+            * **aesc**: Areal extent of snow cover (units: fraction 0-1).
             * **neghs**: Snowpack heat deficit (units:  mm).
             * **liqw**: Liquid water held by snow against gravity drainage (units: mm).
             * **raim**: Total rain plus snowmelt (units: mm).
@@ -762,7 +762,7 @@ class NwsrfsRun(_NwrfcAcPrep,
     @property
     def sacsnow_sf(self)-> pd.DataFrame:
         '''
-        Calculates streamflow for each zone using :class:`~nwsrfs_py.nwsrfs.SacSnow` and :class:`~nwsrfs_py.nwsrfs.UhGamma` models (units - cfs). 
+        Calculates streamflow for each zone using :class:`~nwsrfs_py.nwsrfs.SacSnow` and :class:`~nwsrfs_py.nwsrfs.GammaUh` models (units - cfs). 
         '''
 
         #If SAC-SMA and SNOW17 parameters don't exist return none
@@ -977,7 +977,7 @@ class NwsrfsRun(_NwrfcAcPrep,
         #Get natural flow
         qnat = self._sacsnow_lagk_chanloss_sim
 
-        #Convert natual streamflow to daily average
+        #Convert natural streamflow to daily average
         qnat_peravg = self._inst_to_ave(qnat.to_numpy())
         qnat_peravg = pd.Series(qnat_peravg,index=self.dates)
         qnat_daily = qnat_peravg.resample('1D').mean()
@@ -994,7 +994,7 @@ class NwsrfsRun(_NwrfcAcPrep,
         state_param = ['qadj','qdiv','qrf_in','qrf_out','qol','qcd','ce','rfstor']
         self._consuse_states = {key:pd.DataFrame() for key in state_param}
 
-        #Run consuse for each zone individualys
+        #Run consuse for each zone individually
         for n, cu_name in enumerate(self.consuse_names):
 
             #Get peadj associated with cu zones
@@ -1079,9 +1079,9 @@ class NwsrfsRun(_NwrfcAcPrep,
         if self.consuse_logic:
 
             qnat_cu_adj = self.consuse_states['qdiv'].sum(axis=1)-self.consuse_states['qrf_out'].sum(axis=1)
-            #Shift forward a day so that the correct adjustement is applied  to the correct day
+            #Shift forward a day so that the correct adjustment is applied  to the correct day
             qnat_cu_adj.index = qnat_cu_adj.index+pd.Timedelta(1, unit='D')
-            #Backfill to fill all values after 00:00 and fill in nan values at the end of time sereies with last daily 
+            #Backfill to fill all values after 00:00 and fill in nan values at the end of time series with last daily 
             #qnat_cu_adj value cut off from reindex
             qnat_cu_adj = qnat_cu_adj.reindex(qnat.index).bfill().replace({np.nan:qnat_cu_adj.values[-1]})
             q_adj = qnat - qnat_cu_adj

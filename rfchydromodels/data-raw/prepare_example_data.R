@@ -1,9 +1,9 @@
 # %%
 # Prepare NRKW1 and SFLN2 example data from Python package CSVs
-# Run from repo root: Rscript R_rfchydromodels/data-raw/prepare_example_data.R
+# Run from repo root: Rscript rfchydromodels/data-raw/prepare_example_data.R
 
-py_data = file.path("py_rfchydromodels", "nwsrfs_py", "nwsrfs_py", "data")
-r_data = file.path("R_rfchydromodels", "data")
+py_data = file.path("nwsrfs_py", "nwsrfs_py", "data")
+r_data = file.path("rfchydromodels", "data")
 
 # %%
 # --- NRKW1 ---

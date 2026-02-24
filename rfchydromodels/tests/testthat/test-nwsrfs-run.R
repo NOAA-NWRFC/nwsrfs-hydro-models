@@ -33,11 +33,11 @@ test_that("NRKW1 simulation matches Python baseline within tolerance", {
     package = "rfchydromodels"
   )
 
-  # Read Python baseline from py_rfchydromodels data directory
+  # Read Python baseline from nwsrfs_py data directory
   # This test uses relative path from repo root
   py_baseline = tryCatch(
     read.csv(file.path(
-      "..", "..", "..", "py_rfchydromodels", "nwsrfs_py", "nwsrfs_py", "data",
+      "..", "..", "..", "nwsrfs_py", "nwsrfs_py", "data",
       "NRKW1", "results_por_02", "optimal_6hr_inst.csv"
     )),
     error = function(e) NULL
@@ -59,7 +59,7 @@ test_that("SFLN2 simulation matches Python baseline within tolerance", {
 
   py_baseline = tryCatch(
     read.csv(file.path(
-      "..", "..", "..", "py_rfchydromodels", "nwsrfs_py", "nwsrfs_py", "data",
+      "..", "..", "..", "nwsrfs_py", "nwsrfs_py", "data",
       "SFLN2", "results_por_01", "optimal_6hr_inst.csv"
     )),
     error = function(e) NULL

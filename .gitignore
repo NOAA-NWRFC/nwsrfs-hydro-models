@@ -45,17 +45,7 @@ __pycache__
 
 # Mac junk
 .DS_Store
-py-rfchydromodels/.idea/
-
-# random dotfiles and shell scripts
-.*
-setup*.sh
-
-# example python csv and other files
-py-rfchydromodels/EXAMPLE-*_Sim.csv
-py-rfchydromodels/utilities/__pycache__/
 
 # python package docs
-/py_rfchydromodels/nwsrfs_py/docs/build/
-/py_rfchydromodels/nwsrfs_py/docs/_build/
-
+/nwsrfs_py/docs/build/
+/nwsrfs_py/docs/_build/
