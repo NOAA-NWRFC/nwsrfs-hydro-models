@@ -46,6 +46,16 @@ __pycache__
 # Mac junk
 .DS_Store
 
+# Local notes and scripts
+*.Rcheck/
+*_*.tar.gz
+.your-*
+AGENTS.md
+CLAUDE.md
+setup_*.sh
+*_report.md
+*_checklist.md
+
 # python package docs
 /nwsrfs_py/docs/build/
 /nwsrfs_py/docs/_build/
