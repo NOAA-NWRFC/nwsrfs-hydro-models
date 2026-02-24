@@ -8,7 +8,7 @@ This repository contains:
 
 * Original NWSRFS FORTRAN source code and wrappers used for modern integrations.
 * An R package (`rfchydromodels`).
-* A Python package (`py_rfchydromodels/nwsrfs_py`) built with `meson-python` and `f2py`.
+* A Python package (`nwsrfs_py`) built with `meson-python` and `f2py`.
 
 The wrapped model suite includes SAC-SMA, SNOW-17, UNIT-HG, LAG-K, CHANLOSS, and CONS_USE.
 
@@ -45,16 +45,16 @@ conda activate nwsrfs_env
 conda install -c conda-forge fortran-compiler meson ninja
 
 git clone https://github.com/NOAA-NWRFC/nwsrfs-hydro-models.git
-cd nwsrfs-hydro-models/py_rfchydromodels/nwsrfs_py
+cd nwsrfs-hydro-models/nwsrfs_py
 pip install .
 python -c "import nwsrfs_py; print('Success')"
 ```
 
-Examples: `py_rfchydromodels/nwsrfs_py/examples`
+Examples: `nwsrfs-hydro-models/nwsrfs_py/examples`
 
 ## Package-Specific Docs
 
-* Python package README: `py_rfchydromodels/nwsrfs_py/README.md`
+* Python package README: `nwsrfs-hydro-models/nwsrfs_py/README.md`
 * R package README: `rfchydromodels/README.md`
 
 ## Credits and References

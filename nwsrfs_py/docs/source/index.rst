@@ -28,7 +28,7 @@ Installation
 .. code-block:: bash
 
    git clone https://github.com/NOAA-NWRFC/nwsrfs-hydro-models.git
-   cd nwsrfs-hydro-models/py_rfchydromodels/nwsrfs_py
+   cd nwsrfs-hydro-models/nwsrfs_py
    pip install .
 
 Usage Example
