@@ -49,9 +49,8 @@ __pycache__
 # Local notes and scripts
 *.Rcheck/
 *_*.tar.gz
-.your-*
-AGENTS.md
-CLAUDE.md
+.*
+*.md
 setup_*.sh
 *_report.md
 *_checklist.md
