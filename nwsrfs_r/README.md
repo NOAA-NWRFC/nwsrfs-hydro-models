@@ -95,6 +95,7 @@ HTML Documentation
 This package's pkgdown HTML docs are published on GitHub Pages under the R-specific route:
 
 - GitHub Pages route: `/r/`
+- Live URL: `https://NOAA-NWRFC.github.io/nwsrfs-hydro-models/r/`
 
 Local preview:
 

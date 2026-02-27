@@ -64,6 +64,12 @@ This repository publishes package docs to GitHub Pages with separate paths to av
 * Python Sphinx docs: `/python/`
 * R pkgdown docs: `/r/`
 
+Live URLs:
+
+* Landing page: `https://NOAA-NWRFC.github.io/nwsrfs-hydro-models/`
+* Python docs: `https://NOAA-NWRFC.github.io/nwsrfs-hydro-models/python/`
+* R docs: `https://NOAA-NWRFC.github.io/nwsrfs-hydro-models/r/`
+
 Local preview entry points:
 
 * Python HTML: `nwsrfs_py/docs/build/html/index.html`

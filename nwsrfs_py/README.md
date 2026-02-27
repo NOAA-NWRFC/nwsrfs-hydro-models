@@ -63,6 +63,7 @@ For runnable scripts, see `examples/` in this directory.
 This package's Sphinx HTML docs are published on GitHub Pages under the Python-specific route:
 
 * GitHub Pages route: `/python/`
+* Live URL: `https://NOAA-NWRFC.github.io/nwsrfs-hydro-models/python/`
 
 Local preview:
 
