@@ -50,6 +50,9 @@ __pycache__
 *.Rcheck/
 *_*.tar.gz
 .*
+!.github/
+!.github/workflows/
+!.github/workflows/*.yml
 *.md
 setup_*.sh
 *_report.md
@@ -58,3 +61,7 @@ setup_*.sh
 # python package docs
 /nwsrfs_py/docs/build/
 /nwsrfs_py/docs/_build/
+
+# R pkgdown site output
+/nwsrfs_r/docs/
+/nwsrfs_r/docs/_pkgdown.yml

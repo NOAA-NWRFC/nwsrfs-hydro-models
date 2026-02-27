@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NWSRFS Hydrologic Models Docs</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --ink: #10233f;
+      --muted: #415775;
+      --accent: #0b5cab;
+      --border: #d9e3ef;
+    }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--ink);
+      background: linear-gradient(140deg, #eef4fb 0%, #f9fbfe 45%, #eef2f9 100%);
+      min-height: 100vh;
+    }
+    main {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 40px 20px 56px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 2rem;
+    }
+    p {
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      margin-top: 22px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+      box-shadow: 0 6px 22px rgba(15, 42, 72, 0.08);
+      display: flex;
+      flex-direction: column;
+    }
+    .card h2 {
+      margin: 0 0 8px;
+      font-size: 1.15rem;
+    }
+    .card p {
+      margin: 0;
+    }
+    .card a {
+      display: inline-block;
+      margin-top: auto;
+      align-self: flex-start;
+      position: relative;
+      top: 12px;
+      color: #fff;
+      background: var(--accent);
+      text-decoration: none;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-weight: 600;
+    }
+    .card a.secondary {
+      background: #2f4a68;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>NWRFC Hydrology Models Documentation</h1>
+    <p>
+      This site hosts separate documentation for the Python and R packages in this repository.
+    </p>
+
+    <div class="grid">
+      <section class="card">
+        <h2>Python Package (`nwsrfs_py`)</h2>
+        <p>Sphinx API and usage documentation for the Python implementation.</p>
+        <a id="python-docs-link" href="./python/">Open Python Docs</a>
+      </section>
+
+      <section class="card">
+        <h2>R Package (`nwsrfs_r`)</h2>
+        <p>pkgdown reference site for the R implementation.</p>
+        <a class="secondary" id="r-docs-link" href="./r/">Open R Docs</a>
+      </section>
+    </div>
+  </main>
+</body>
+<script>
+  (function () {
+    var pyLink = document.getElementById('python-docs-link');
+    var rLink = document.getElementById('r-docs-link');
+
+    // If opened directly from local filesystem, point to local Sphinx build output.
+    if (window.location.protocol === 'file:') {
+      if (pyLink) pyLink.setAttribute('href', '../nwsrfs_py/docs/build/html/index.html');
+      if (rLink) rLink.setAttribute('href', '../nwsrfs_r/docs/reference/index.html');
+    } else {
+      // GitHub Pages deployment path.
+      if (pyLink) pyLink.setAttribute('href', './python/');
+      if (rLink) rLink.setAttribute('href', './r/');
+    }
+  })();
+</script>
+</html>

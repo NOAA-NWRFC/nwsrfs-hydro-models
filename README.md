@@ -57,6 +57,19 @@ Examples: `nwsrfs-hydro-models/nwsrfs_py/examples`
 * Python package README: `nwsrfs-hydro-models/nwsrfs_py/README.md`
 * R package README: `nwsrfs-hydro-models/nwsrfs_r/README.md`
 
+## HTML Documentation
+
+This repository publishes package docs to GitHub Pages with separate paths to avoid Python/R confusion:
+
+* Python Sphinx docs: `/python/`
+* R pkgdown docs: `/r/`
+
+Local preview entry points:
+
+* Python HTML: `nwsrfs_py/docs/build/html/index.html`
+* R HTML: `nwsrfs_r/docs/reference/index.html`
+* Combined landing page: `pages/index.html`
+
 ## Credits and References
 
 Please cite:

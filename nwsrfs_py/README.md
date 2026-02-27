@@ -57,3 +57,19 @@ print(sim_flow.head())
 ```
 
 For runnable scripts, see `examples/` in this directory.
+
+## HTML Documentation
+
+This package's Sphinx HTML docs are published on GitHub Pages under the Python-specific route:
+
+* GitHub Pages route: `/python/`
+
+Local preview:
+
+```bash
+# Build docs
+sphinx-build -b html docs/source docs/build/html
+
+# Open generated site
+open docs/build/html/index.html
+```

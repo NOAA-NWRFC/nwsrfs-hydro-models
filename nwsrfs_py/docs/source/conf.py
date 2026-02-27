@@ -25,6 +25,9 @@ extensions = [
     'sphinx_autodoc_typehints', # Automatically document type hints
 ]
 
+# Avoid requiring a compiled extension module when building docs in CI.
+autodoc_mock_imports = ['nwsrfs_py.wrapper.nwsrfs_src']
+
 # Napoleon settings (optional but good for explicit Google style)
 napoleon_google_docstring = True
 napoleon_numpy_docstring = False

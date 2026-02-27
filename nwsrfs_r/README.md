@@ -88,3 +88,20 @@ Testing
 ```r
 devtools::test(“nwsrfs_r”)
 ```
+
+HTML Documentation
+------------------
+
+This package's pkgdown HTML docs are published on GitHub Pages under the R-specific route:
+
+- GitHub Pages route: `/r/`
+
+Local preview:
+
+```r
+pkgdown::build_site(pkg = "nwsrfs_r", install = FALSE, preview = FALSE)
+```
+
+Generated entry point:
+
+- `nwsrfs_r/docs/reference/index.html`
