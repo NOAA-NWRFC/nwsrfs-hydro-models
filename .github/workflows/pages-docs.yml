@@ -48,7 +48,7 @@ jobs:
       - name: Build pkgdown site (R package)
         run: |
           Rscript -e 'if (!requireNamespace("pkgdown", quietly = TRUE)) install.packages("pkgdown", repos = "https://cloud.r-project.org")'
-          Rscript -e 'pkgdown::build_site(pkg = "nwsrfs_r", install = FALSE, preview = FALSE, new_process = FALSE)'
+          Rscript -e 'pkgdown::build_site(pkg = "nwsrfs_r", install = TRUE, preview = FALSE, new_process = FALSE)'
           mkdir -p _site/r
           cp -R nwsrfs_r/docs/. _site/r/
 
