@@ -59,12 +59,12 @@ Examples: `nwsrfs-hydro-models/nwsrfs_py/examples`
 
 ## HTML Documentation
 
-This repository publishes package docs to GitHub Pages with separate paths to avoid Python/R confusion:
+**Live URLs**: [Main Landing Page](https://NOAA-NWRFC.github.io/nwsrfs-hydro-models/)
 
-* Python Sphinx docs: `/python/`
-* R pkgdown docs: `/r/`
+_This repository publishes package docs to GitHub Pages with separate paths to avoid Python/R confusion:_
 
-Live URLs: [Main Landing Page](https://NOAA-NWRFC.github.io/nwsrfs-hydro-models/)
+>* Python Sphinx docs: `/python/`
+>* R pkgdown docs: `/r/`
 
 Local preview entry points:
 
