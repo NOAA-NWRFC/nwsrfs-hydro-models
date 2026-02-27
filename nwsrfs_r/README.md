@@ -92,11 +92,11 @@ devtools::test(“nwsrfs_r”)
 HTML Documentation
 ------------------
 
-This package's pkgdown HTML docs are published on GitHub Pages under the R-specific route:
+[**Live URL**](https://NOAA-NWRFC.github.io/nwsrfs-hydro-models/r/)
 
-- GitHub Pages route: `/r/`
+_This package's pkgdown HTML docs are published on GitHub Pages under the R-specific route_
 
-[Live URL](https://NOAA-NWRFC.github.io/nwsrfs-hydro-models/r/)
+>- GitHub Pages route: `/r/`
 
 Local preview:
 
