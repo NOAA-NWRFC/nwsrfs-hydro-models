@@ -10,10 +10,9 @@
 #'
 #' @param daily_flow Data.frame with columns year, month, day, flow_cfs (daily obs)
 #' @param inst_flow Data.frame with columns year, month, day, hour, flow_cfs (instantaneous obs)
-#' @param sim Numeric vector of simulated flow (6hr), or NULL. If provided,
-#'   small/large gap filling uses simulation as fallback.
-#' @param sim_dates Data.frame with year, month, day, hour columns matching sim,
-#'   or NULL. Required if sim is not NULL.
+#' @param sim Data.frame with columns year, month, day, hour, flow_cfs
+#'   (simulated 6hr flow), or NULL. If provided, small/large gap filling uses
+#'   simulation as fallback.
 #' @param blend Integer; threshold for small vs large gap in timesteps. Default 10.
 #' @param interp_type "ratio" or "difference". Default "ratio".
 #' @param error_tol Numeric; daily volume matching tolerance (fraction). Default 0.01.
@@ -22,7 +21,7 @@
 #' @return A data.frame with columns: datetime (POSIXct), flow_cfs (adjusted flow)
 #' @importFrom stats approx
 #' @export
-adjustq = function(daily_flow, inst_flow, sim = NULL, sim_dates = NULL,
+adjustq = function(daily_flow, inst_flow, sim = NULL,
                    blend = 10L, interp_type = "ratio",
                    error_tol = 0.01, max_iterations = 15L) {
 
@@ -44,13 +43,12 @@ adjustq = function(daily_flow, inst_flow, sim = NULL, sim_dates = NULL,
   obs_inst = data.frame(datetime = inst_dt, flow_cfs = inst_flow$flow_cfs)
 
   if (!is.null(sim)) {
-    if (is.null(sim_dates)) stop("sim_dates required when sim is provided")
     sim_dt = as.POSIXct(
-      paste0(sim_dates$year, "-", sprintf("%02d", sim_dates$month), "-",
-             sprintf("%02d", sim_dates$day), " ", sprintf("%02d", sim_dates$hour), ":00:00"),
+      paste0(sim$year, "-", sprintf("%02d", sim$month), "-",
+             sprintf("%02d", sim$day), " ", sprintf("%02d", sim$hour), ":00:00"),
       tz = "UTC"
     )
-    sim_df = data.frame(datetime = sim_dt, simulated = as.numeric(sim))
+    sim_df = data.frame(datetime = sim_dt, simulated = sim$flow_cfs)
     result = .adjustq_with_sim(obs_daily, obs_inst, sim_df, blend, interp_type,
                                error_tol, max_iterations)
   } else {
@@ -74,18 +72,18 @@ adjustq_load_example = function(sim = TRUE, ...) {
   if (sim) {
     # Run the full NRKW1 simulation to get sim flow
     run = load_example("NRKW1")
-    sim_ts = run$sim
-    sim_dates = run$forcings[[1]][, c("year", "month", "day", "hour")]
+    sim_df = data.frame(
+      run$forcings[[1]][, c("year", "month", "day", "hour")],
+      flow_cfs = run$sim
+    )
   } else {
-    sim_ts = NULL
-    sim_dates = NULL
+    sim_df = NULL
   }
 
   adjustq(
     daily_flow = nrkw1_daily_flow,
     inst_flow = nrkw1_inst_flow,
-    sim = sim_ts,
-    sim_dates = sim_dates,
+    sim = sim_df,
     ...
   )
 }
@@ -316,32 +314,49 @@ adjustq_load_example = function(sim = TRUE, ...) {
     daily_ratio_df$ratio = daily_ratio_df$flow_cfs / daily_ratio_df$daily_sim
     daily_ratio_df$pbias = abs((daily_ratio_df$daily_sim - daily_ratio_df$flow_cfs) / daily_ratio_df$daily_sim)
 
-    # Map daily ratio back to 6hr via interpolation
-    # The ratio is known at 12:00 of each day; interpolate to 6hr timesteps
-    ratio_12z_dt = as.POSIXct(paste(daily_ratio_df$date, "12:00:00"), tz = "UTC")
-    ratio_vals = daily_ratio_df$ratio
+    # Map daily ratio to 6hr timesteps using Python's two-step interpolation:
+    # 1. Assign ratio at 12:00 timestamps
+    # 2. Nearest-neighbor limit=1 -> fills 06:00 and 18:00 adjacent to each 12:00
+    # 3. Linear limit=2 -> fills 00:00 as average of neighbors
+    ratios = rep(NA_real_, n)
 
-    # Remove NAs for interpolation
-    valid = !is.na(ratio_vals)
-    if (sum(valid) < 2) break
+    # Step 1: assign at 12:00
+    ratio_lookup = daily_ratio_df$ratio
+    names(ratio_lookup) = as.character(daily_ratio_df$date)
+    for (i in which(is_12z)) {
+      d = as.character(as.Date(working$datetime[i]))
+      if (d %in% names(ratio_lookup)) {
+        ratios[i] = ratio_lookup[d]
+      }
+    }
 
-    ratio_12z_num = as.numeric(ratio_12z_dt[valid])
-    working_num = as.numeric(working$datetime)
+    known = which(!is.na(ratios))
+    if (length(known) < 1) break
 
-    # Nearest neighbor interpolation (limit=1), then linear interpolation (limit=2)
-    # Simplified: use linear interpolation with rule=2 (extend edges)
-    interp_ratios = approx(
-      x = ratio_12z_num,
-      y = ratio_vals[valid],
-      xout = working_num,
-      method = "linear",
-      rule = 2
-    )$y
+    # Step 2: nearest with limit=1 (fill 1 step in each direction)
+    for (k in known) {
+      if (k > 1 && is.na(ratios[k - 1])) ratios[k - 1] = ratios[k]
+      if (k < n && is.na(ratios[k + 1])) ratios[k + 1] = ratios[k]
+    }
+
+    # Step 3: linear with limit=2 (fill remaining NAs from neighbors)
+    still_na = which(is.na(ratios))
+    for (j in still_na) {
+      left = if (j > 1 && !is.na(ratios[j - 1])) ratios[j - 1] else NA_real_
+      right = if (j < n && !is.na(ratios[j + 1])) ratios[j + 1] else NA_real_
+      if (!is.na(left) && !is.na(right)) {
+        ratios[j] = (left + right) / 2
+      } else if (!is.na(left)) {
+        ratios[j] = left
+      } else if (!is.na(right)) {
+        ratios[j] = right
+      }
+    }
 
     # Apply ratio
-    valid_ratio = !is.na(interp_ratios)
+    valid_ratio = !is.na(ratios)
     working$AdjustQ_Inst[valid_ratio] =
-      working$AdjustQ_Inst[valid_ratio] * interp_ratios[valid_ratio]
+      working$AdjustQ_Inst[valid_ratio] * ratios[valid_ratio]
 
     max_error = max(daily_ratio_df$pbias, na.rm = TRUE)
     iter = iter + 1L
