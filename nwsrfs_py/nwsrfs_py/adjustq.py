@@ -360,13 +360,12 @@ class AdjustQ(_AdjustQPrep):
         #Extend the simulated data to span complete days
         sim_begin=sim.index[0].floor(freq='D')
         sim_end=sim.index[-1].ceil(freq='D')
-        sim_extend=pd.DataFrame(index=pd.date_range(start=sim_begin,end=sim_end,freq='6h'))
-        sim_extend.index.rename('datetime_local_tz',inplace=True)
-        sim=pd.concat([sim_extend,sim],axis=1)
-        sim.simulated=sim.simulated.interpolate(limit_direction='both')
+        sim_extend=pd.Index(data=pd.date_range(start=sim_begin,end=sim_end,freq='6h'),name='datetime_local_tz')
+        sim = sim.reindex(sim_extend)
+        sim = sim.interpolate(limit_direction='both')
 
         #Working DataFrame
-        working=pd.concat([obs_6h,sim],axis=1)
+        working=pd.concat([obs_6h,sim],axis=1,sort=False)
 
         working['Inst_Ratio']=working['observed']/working['simulated']
         working['Inst_Difference']=working['observed']-working['simulated']

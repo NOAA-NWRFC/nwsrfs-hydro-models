@@ -41,3 +41,22 @@ devtools::install_github("NOAA-NWRFC/nwsrfs-hydro-models", subdir = "nwsrfs_r")
 library(nwsrfsr)
 
 ```
+
+## Citation
+
+Use the package-native citation metadata:
+
+```r
+citation("nwsrfsr")
+```
+
+This includes the software citation and the accepted 2026 JAWRA paper reference.
+
+Repository-level citation metadata is available at:
+
+- `/CITATION.cff` (repo root)
+
+## Legal
+
+- Package license: `LICENSE`
+- Package notice: `NOTICE`

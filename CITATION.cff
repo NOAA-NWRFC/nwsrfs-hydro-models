@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use this repository, please cite both the software and the associated publication."
+title: "NWSRFS Operational Hydrology Models (nwsrfs-hydro-models)"
+authors:
+  - family-names: "Walters"
+    given-names: "Geoffrey"
+    orcid: "https://orcid.org/0009-0009-3804-8898"
+  - family-names: "Bracken"
+    given-names: "Cameron"
+    orcid: "https://orcid.org/0000-0003-1917-402X"
+repository-code: "https://github.com/NOAA-NWRFC/nwsrfs-hydro-models"
+url: "https://github.com/NOAA-NWRFC/nwsrfs-hydro-models"
+preferred-citation:
+  type: article
+  title: "A comprehensive calibration framework for the Northwest River Forecast Center"
+  authors:
+    - family-names: "Walters"
+      given-names: "Geoffrey"
+      orcid: "https://orcid.org/0009-0009-3804-8898"
+    - family-names: "Bracken"
+      given-names: "Cameron"
+      orcid: "https://orcid.org/0000-0003-1917-402X"
+  year: 2026
+  journal: "Journal of the American Water Resources Association"
+  url: "https://eartharxiv.org/repository/view/8993/"
+  notes: "Accepted for publication."

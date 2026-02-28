@@ -50,6 +50,35 @@ Here is a simple example of initializing a run using the NWRFC AutoCalibration t
 Documentation
 -------------
 
+For model background, see the `NWSRFS User Manual <https://www.weather.gov/owp/oh_hrl_nwsrfs_users_manual_htm_xrfsdocpdf>`_.
+
+
+How to Cite Us
+--------------
+
+If you use this software or the underlying calibration framework in your research, we ask that you please cite our accepted paper:
+
+   Walters, G., & Bracken, C. (2026). A comprehensive calibration framework for the Northwest River Forecast Center. *Journal of the American Water Resources Association*. Accepted for publication. `EarthArXiv Preprint <https://eartharxiv.org/repository/view/8993/>`_.
+
+**BibTeX:**
+
+.. code-block:: bibtex
+
+   @article{walters2026calibration,
+     title={A comprehensive calibration framework for the Northwest River Forecast Center},
+     author={Walters, Geoffrey and Bracken, Cameron},
+     year={2026},
+     journal={Journal of the American Water Resources Association},
+     note={Accepted for publication. Preprint available at \url{https://eartharxiv.org/repository/view/8993/}}
+   }
+
+**Citing the Software Directly:**
+
+For the sake of reproducibility, please also consider citing the specific version of the software you used. You can find the citation metadata for this repository below:
+
+.. literalinclude:: ../../../CITATION.cff
+   :language: yaml
+
 
 .. toctree::
    :maxdepth: 2

@@ -58,6 +58,12 @@ print(sim_flow.head())
 
 For runnable scripts, see `examples/` in this directory.
 
+## Citation
+
+If you use this package, please cite:
+
+Walters, G., Bracken, C., et al., "A comprehensive calibration framework for the Northwest River Forecast Center." Journal of the American Water Resources Association (JAWRA), accepted for publication in 2026. [Preprint](https://eartharxiv.org/repository/view/8993/)
+
 ## HTML Documentation
 
 [**Live URL**](https://NOAA-NWRFC.github.io/nwsrfs-hydro-models/python/)

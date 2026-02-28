@@ -82,6 +82,21 @@ Example data for two stations:
 Data objects: `nrkw1_pars`, `nrkw1_forcing`, `nrkw1_upflow`, `nrkw1_daily_flow`,
 `nrkw1_inst_flow`, `sfln2_pars`, `sfln2_forcing`, `sfln2_daily_flow`, `sfln2_inst_flow`.
 
+Citation
+--------
+
+Use the package-native citation metadata:
+
+```r
+citation("nwsrfsr")
+```
+
+This includes the software citation and the accepted 2026 JAWRA paper reference.
+
+Repository-level citation metadata is available at:
+
+- `/CITATION.cff` (repo root)
+
 Testing
 -------
 
@@ -107,3 +122,9 @@ pkgdown::build_site(pkg = "nwsrfs_r", install = FALSE, preview = FALSE)
 Generated entry point:
 
 - `nwsrfs_r/docs/reference/index.html`
+
+Legal
+-----
+
+- Package license: `LICENSE`
+- Package notice: `NOTICE`
