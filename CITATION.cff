@@ -9,7 +9,7 @@ authors:
     given-names: "Cameron"
     orcid: "https://orcid.org/0000-0003-1917-402X"
 repository-code: "https://github.com/NOAA-NWRFC/nwsrfs-hydro-models"
-url: "https://github.com/NOAA-NWRFC/nwsrfs-hydro-models"
+url: "https://noaa-nwrfc.github.io/nwsrfs-hydro-models/"
 preferred-citation:
   type: article
   title: "A comprehensive calibration framework for the Northwest River Forecast Center"
