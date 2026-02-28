@@ -1,27 +1,17 @@
-citHeader("To cite the nwsrfsr package and associated publication, use:")
-
-meta <- packageDescription("nwsrfsr")
-
-citEntry(
-  entry = "Manual",
+bibentry(
+  bibtype = "Manual",
   title = "nwsrfsr: NWSRFS Operational Hydrology Models Wrapper",
   author = c(
     person("Cameron", "Bracken"),
     person("Geoffrey", "Walters")
   ),
   year = "2026",
-  note = paste("R package version", meta$Version),
-  url = "https://github.com/NOAA-NWRFC/nwsrfs-hydro-models",
-  textVersion = paste(
-    "Bracken C, Walters G (2026).",
-    "'nwsrfsr: NWSRFS Operational Hydrology Models Wrapper'.",
-    "R package version", meta$Version, ".",
-    "https://github.com/NOAA-NWRFC/nwsrfs-hydro-models"
-  )
+  note = sprintf("R package version %s", meta$Version),
+  url = "https://github.com/NOAA-NWRFC/nwsrfs-hydro-models"
 )
 
-citEntry(
-  entry = "Article",
+bibentry(
+  bibtype = "Article",
   title = "A comprehensive calibration framework for the Northwest River Forecast Center",
   author = c(
     person("Geoffrey", "Walters"),
@@ -30,12 +20,5 @@ citEntry(
   journal = "Journal of the American Water Resources Association",
   year = "2026",
   note = "Accepted for publication. Preprint available at https://eartharxiv.org/repository/view/8993/",
-  url = "https://eartharxiv.org/repository/view/8993/",
-  textVersion = paste(
-    "Walters G, Bracken C (2026).",
-    "'A comprehensive calibration framework for the Northwest River Forecast Center'.",
-    "Journal of the American Water Resources Association.",
-    "Accepted for publication.",
-    "Preprint: https://eartharxiv.org/repository/view/8993/"
-  )
+  url = "https://eartharxiv.org/repository/view/8993/"
 )

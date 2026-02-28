@@ -133,4 +133,3 @@
 #' }
 #' @name sfln2_inst_flow
 "sfln2_inst_flow"
-

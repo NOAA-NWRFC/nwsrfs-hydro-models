@@ -144,7 +144,8 @@ sac_snow <- function(dt_hours, forcing, pars, return_states = FALSE) {
   #           roimp, sdro, ssur, sif, bfs, bfp, &
   #           swe, aesc, neghs, liqw, raim, psfall, prain)
 
-  x <- .Fortran("sacsnow",
+  x <- .Fortran(
+    "sacsnow",
     n_hrus = as.integer(n_zones),
     dt = as.integer(dt_seconds),
     sim_length = sim_length,
@@ -197,11 +198,35 @@ sac_snow <- function(dt_hours, forcing, pars, return_states = FALSE) {
 
   if (return_states) {
     return_vars <- c(
-      "year", "month", "day", "hour",
-      "map", "mat", "ptps", "etd", "tci", "aet",
-      "uztwc", "uzfwc", "lztwc", "lzfsc", "lzfpc", "adimc",
-      "roimp", "sdro", "ssur", "sif", "bfs", "bfp",
-      "swe", "aesc", "neghs", "liqw", "raim", "psfall", "prain"
+      "year",
+      "month",
+      "day",
+      "hour",
+      "map",
+      "mat",
+      "ptps",
+      "etd",
+      "tci",
+      "aet",
+      "uztwc",
+      "uzfwc",
+      "lztwc",
+      "lzfsc",
+      "lzfpc",
+      "adimc",
+      "roimp",
+      "sdro",
+      "ssur",
+      "sif",
+      "bfs",
+      "bfp",
+      "swe",
+      "aesc",
+      "neghs",
+      "liqw",
+      "raim",
+      "psfall",
+      "prain"
     )
 
     # if pet exists in the input forcings, output it as is
@@ -349,12 +374,7 @@ uh2p_get_scale_r <- function(shape, toc, dt_hours) {
 #' uh2p_get_scale(2, 50, 1)
 #' @useDynLib nwsrfsr uh2p_get_scale_root_
 uh2p_get_scale <- function(shape, toc, dt_hours) {
-  scale <- .Fortran("uh2p_get_scale_root",
-    shape = shape,
-    toc = toc,
-    dt_hours = dt_hours,
-    scale = 0
-  )
+  scale <- .Fortran("uh2p_get_scale_root", shape = shape, toc = toc, dt_hours = dt_hours, scale = 0)
   scale$scale
 }
 
@@ -402,7 +422,8 @@ uh2p_seek <- function(scale, shape, dt_hours, toc) {
 #' @return function value for root finding
 #' @useDynLib nwsrfsr uh2p_len_obj_root_test_
 uh2p_seek2 <- function(scale, shape, dt_hours, toc) {
-  obj <- .Fortran("uh2p_len_obj_root_test",
+  obj <- .Fortran(
+    "uh2p_len_obj_root_test",
     scale = scale,
     shape = shape,
     toc = toc,
@@ -427,7 +448,6 @@ uh2p_root <- function(scale, shape, dt_hours, toc) {
   len_dif <- length(uh2p(shape, scale, dt_hours)) - uh_len
   return(len_dif)
 }
-
 
 
 #' Two parameter unit hydrograph routing for one or more basin zones
@@ -477,7 +497,8 @@ uh <- function(dt_hours, tci, pars, sum_zones = TRUE, start_of_timestep = TRUE, 
       scale <- uh2p_get_scale(shape, toc, 1)
     }
 
-    routed <- .Fortran("duamel",
+    routed <- .Fortran(
+      "duamel",
       tci = as.single(tci[, i]),
       as.single(shape),
       as.single(scale),
@@ -490,7 +511,10 @@ uh <- function(dt_hours, tci, pars, sum_zones = TRUE, start_of_timestep = TRUE, 
     )
 
     # convert to cfs
-    zone_flow <- routed$qr[1:sim_length] * 1000 * 3.28084**3 / dt_seconds *
+    zone_flow <- routed$qr[1:sim_length] *
+      1000 *
+      3.28084**3 /
+      dt_seconds *
       pars[pars$name == "zone_area", ]$value[i]
     if (sum_zones) {
       flow_cfs <- flow_cfs + zone_flow
@@ -539,35 +563,39 @@ chanloss <- function(flow, forcing, dt_hours, pars) {
   #            factor, period, cl_type, &
   #            sim, sim_adj)
 
-  n_clmods = pars[pars$name == 'n_clmods',]$value[1]
-  cl_type = pars[pars$name == 'cl_type',]$value[1]
-  cl_min_q = pars[pars$name == 'cl_min_q',]$value[1]
-  if(is.na(cl_type))cl_type=1
+  n_clmods = pars[pars$name == 'n_clmods', ]$value[1]
+  cl_type = pars[pars$name == 'cl_type', ]$value[1]
+  cl_min_q = pars[pars$name == 'cl_min_q', ]$value[1]
+  if (is.na(cl_type)) {
+    cl_type = 1
+  }
 
   if (is.na(n_clmods) | n_clmods <= 0) {
     return(flow)
   } else {
     cl_factors <- numeric(n_clmods)
-    cl_periods <- matrix(NA, n_clmods,2)
+    cl_periods <- matrix(NA, n_clmods, 2)
     for (i in 1:n_clmods) {
       cl_periods[i, 1] <- pars[pars$name == sprintf("cl_period_start_%02d", i), ]$value
       cl_periods[i, 2] <- pars[pars$name == sprintf("cl_period_end_%02d", i), ]$value
       cl_factors[i] <- pars[pars$name == sprintf("cl_factor_%02d", i), ]$value
     }
 
-    cl_flow = .Fortran('chanloss',
-                      n_clmods = as.integer(n_clmods),
-                      dt = as.integer(dt_hours * 3600L),
-                      sim_length = as.integer(sim_length),
-                      year = as.integer(forcing[[1]]$year)[1:sim_length],
-                      month = as.integer(forcing[[1]]$month)[1:sim_length],
-                      day = as.integer(forcing[[1]]$day)[1:sim_length],
-                      factor = as.double(cl_factors),
-                      period = as.integer(cl_periods),
-                      cl_type = as.integer(cl_type),
-                      min_q = as.double(cl_min_q),
-                      sim = as.double(flow[1:sim_length]),
-                      sim_adj = double(sim_length))
+    cl_flow = .Fortran(
+      'chanloss',
+      n_clmods = as.integer(n_clmods),
+      dt = as.integer(dt_hours * 3600L),
+      sim_length = as.integer(sim_length),
+      year = as.integer(forcing[[1]]$year)[1:sim_length],
+      month = as.integer(forcing[[1]]$month)[1:sim_length],
+      day = as.integer(forcing[[1]]$day)[1:sim_length],
+      factor = as.double(cl_factors),
+      period = as.integer(cl_periods),
+      cl_type = as.integer(cl_type),
+      min_q = as.double(cl_min_q),
+      sim = as.double(flow[1:sim_length]),
+      sim_adj = double(sim_length)
+    )
 
     return(cl_flow$sim_adj)
   }
@@ -601,7 +629,8 @@ consuse <- function(input, pars, cfs = TRUE) {
     #           PET_in,QNAT_in, &
     #           QADJ_out,QDIV_out,QRFIN_out,QRFOUT_out, &
     #           QOL_out,QCD_out,CE_out,RFSTOR_out)
-    x <- .Fortran("consuse",
+    x <- .Fortran(
+      "consuse",
       # inputs
       sim_length = sim_length,
       year = as.integer(input$year),
@@ -628,9 +657,18 @@ consuse <- function(input, pars, cfs = TRUE) {
       RFSTOR_out = numeric(sim_length)
     )
     cu_out[[cu_zone]] <- data.frame(
-      year = x$year, month = x$month, day = x$day, qnat = x$QNAT_in,
-      qadj = x$QADJ_out, qdiv = x$QDIV_out, qrfin = x$QRFIN_out, qrfout = x$QRFOUT_out,
-      qol = x$QOL_out, qcd = x$QCD_out, ce = x$CE_out, rfstor = x$RFSTOR_out
+      year = x$year,
+      month = x$month,
+      day = x$day,
+      qnat = x$QNAT_in,
+      qadj = x$QADJ_out,
+      qdiv = x$QDIV_out,
+      qrfin = x$QRFIN_out,
+      qrfout = x$QRFOUT_out,
+      qol = x$QOL_out,
+      qcd = x$QCD_out,
+      ce = x$CE_out,
+      rfstor = x$RFSTOR_out
     )
   }
   if (length(cu_zones) == 1) {
@@ -675,7 +713,8 @@ lagk <- function(dt_hours, uptribs, pars, sum_routes = TRUE, return_states = FAL
 
   lagk_out <- matrix(0, sim_length, n_uptribs)
 
-  routed <- .Fortran("lagk",
+  routed <- .Fortran(
+    "lagk",
     n_hrus = as.integer(n_uptribs),
     ita = as.integer(dt_hours),
     itb = as.integer(dt_hours),
@@ -709,8 +748,10 @@ lagk <- function(dt_hours, uptribs, pars, sum_routes = TRUE, return_states = FAL
 
   if (isTRUE(return_states)) {
     return_vars <- c(
-      "lagk_out" = "routed", "co_st_out" = "lag_time",
-      "inflow_st_out" = "k_inflow", "storage_st_out" = "k_storage"
+      "lagk_out" = "routed",
+      "co_st_out" = "lag_time",
+      "inflow_st_out" = "k_inflow",
+      "storage_st_out" = "k_storage"
     )
 
     df <- uptribs[[1]][, c("year", "month", "day", "hour")]
@@ -734,7 +775,6 @@ lagk <- function(dt_hours, uptribs, pars, sum_routes = TRUE, return_states = FAL
     return(as.vector(routed$lagk_out))
   }
 }
-
 
 
 #' Conputes surface pressure in hPa from a given elevation
@@ -779,8 +819,11 @@ pet_hs <- function(lat, jday, tave, tmax, tmin) {
   # Sunset Hour
   omega_s <- acos(-tan(lat * pi / 180) * tan(rho))
   # Extraterrestrial Radiation (MJm^-2*day^-1)
-  r_e <- (24 * 60) / pi * 0.0820 * d_r * (omega_s * sin(lat * pi / 180) * sin(rho) +
-    cos(lat * pi / 180) * cos(rho) * sin(omega_s))
+  r_e <- (24 * 60) /
+    pi *
+    0.0820 *
+    d_r *
+    (omega_s * sin(lat * pi / 180) * sin(rho) + cos(lat * pi / 180) * cos(rho) * sin(omega_s))
   # mm
   0.0023 * (tave + 17.8) * (tmax - tmin)**0.5 * r_e / 2.45 / 4
 }
@@ -834,8 +877,18 @@ adc3 <- function(a, b, c) {
 #' points(as.POSIXct(paste0("2001-", 1:12, "-15"), tz = "UTC"), factors, col = "red")
 interp_fa <- function(factors, month, day, hour) {
   mdays <- c(
-    Jan = 31L, Feb = 28L, Mar = 31L, Apr = 30L, May = 31L, Jun = 30L,
-    Jul = 31L, Aug = 31L, Sep = 30L, Oct = 31L, Nov = 30L, Dec = 31L
+    Jan = 31L,
+    Feb = 28L,
+    Mar = 31L,
+    Apr = 30L,
+    May = 31L,
+    Jun = 30L,
+    Jul = 31L,
+    Aug = 31L,
+    Sep = 30L,
+    Oct = 31L,
+    Nov = 30L,
+    Dec = 31L
   )
   # factors = c(.5,2,1,1.5,2,.5,1,2.5,3,-1.5,0,1)
   factors_prev <- c(factors[12], factors[1:11]) # c(1,.5,2,1,1.5,2,.5,1,2.5,3,-1.5,0)
@@ -884,7 +937,13 @@ interp_fa <- function(factors, month, day, hour) {
 #' pars <- c(.5, 0, 10, 0)
 #' forcing_adjust_map_pet_ptps(climo, pars)
 #' @importFrom stats dnorm median
-forcing_adjust_map_pet_ptps <- function(climo, pars, ll = 0.9 * climo, ul = 1.1 * climo, return_climo = FALSE) {
+forcing_adjust_map_pet_ptps <- function(
+  climo,
+  pars,
+  ll = 0.9 * climo,
+  ul = 1.1 * climo,
+  return_climo = FALSE
+) {
   scale <- pars[1]
   p_redist <- pars[2]
   sd <- pars[3]
@@ -923,9 +982,11 @@ forcing_adjust_map_pet_ptps <- function(climo, pars, ll = 0.9 * climo, ul = 1.1 
     # 30 day months should be a reasonable approximation
     for (i in 1:12) {
       if (shift > 0) {
-        climo_adj[i] <- climo_interp[i + 1] + shift * (climo_interp[i + 2] - climo_interp[i + 1]) / 30
+        climo_adj[i] <- climo_interp[i + 1] +
+          shift * (climo_interp[i + 2] - climo_interp[i + 1]) / 30
       } else if (shift < 0) {
-        climo_adj[i] <- climo_interp[i] + (30 - abs(shift)) * (climo_interp[i + 1] - climo_interp[i]) / 30
+        climo_adj[i] <- climo_interp[i] +
+          (30 - abs(shift)) * (climo_interp[i + 1] - climo_interp[i]) / 30
       }
     }
   }
@@ -933,8 +994,12 @@ forcing_adjust_map_pet_ptps <- function(climo, pars, ll = 0.9 * climo, ul = 1.1 
   out <- numeric(12)
   # enforce limits
   for (i in 1:12) {
-    if (climo_adj[i] > ul[i]) climo_adj[i] <- ul[i]
-    if (climo_adj[i] < ll[i]) climo_adj[i] <- ll[i]
+    if (climo_adj[i] > ul[i]) {
+      climo_adj[i] <- ul[i]
+    }
+    if (climo_adj[i] < ll[i]) {
+      climo_adj[i] <- ll[i]
+    }
     if (climo[i] == 0) {
       out[i] <- 1
     } else {
@@ -968,8 +1033,13 @@ forcing_adjust_map_pet_ptps <- function(climo, pars, ll = 0.9 * climo, ul = 1.1 
 #' pars <- c(.5, 0, 10, 0)
 #' forcing_adjust_mat(climo, pars)
 #' @importFrom stats dnorm median
-forcing_adjust_mat <- function(climo, pars, ll = climo * ifelse(climo > 0, 0.9, 1.1),
-                               ul = climo * ifelse(climo > 0, 1.1, 0.9), return_climo = FALSE) {
+forcing_adjust_mat <- function(
+  climo,
+  pars,
+  ll = climo * ifelse(climo > 0, 0.9, 1.1),
+  ul = climo * ifelse(climo > 0, 1.1, 0.9),
+  return_climo = FALSE
+) {
   scale <- pars[1]
   p_redist <- pars[2]
   sd <- pars[3]
@@ -1020,17 +1090,20 @@ forcing_adjust_mat <- function(climo, pars, ll = climo * ifelse(climo > 0, 0.9, 
     # 30 day months should be a reasonable approximation
     for (i in 1:12) {
       if (shift > 0) {
-        climo_adj[i] <- climo_interp[i + 1] + shift * (climo_interp[i + 2] - climo_interp[i + 1]) / 30
+        climo_adj[i] <- climo_interp[i + 1] +
+          shift * (climo_interp[i + 2] - climo_interp[i + 1]) / 30
       } else if (shift < 0) {
-        climo_adj[i] <- climo_interp[i] + (30 - abs(shift)) * (climo_interp[i + 1] - climo_interp[i]) / 30
+        climo_adj[i] <- climo_interp[i] +
+          (30 - abs(shift)) * (climo_interp[i + 1] - climo_interp[i]) / 30
       }
     }
   }
 
-
   # enforce limits
   for (i in 1:12) {
-    if (climo_adj[i] > ul[i]) climo_adj[i] <- ul[i]
+    if (climo_adj[i] > ul[i]) {
+      climo_adj[i] <- ul[i]
+    }
     if (climo_adj[i] < ll[i]) climo_adj[i] <- ll[i]
   }
 
@@ -1056,7 +1129,7 @@ forcing_adjust_mat <- function(climo, pars, ll = climo * ifelse(climo > 0, 0.9, 
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' data(nrkw1_forcing)
 #' data(nrkw1_pars)
 #' dt_hours <- 6
@@ -1064,9 +1137,18 @@ forcing_adjust_mat <- function(climo, pars, ll = climo * ifelse(climo > 0, 0.9, 
 #' }
 #' @useDynLib nwsrfsr fa_ts_
 #' @importFrom stats reshape
-fa_nwrfc <- function(dt_hours, forcing, pars, climo = NULL, dry_run = FALSE,
-                     return_adj = FALSE, return_climo = FALSE) {
-  if (return_adj & return_climo) stop("Can only return adjustments or climo")
+fa_nwrfc <- function(
+  dt_hours,
+  forcing,
+  pars,
+  climo = NULL,
+  dry_run = FALSE,
+  return_adj = FALSE,
+  return_climo = FALSE
+) {
+  if (return_adj & return_climo) {
+    stop("Can only return adjustments or climo")
+  }
 
   pars <- as.data.frame(pars)
 
@@ -1077,29 +1159,53 @@ fa_nwrfc <- function(dt_hours, forcing, pars, climo = NULL, dry_run = FALSE,
   sim_length <- nrow(forcing[[1]])
 
   # using base R here to avoid package dependency
-  map_lower <- reshape(pars[grepl("map_lower", pars$name), c("name", "zone", "value")],
-    timevar = "zone", idvar = "name", direction = "wide"
+  map_lower <- reshape(
+    pars[grepl("map_lower", pars$name), c("name", "zone", "value")],
+    timevar = "zone",
+    idvar = "name",
+    direction = "wide"
   )[, -1]
-  map_upper <- reshape(pars[grepl("map_upper", pars$name), c("name", "zone", "value")],
-    timevar = "zone", idvar = "name", direction = "wide"
+  map_upper <- reshape(
+    pars[grepl("map_upper", pars$name), c("name", "zone", "value")],
+    timevar = "zone",
+    idvar = "name",
+    direction = "wide"
   )[, -1]
-  mat_lower <- reshape(pars[grepl("mat_lower", pars$name), c("name", "zone", "value")],
-    timevar = "zone", idvar = "name", direction = "wide"
+  mat_lower <- reshape(
+    pars[grepl("mat_lower", pars$name), c("name", "zone", "value")],
+    timevar = "zone",
+    idvar = "name",
+    direction = "wide"
   )[, -1]
-  mat_upper <- reshape(pars[grepl("mat_upper", pars$name), c("name", "zone", "value")],
-    timevar = "zone", idvar = "name", direction = "wide"
+  mat_upper <- reshape(
+    pars[grepl("mat_upper", pars$name), c("name", "zone", "value")],
+    timevar = "zone",
+    idvar = "name",
+    direction = "wide"
   )[, -1]
-  pet_lower <- reshape(pars[grepl("pet_lower", pars$name), c("name", "zone", "value")],
-    timevar = "zone", idvar = "name", direction = "wide"
+  pet_lower <- reshape(
+    pars[grepl("pet_lower", pars$name), c("name", "zone", "value")],
+    timevar = "zone",
+    idvar = "name",
+    direction = "wide"
   )[, -1]
-  pet_upper <- reshape(pars[grepl("pet_upper", pars$name), c("name", "zone", "value")],
-    timevar = "zone", idvar = "name", direction = "wide"
+  pet_upper <- reshape(
+    pars[grepl("pet_upper", pars$name), c("name", "zone", "value")],
+    timevar = "zone",
+    idvar = "name",
+    direction = "wide"
   )[, -1]
-  ptps_lower <- reshape(pars[grepl("ptps_lower", pars$name), c("name", "zone", "value")],
-    timevar = "zone", idvar = "name", direction = "wide"
+  ptps_lower <- reshape(
+    pars[grepl("ptps_lower", pars$name), c("name", "zone", "value")],
+    timevar = "zone",
+    idvar = "name",
+    direction = "wide"
   )[, -1]
-  ptps_upper <- reshape(pars[grepl("ptps_upper", pars$name), c("name", "zone", "value")],
-    timevar = "zone", idvar = "name", direction = "wide"
+  ptps_upper <- reshape(
+    pars[grepl("ptps_upper", pars$name), c("name", "zone", "value")],
+    timevar = "zone",
+    idvar = "name",
+    direction = "wide"
   )[, -1]
 
   # limits are applied basin wide
@@ -1150,10 +1256,14 @@ fa_nwrfc <- function(dt_hours, forcing, pars, climo = NULL, dry_run = FALSE,
       grepl("peadj_", pars$name) & pars$type == "sac",
       c("name", "zone", "value")
     ],
-    timevar = "zone", idvar = "name", direction = "wide"
+    timevar = "zone",
+    idvar = "name",
+    direction = "wide"
   )[, -1]
 
-  if (is.null(climo)) climo <- matrix(-9999, 12, 4)
+  if (is.null(climo)) {
+    climo <- matrix(-9999, 12, 4)
+  }
 
   output_matrix <- matrix(0, nrow = sim_length, ncol = n_zones)
 
@@ -1168,7 +1278,8 @@ fa_nwrfc <- function(dt_hours, forcing, pars, climo = NULL, dry_run = FALSE,
 
   # browser()
 
-  x <- .Fortran("fa_ts",
+  x <- .Fortran(
+    "fa_ts",
     n_hrus = as.integer(n_zones),
     dt = as.integer(dt_seconds),
     sim_length = as.integer(sim_length),
@@ -1238,14 +1349,21 @@ fa_nwrfc <- function(dt_hours, forcing, pars, climo = NULL, dry_run = FALSE,
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' data(nrkw1_forcing)
 #' data(nrkw1_pars)
 #' dt_hours <- 6
 #' adj <- fa_adj_nwrfc(dt_hours, nrkw1_forcing, nrkw1_pars)
 #' }
 #' @importFrom stats reshape
-fa_adj_nwrfc <- function(dt_hours, forcing, pars, climo = NULL, dry_run = FALSE, return_climo = FALSE) {
+fa_adj_nwrfc <- function(
+  dt_hours,
+  forcing,
+  pars,
+  climo = NULL,
+  dry_run = FALSE,
+  return_climo = FALSE
+) {
   if (return_climo) {
     fa_nwrfc(dt_hours, forcing, pars, climo, dry_run, return_climo = TRUE)
   } else {
@@ -1270,7 +1388,6 @@ fa_adj_nwrfc <- function(dt_hours, forcing, pars, climo = NULL, dry_run = FALSE,
 #' forcing_adj <- rsnwelev(nrkw1_forcing, nrkw1_pars, area_elev_curve)
 #' }
 #' @useDynLib nwsrfsr rsnwelev_
-#' @importFrom reshape2 melt
 rsnwelev <- function(forcing, pars, ae_tbl) {
   # rsnwelev(n_hrus,sim_length, &
   # taelev_in, talr_in, pxtemp_in, &
@@ -1282,16 +1399,16 @@ rsnwelev <- function(forcing, pars, ae_tbl) {
   sim_length <- nrow(forcing[[1]])
 
   fortran_tbl <- matrix(NA, nrow(ae_tbl) * 2, n_zones)
-  ae_tbl$id <- 1:nrow(ae_tbl)
   for (i in 1:n_zones) {
-    long <- reshape2::melt(ae_tbl[, c(1, i + 1, n_zones + 2)], id = "id")
-    long <- long[order(long$id), ]
-    fortran_tbl[, i] <- long$value
+    col_a <- ae_tbl[, i + 1]
+    col_b <- ae_tbl[, n_zones + 2]
+    fortran_tbl[, i] <- as.vector(rbind(col_a, col_b))
   }
 
   output_matrix <- matrix(0, nrow = sim_length, ncol = n_zones)
 
-  ptps <- .Fortran("rsnwelev",
+  ptps <- .Fortran(
+    "rsnwelev",
     n_hrus = as.integer(n_zones),
     sim_length = as.integer(sim_length),
     # model parameters

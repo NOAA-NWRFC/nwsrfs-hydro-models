@@ -20,7 +20,7 @@ A list with class "nwsrfs_run" (see \code{\link[=nwsrfs_run]{nwsrfs_run()}})
 Loads NRKW1 or SFLN2 bundled example data and runs the full NWSRFS model chain.
 }
 \examples{
-\dontrun{
+\donttest{
 run = load_example("NRKW1")
 plot(run$sim, type = "l")
 }

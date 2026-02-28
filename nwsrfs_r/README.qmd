@@ -1,42 +1,41 @@
-# nwsrfsr
+---
+title: "nwsrfsr"
+format: gfm
+---
 
+R package interface to the NWSRFS (National Weather Service River Forecast System)
+Fortran hydrologic models: SAC-SMA, SNOW-17, Unit Hydrograph, Lag-K, Chanloss, and Consuse.
 
-R package interface to the NWSRFS (National Weather Service River
-Forecast System) Fortran hydrologic models: SAC-SMA, SNOW-17, Unit
-Hydrograph, Lag-K, Chanloss, and Consuse.
+Provides both [low-level Fortran wrappers](#running-individual-model-components) and a
+[high-level orchestration layer](#quick-start) that reads NWRFC autocalibration
+directories, auto-detects model components, and runs the full model chain. Also includes
+an [AdjustQ module](#adjustq-preprocessing) for preprocessing upstream flow.
 
-Provides both [low-level Fortran
-wrappers](#running-individual-model-components) and a [high-level
-orchestration layer](#quick-start) that reads NWRFC autocalibration
-directories, auto-detects model components, and runs the full model
-chain. Also includes an [AdjustQ module](#adjustq-preprocessing) for
-preprocessing upstream flow.
+[Full documentation](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/)
 
-[Full
-documentation](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/)
+Installation
+------------
 
-## Installation
-
-``` r
+```r
 # install.packages("devtools")
 devtools::install_github("NOAA-NWRFC/nwsrfs-hydro-models", subdir = "nwsrfs_r")
 ```
 
 Or from a local clone:
 
-``` bash
+```bash
 R CMD INSTALL nwsrfs_r
 ```
 
 Requires `gfortran` for compiling the Fortran source.
 
-## Quick Start
+Quick Start
+-----------
 
 [`load_example()`](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/load_example.html)
-runs the full model chain on bundled data and returns an `nwsrfs_run`
-object:
+runs the full model chain on bundled data and returns an `nwsrfs_run` object:
 
-``` r
+```r
 library(nwsrfsr)
 
 # NRKW1: Nooksack River — 2 SAC-SMA/SNOW17 zones + 3 Lag-K upstream tribs
@@ -66,10 +65,9 @@ print(run2)
 #>     Consuse:           TRUE
 ```
 
-The `$sim` element is the simulated streamflow vector (cfs, 6-hour
-timestep):
+The `$sim` element is the simulated streamflow vector (cfs, 6-hour timestep):
 
-``` r
+```r
 summary(run$sim)
 #>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max.
 #>   561.6  1894.5  2888.4  3590.3  4302.7 52279.9
@@ -80,17 +78,17 @@ plot(run$sim, type = "l", ylab = "Flow (cfs)", main = "NRKW1 Simulated Flow")
 You can also run from an NWRFC autocalibration directory on disk via
 [`nwsrfs_run()`](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/nwsrfs_run.html):
 
-``` r
+```r
 run = nwsrfs_run("/path/to/autocalb/station_dir")
 ```
 
-## Exploring Bundled Data
+Exploring Bundled Data
+----------------------
 
-The package ships example data for two stations. The parameter tables
-have columns `p_name` (unique ID), `name`, `type` (model component),
-`zone`, and `value`:
+The package ships example data for two stations. The parameter tables have columns
+`p_name` (unique ID), `name`, `type` (model component), `zone`, and `value`:
 
-``` r
+```r
 head(nrkw1_pars)
 #>            p_name      name type  zone       value
 #> 1   init_co_MFNW1   init_co lagk MFNW1 247.4027145
@@ -101,10 +99,9 @@ head(nrkw1_pars)
 #> 6    ktbl_b_MFNW1    ktbl_b lagk MFNW1  -0.1514212
 ```
 
-Forcing data is a named list of data.frames, one per zone, with 6-hour
-timesteps:
+Forcing data is a named list of data.frames, one per zone, with 6-hour timesteps:
 
-``` r
+```r
 names(nrkw1_forcing)
 #> [1] "NRKW1-1" "NRKW1-2"
 
@@ -118,10 +115,9 @@ head(nrkw1_forcing[["NRKW1-1"]])
 #> 6 1979    10   2    6      0   10.907    0
 ```
 
-Upstream flow data (NRKW1 only) is a named list of data.frames for each
-Lag-K reach:
+Upstream flow data (NRKW1 only) is a named list of data.frames for each Lag-K reach:
 
-``` r
+```r
 names(nrkw1_upflow)
 #> [1] "MFNW1" "NFNW1" "NSSW1"
 
@@ -135,14 +131,15 @@ head(nrkw1_upflow[["MFNW1"]])
 #> 6 1979    10   2    6 189.0886
 ```
 
-## Running Individual Model Components
+Running Individual Model Components
+------------------------------------
 
-The model chain can be run step-by-step using the low-level wrappers.
-This follows the same sequence the high-level
+The model chain can be run step-by-step using the low-level wrappers. This follows
+the same sequence the high-level
 [`load_example()`](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/load_example.html)
-uses internally: FA -\> SAC-SMA/SNOW17 -\> UH -\> Lag-K.
+uses internally: FA -> SAC-SMA/SNOW17 -> UH -> Lag-K.
 
-``` r
+```r
 library(nwsrfsr)
 dt_hours = 6
 
@@ -195,39 +192,46 @@ See the API reference for each function:
 [`chanloss()`](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/chanloss.html),
 [`consuse()`](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/consuse.html)
 
+
 <!-- TODO Add autocalb documentation
 Updating Parameters
 -------------------
-&#10;[`update_pars()`](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/update_pars.html)
+
+[`update_pars()`](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/update_pars.html)
 modifies parameters in an existing run and re-runs the model chain. Pass a data.frame
 with `p_name` and `value` columns:
-&#10;```r
+
+```r
 run = load_example("NRKW1")
-&#10;# See current uztwm (upper zone tension water max) values
+
+# See current uztwm (upper zone tension water max) values
 nrkw1_pars[nrkw1_pars$name == "uztwm", ]
 #>            p_name  name type    zone    value
 #> 199 uztwm_NRKW1-1 uztwm  sac NRKW1-1 25.12025
 #> 346 uztwm_NRKW1-2 uztwm  sac NRKW1-2 25.05820
-&#10;# Update zone 1 uztwm and re-run
+
+# Update zone 1 uztwm and re-run
 new_pars = data.frame(p_name = "uztwm_NRKW1-1", value = 120.0)
 run2 = update_pars(run, new_pars)
-&#10;mean(run$sim)   # 3590.3
+
+mean(run$sim)   # 3590.3
 mean(run2$sim)  # 3572.0
 ```
 -->
 
-## AdjustQ Preprocessing
+
+AdjustQ Preprocessing
+---------------------
 
 [AdjustQ](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/adjustq.html)
-replicates the CHPS FEWS AdjustQ tool, creating 6-hour upstream flow
-time series from daily and instantaneous observations, optionally
-blended with simulation output.
+replicates the CHPS FEWS AdjustQ tool, creating 6-hour upstream flow time series from
+daily and instantaneous observations, optionally blended with simulation output.
 
 The quickest way to run it is with
 [`adjustq_load_example()`](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/adjustq_load_example.html),
 which uses bundled NRKW1 data:
 
-``` r
+```r
 # With simulation (runs load_example("NRKW1") internally)
 aq = adjustq_load_example(sim = TRUE)
 head(aq)
@@ -243,11 +247,10 @@ head(aq)
 aq2 = adjustq_load_example(sim = FALSE)
 ```
 
-To call
-[`adjustq()`](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/adjustq.html)
+To call [`adjustq()`](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/adjustq.html)
 manually with your own data:
 
-``` r
+```r
 run = load_example("NRKW1")
 
 # Build a sim data.frame with year/month/day/hour/flow_cfs columns
@@ -263,56 +266,57 @@ result = adjustq(
 )
 ```
 
-## Bundled Datasets
+Bundled Datasets
+----------------
 
 | Object | Description |
-|----|----|
+|--------|-------------|
 | [`nrkw1_pars`](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/nrkw1_pars.html) | NRKW1 optimal parameters (366 rows) |
 | [`nrkw1_forcing`](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/nrkw1_forcing.html) | NRKW1 6-hour forcing, 2 zones |
 | [`nrkw1_upflow`](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/nrkw1_upflow.html) | NRKW1 upstream flow, 3 Lag-K reaches (MFNW1, NFNW1, NSSW1) |
 | [`nrkw1_daily_flow`](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/nrkw1_daily_flow.html) | NRKW1 observed daily streamflow |
 | [`nrkw1_inst_flow`](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/nrkw1_inst_flow.html) | NRKW1 observed 6-hour instantaneous flow |
 | [`sfln2_pars`](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/sfln2_pars.html) | SFLN2 optimal parameters (514 rows) |
-| [`sfln2_forcing`](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/sfln2_forcing.html) | SFLN2 6-hour forcing, 3 zones (incl. CU) |
+| [`sfln2_forcing`](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/sfln2_forcing.html) | SFLN2 6-hour forcing, 3 zones (incl. CU) |
 | [`sfln2_daily_flow`](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/sfln2_daily_flow.html) | SFLN2 observed daily streamflow |
 | [`sfln2_inst_flow`](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/sfln2_inst_flow.html) | SFLN2 observed 6-hour instantaneous flow |
 
-**NRKW1** — Nooksack River at North Cedarville, WA (USGS-12210700).
-2-zone SAC-SMA/SNOW17/UH model with 3-reach Lag-K routing, no chanloss
-or consuse.
+**NRKW1** — Nooksack River at North Cedarville, WA (USGS-12210700). 2-zone
+SAC-SMA/SNOW17/UH model with 3-reach Lag-K routing, no chanloss or consuse.
 
-**SFLN2** — Salmon Falls Creek NR San Jacinto, NV (USGS-13105000).
-2-zone SAC-SMA/SNOW17/UH model with chanloss and consumptive use, no
-upstream flow.
+**SFLN2** — Salmon Falls Creek NR San Jacinto, NV (USGS-13105000). 2-zone
+SAC-SMA/SNOW17/UH model with chanloss and consumptive use, no upstream flow.
 
-## Citation
+Citation
+--------
 
-``` r
+```r
 citation("nwsrfsr")
 ```
 
-This includes the software citation and the accepted 2026 JAWRA paper
-reference. Repository-level citation metadata is in `/CITATION.cff`
-(repo root).
+This includes the software citation and the accepted 2026 JAWRA paper reference.
+Repository-level citation metadata is in `/CITATION.cff` (repo root).
 
-## Testing
+Testing
+-------
 
-``` r
+```r
 devtools::test("nwsrfs_r")
 ```
 
-## Documentation
+Documentation
+-------------
 
-[**Live documentation
-site**](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/)
+[**Live documentation site**](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/)
 
 Local preview:
 
-``` r
+```r
 pkgdown::build_site(pkg = "nwsrfs_r", install = FALSE, preview = FALSE)
 ```
 
-## Legal
+Legal
+-----
 
 - Package license: `LICENSE`
 - Package notice: `NOTICE`
