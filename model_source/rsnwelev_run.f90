@@ -42,13 +42,16 @@ subroutine rsnwelev(n_hrus,sim_length, &
   ! ! local varible
   integer, parameter:: izin = 0
   integer::  nh, i, n
-  real, dimension(sim_length, n_hrus):: mat, rsel
-  real, dimension(sim_length):: zelv
+  real, allocatable, dimension(:,:):: mat, rsel
+  real, allocatable, dimension(:):: zelv
   real, dimension(n_hrus):: taelev, talr, pxtemp
   real::  co, ptps_ts,rsel_ts, ae_interp
 
   ! ! output 
   double precision, dimension(sim_length ,n_hrus), intent(out):: ptps_out
+
+  allocate(mat(sim_length, n_hrus), rsel(sim_length, n_hrus))
+  allocate(zelv(sim_length))
 
   ! ! Convert double precision to single precision.
   mat=real(mat_in)
