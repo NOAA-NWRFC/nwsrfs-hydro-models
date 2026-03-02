@@ -219,25 +219,22 @@ class AdjustQ(_AdjustQPrep):
             pd.DataFrame: The updated working DataFrame with large gaps filled.
         '''
         
-        #Steps to fill in missing data where the gap is > blend parameter
+        #Steps to fill in missing data where the gap is > blend parameter 
         for index, row in gap_list.iterrows():
 
                 #Pull back end of the blend period
                 end=index
                 end_blend=end-pd.Timedelta(self.blend*6, unit='h')
                 end_blend_period=obs_sim_working.loc[end_blend:end].copy()
+                end_blend_period.reset_index(inplace=True)
+                #Get the difference to blend
+                end_diff=end_blend_period.iloc[-1].Inst_Difference
+                #Blend the difference over the specified blend period
+                end_blend_period['AdjustQ_Inst']=end_blend_period.simulated+(end_blend_period.index/self.blend)*end_diff
+                end_blend_period.set_index('datetime_local_tz',inplace=True)
 
-                if not end_blend_period.empty:
-                    end_blend_period.reset_index(inplace=True)
-                    #Get the difference to blend
-                    end_diff=end_blend_period.iloc[-1].Inst_Difference
-                    if not pd.isna(end_diff):
-                        #Blend the difference over the specified blend period
-                        end_blend_period['AdjustQ_Inst']=end_blend_period.simulated+(end_blend_period.index/self.blend)*end_diff
-                        end_blend_period.set_index('datetime_local_tz',inplace=True)
-
-                        #Add the interpolated data to the obs_sim_working dataframe
-                        obs_sim_working.loc[end_blend:end,['AdjustQ_Inst']]=end_blend_period.loc[:,['AdjustQ_Inst']]
+                #Add the interpolated data to the obs_sim_working dataframe
+                obs_sim_working.loc[end_blend:end,['AdjustQ_Inst']]=end_blend_period.loc[:,['AdjustQ_Inst']]
 
                 periods=row.Period_Gap
 
@@ -245,18 +242,15 @@ class AdjustQ(_AdjustQPrep):
                 start=end-pd.Timedelta(periods*6, unit='h')
                 start_blend=start+pd.Timedelta(self.blend*6, unit='h')
                 start_blend_period=obs_sim_working.loc[start:start_blend].copy()
+                start_blend_period.reset_index(inplace=True)
+                #Get the difference to blend
+                start_diff=start_blend_period.iloc[0].Inst_Difference
+                #Blend the difference over the specified blend period
+                start_blend_period['AdjustQ_Inst']=start_blend_period.simulated+(1-start_blend_period.index/self.blend)*start_diff
+                start_blend_period.set_index('datetime_local_tz',inplace=True)
 
-                if not start_blend_period.empty:
-                    start_blend_period.reset_index(inplace=True)
-                    #Get the difference to blend
-                    start_diff=start_blend_period.iloc[0].Inst_Difference
-                    if not pd.isna(start_diff):
-                        #Blend the difference over the specified blend period
-                        start_blend_period['AdjustQ_Inst']=start_blend_period.simulated+(1-start_blend_period.index/self.blend)*start_diff
-                        start_blend_period.set_index('datetime_local_tz',inplace=True)
-
-                        #Add the interpolated data to the obs_sim_working dataframe
-                        obs_sim_working.loc[start:start_blend,['AdjustQ_Inst']]=start_blend_period.loc[:,['AdjustQ_Inst']]    
+                #Add the interpolated data to the obs_sim_working dataframe
+                obs_sim_working.loc[start:start_blend,['AdjustQ_Inst']]=start_blend_period.loc[:,['AdjustQ_Inst']]    
         
         return obs_sim_working
 
@@ -371,7 +365,7 @@ class AdjustQ(_AdjustQPrep):
         sim = sim.interpolate(limit_direction='both')
 
         #Working DataFrame
-        working=pd.concat([obs_6h,sim],axis=1,sort=True)
+        working=pd.concat([obs_6h,sim],axis=1,sort=False)
 
         working['Inst_Ratio']=working['observed']/working['simulated']
         working['Inst_Difference']=working['observed']-working['simulated']
