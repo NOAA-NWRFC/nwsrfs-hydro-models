@@ -50,6 +50,7 @@ python -c "import nwsrfs_py; print('Success!')"
 Note regarding installing in edit mode, use `--no-build-isolation` flag
 
 ```bash
+conda install -c conda-forge meson-python
 pip install -e . --no-build-isolation -v
 ```
 
