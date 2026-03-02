@@ -17,6 +17,16 @@ documentation](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/)
 
 ## Installation
 
+Using [pixi](https://pixi.sh) (recommended for development — provides R, gfortran, and test dependencies):
+
+``` bash
+pixi run install-r
+```
+
+See the [top-level README](../README.md#development-environment-pixi) for pixi setup details.
+
+Or from R:
+
 ``` r
 # install.packages("devtools")
 devtools::install_github("NOAA-NWRFC/nwsrfs-hydro-models", subdir = "nwsrfs_r")
@@ -296,6 +306,12 @@ reference. Repository-level citation metadata is in `/CITATION.cff`
 (repo root).
 
 ## Testing
+
+``` bash
+pixi run test-r
+```
+
+Or from R:
 
 ``` r
 devtools::test("nwsrfs_r")

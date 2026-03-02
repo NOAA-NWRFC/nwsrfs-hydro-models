@@ -21,7 +21,17 @@ It is designed to support NWRFC autocalibration workflows and provides classes f
 
 ## Installation
 
-Recommended environment setup:
+### Using pixi (recommended)
+
+From the repo root:
+
+```bash
+pixi run install-py
+```
+
+This handles all dependencies (Python, gfortran, meson, ninja, numpy) via the `pixi.toml` environment. See the [top-level README](../README.md#development-environment-pixi) for setup details.
+
+### Using conda
 
 ```bash
 conda create -n nwsrfs_env python=3.10

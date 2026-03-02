@@ -19,6 +19,32 @@ The wrapped model suite includes SAC-SMA, SNOW-17, UNIT-HG, LAG-K, CHANLOSS, and
 * Tested OS: macOS and Red Hat Linux (Windows via WSL is expected to work)
 * Tested timestep: 6-hour model timestep
 
+## Development Environment (pixi)
+
+[pixi](https://pixi.sh) manages all dependencies (Python, R, gfortran, meson, etc.) in a single reproducible environment from `pixi.toml`. No separate conda env or system R install needed.
+
+```bash
+git clone https://github.com/NOAA-NWRFC/nwsrfs-hydro-models.git
+cd nwsrfs-hydro-models
+
+pixi install                # create environment
+pixi run install-py         # build & install Python package (editable)
+pixi run install-r          # build & install R package
+pixi run test-py            # run Python tests
+pixi run test-r             # run R tests
+pixi run test-all           # run both
+pixi run check-r            # R CMD check
+pixi run build-docs         # build Python Sphinx docs
+```
+
+To activate the environment in your shell (e.g., for interactive R or Python):
+
+```bash
+pixi shell
+```
+
+If you use [direnv](https://direnv.net/), the `.envrc` includes `pixi shell-hook` so the environment activates automatically when you `cd` into the repo.
+
 ## Quick Start
 
 ### R (nwsrfsr)
@@ -38,6 +64,14 @@ R CMD INSTALL nwsrfs_r
 ```
 
 ### Python (nwsrfs_py)
+
+Using pixi (recommended):
+
+```bash
+pixi run install-py
+```
+
+Or with conda:
 
 ```bash
 conda create -n nwsrfs_env python=3.10
