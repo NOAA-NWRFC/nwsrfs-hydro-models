@@ -23,7 +23,7 @@ r-base = ">=4.1"
 pytest = "*"
 r-testthat = "*"
 # R dev tools
-r-devtools = "*"
+r-devtools = ">=2.4.6,<3"
 r-roxygen2 = "*"
 r-pkgdown = "*"
 sphinx = ">=5,<6"
