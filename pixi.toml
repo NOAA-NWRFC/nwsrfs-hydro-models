@@ -41,4 +41,5 @@ check-r-cran = { cmd = "R CMD check nwsrfs_r --as-cran", depends-on = ["install-
 test-all = { depends-on = ["test-py", "test-r"], description = "Run all tests" }
 build-docs-py = { cmd = "cd nwsrfs_py/docs && make html", description = "Build Python Sphinx docs" }
 build-docs-r = { cmd = "RENV_CONFIG_AUTOLOADER_ENABLED=FALSE Rscript -e \"pkgdown::build_site(pkg='nwsrfs_r', install=FALSE, preview=FALSE)\"", depends-on = ["install-r"], description = "Build R pkgdown docs" }
-build-docs = { depends-on = ["build-docs-py", "build-docs-r"], description = "Build all docs" }
+build-docs-readme = { cmd = "pandoc README.md -s -o README.html", description = "Build top-level README.html" }
+build-docs = { depends-on = ["build-docs-py", "build-docs-r", "build-docs-readme"], description = "Build all docs" }
