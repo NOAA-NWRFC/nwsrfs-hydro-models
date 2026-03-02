@@ -94,6 +94,10 @@ You can also run from an NWRFC autocalibration directory on disk via
 run = nwsrfs_run("/path/to/autocalb/station_dir")
 ```
 
+Sample autocalibration data for 5 basins is available from the
+[autocalibration repository](https://github.com/NOAA-NWRFC/nwsrfs-hydro-autocalibration)
+and archived on [Zenodo (DOI: 10.5281/zenodo.18829935)](https://doi.org/10.5281/zenodo.18829935).
+
 ## Exploring Bundled Data
 
 The package ships example data for two stations. The parameter tables

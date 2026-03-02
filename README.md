@@ -106,6 +106,12 @@ Local preview entry points:
 * R HTML: `nwsrfs_r/docs/reference/index.html`
 * Combined landing page: `pages/index.html`
 
+## Related Repositories & Data
+
+* **[nwsrfs-hydro-autocalibration](https://github.com/NOAA-NWRFC/nwsrfs-hydro-autocalibration)** — Automated calibration framework for NWSRFS models using evolving dynamically dimensioned search (EDDS). Uses the R and Python packages from this repository.
+
+* **Sample calibration data**: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18829935.svg)](https://doi.org/10.5281/zenodo.18829935) — Input data for 5 example basins (FSSO3, SAKW1, SFLN2, WCHW1, WGCM8) archived on Zenodo.
+
 ## Credits and References
 
 Please cite:

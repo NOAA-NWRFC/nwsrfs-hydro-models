@@ -14,3 +14,4 @@
 ^pkgdown$
 ^LICENSE\.md$
 ^LICENSE\.note$
+^README\.html$

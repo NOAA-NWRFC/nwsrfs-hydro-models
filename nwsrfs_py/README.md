@@ -2,7 +2,7 @@
 
 `nwsrfs_py` is a Python interface to NWSRFS hydrologic models using `f2py` wrappers around the FORTRAN implementation.
 
-It is designed to support NWRFC autocalibration workflows and provides classes for simulation and AdjustQ operations.
+It is designed to support [NWRFC autocalibration](https://github.com/NOAA-NWRFC/nwsrfs-hydro-autocalibration) workflows and provides classes for simulation and AdjustQ operations. Sample calibration data is [archived on Zenodo](https://doi.org/10.5281/zenodo.18829935).
 
 ## Included Model Components
 

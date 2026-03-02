@@ -2,6 +2,8 @@
 
 This directory contains bundled datasets for validating `nwsrfs_py` behavior against known outputs. The layout follows NOAA-NWRFC autocalibration conventions.
 
+The full set of sample calibration inputs for 5 basins is archived on Zenodo: [10.5281/zenodo.18829935](https://doi.org/10.5281/zenodo.18829935). See the [autocalibration repository](https://github.com/NOAA-NWRFC/nwsrfs-hydro-autocalibration) for the calibration framework.
+
 ## Available Locations
 
 ### `NRKW1` (Nooksack River at North Cedarville, WA; USGS 12210700)
