@@ -17,7 +17,7 @@ documentation](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/)
 
 ## Installation
 
-Using [pixi](https://pixi.sh) (recommended for development — provides R, gfortran, and test dependencies):
+Using [pixi](https://pixi.prefix.dev/) (recommended for development — provides R, gfortran, and test dependencies):
 
 ``` bash
 pixi run install-r

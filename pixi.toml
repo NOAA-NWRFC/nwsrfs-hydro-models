@@ -30,15 +30,16 @@ sphinx = ">=5,<6"
 sphinx-autodoc-typehints = "*"
 sphinx_rtd_theme = "*"
 quarto = ">=1.8.27,<2"
+tidy-html5 = ">=5.9.14,<6"
 
 [tasks]
 install-py = { cmd = "pip install --no-build-isolation -e nwsrfs_py", description = "Install Python package (editable)" }
 install-r = { cmd = "R CMD INSTALL nwsrfs_r", description = "Install R package" }
 test-py = { cmd = "pytest nwsrfs_py/tests/ -v -s", depends-on = ["install-py"], description = "Run Python tests" }
 test-r = { cmd = "RENV_CONFIG_AUTOLOADER_ENABLED=FALSE Rscript -e \"testthat::test_check('nwsrfsr')\"", cwd = "nwsrfs_r/tests", depends-on = ["install-r"], description = "Run R tests" }
-build-r = { cmd = "R CMD build nwsrfs_r", depends-on = ["install-r"], description = "R CMD check" }
-check-r = { cmd = "R CMD check nwsrfs_r --no-manual", depends-on = ["install-r", "build-r"], description = "R CMD check" }
-check-r-cran = { cmd = "R CMD check nwsrfs_r --as-cran", depends-on = ["install-r", "build-r"], description = "R CMD check" }
+build-r = { cmd = "R CMD build nwsrfs_r", depends-on = ["install-r"], description = "Build R source tarball" }
+check-r = { cmd = "R CMD check nwsrfs_r --no-manual", depends-on = ["install-r"], description = "R CMD check (no manual)" }
+check-r-cran = { cmd = "R CMD check --as-cran nwsrfsr_*.tar.gz", depends-on = ["install-r", "build-r"], description = "CRAN submission check on built tarball" }
 test-all = { depends-on = ["test-py", "test-r"], description = "Run all tests" }
 build-docs-py = { cmd = "cd nwsrfs_py/docs && make html", description = "Build Python Sphinx docs" }
 build-docs-r = { cmd = "RENV_CONFIG_AUTOLOADER_ENABLED=FALSE Rscript -e \"pkgdown::build_site(pkg='nwsrfs_r', install=FALSE, preview=FALSE)\"", depends-on = ["install-r"], description = "Build R pkgdown docs" }

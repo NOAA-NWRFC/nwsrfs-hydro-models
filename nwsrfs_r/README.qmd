@@ -16,6 +16,16 @@ an [AdjustQ module](#adjustq-preprocessing) for preprocessing upstream flow.
 Installation
 ------------
 
+Using [pixi](https://pixi.prefix.dev/) (recommended for development — provides R, gfortran, and test dependencies):
+
+```bash
+pixi run install-r
+```
+
+See the [top-level README](../README.md#development-environment-pixi) for pixi setup details.
+
+Or from R:
+
 ```r
 # install.packages("devtools")
 devtools::install_github("NOAA-NWRFC/nwsrfs-hydro-models", subdir = "nwsrfs_r")
@@ -304,6 +314,12 @@ Repository-level citation metadata is in `/CITATION.cff` (repo root).
 
 Testing
 -------
+
+```bash
+pixi run test-r
+```
+
+Or from R:
 
 ```r
 devtools::test("nwsrfs_r")

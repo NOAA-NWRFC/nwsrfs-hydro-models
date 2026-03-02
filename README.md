@@ -21,7 +21,7 @@ The wrapped model suite includes SAC-SMA, SNOW-17, UNIT-HG, LAG-K, CHANLOSS, and
 
 ## Development Environment (pixi)
 
-[pixi](https://pixi.sh) manages all dependencies (Python, R, gfortran, meson, etc.) in a single reproducible environment from `pixi.toml`. No separate conda env or system R install needed.
+[pixi](https://pixi.prefix.dev/) manages all dependencies (Python, R, gfortran, meson, etc.) in a single reproducible environment from `pixi.toml`. No separate conda env or system R install needed.
 
 ```bash
 git clone https://github.com/NOAA-NWRFC/nwsrfs-hydro-models.git
