@@ -47,13 +47,10 @@ build-docs-r-readme = { cmd = "cd nwsrfs_r; quarto render README.qmd --to html -
 build-docs = { depends-on = ["build-docs-py", "build-docs-r", "build-docs-r-readme"], description = "Build all docs" }
 
 [environments]
-# Explicitly preserves the current behavior for your colleagues and CI
-default = { features = [], solve-group = "default" } 
-
-# Adds the matrix environments for GitLab CI
-py310 = { features = ["py310"], solve-group = "default" }
-py311 = { features = ["py311"], solve-group = "default" }
-py312 = { features = ["py312"], solve-group = "default" }
+default = { features = []} 
+py310 = { features = ["py310"] }
+py311 = { features = ["py311"]}
+py312 = { features = ["py312"]}
 
 [feature.py310.dependencies]
 python = "3.10.*"
