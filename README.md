@@ -27,14 +27,19 @@ The wrapped model suite includes SAC-SMA, SNOW-17, UNIT-HG, LAG-K, CHANLOSS, and
 git clone https://github.com/NOAA-NWRFC/nwsrfs-hydro-models.git
 cd nwsrfs-hydro-models
 
-pixi install                # create environment
-pixi run install-py         # build & install Python package (editable)
-pixi run install-r          # build & install R package
-pixi run test-py            # run Python tests
-pixi run test-r             # run R tests
-pixi run test-all           # run both
-pixi run check-r            # R CMD check
-pixi run build-docs         # build Python Sphinx docs
+pixi install                  # create environment
+pixi run install-py           # build & install Python package (editable)
+pixi run install-r            # build & install R package
+pixi run test-py              # run Python tests
+pixi run test-r               # run R tests
+pixi run test-all             # run both
+pixi run check-r              # R CMD check (no manual)
+pixi run build-r              # build R source tarball
+pixi run check-r-cran         # CRAN submission check on built tarball
+pixi run build-docs           # build all docs (Python + R + R README)
+pixi run build-docs-py        # build Python Sphinx docs only
+pixi run build-docs-r         # build R pkgdown docs only
+pixi run build-docs-r-readme  # render R README.qmd to HTML
 ```
 
 To activate the environment in your shell (e.g., for interactive R or Python):

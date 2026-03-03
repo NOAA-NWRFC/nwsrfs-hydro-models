@@ -17,13 +17,15 @@ documentation](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/)
 
 ## Installation
 
-Using [pixi](https://pixi.prefix.dev/) (recommended for development — provides R, gfortran, and test dependencies):
+Using [pixi](https://pixi.prefix.dev/) (recommended for development —
+provides R, gfortran, and test dependencies):
 
 ``` bash
 pixi run install-r
 ```
 
-See the [top-level README](../README.md#development-environment-pixi) for pixi setup details.
+See the [top-level README](../README.md#development-environment-pixi)
+for pixi setup details.
 
 Or from R:
 
@@ -91,12 +93,15 @@ You can also run from an NWRFC autocalibration directory on disk via
 [`nwsrfs_run()`](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/nwsrfs_run.html):
 
 ``` r
-run = nwsrfs_run("/path/to/autocalb/station_dir")
+# example, assuming you have downloaded the sameple data: https://doi.org/10.5281/zenodo.18829935
+run = nwsrfs_run("nwsrfs-ac-sample-runs/1zone/FSSO3")
 ```
 
 Sample autocalibration data for 5 basins is available from the
-[autocalibration repository](https://github.com/NOAA-NWRFC/nwsrfs-hydro-autocalibration)
-and archived on [Zenodo (DOI: 10.5281/zenodo.18829935)](https://doi.org/10.5281/zenodo.18829935).
+[autocalibration
+repository](https://github.com/NOAA-NWRFC/nwsrfs-hydro-autocalibration)
+and archived on [Zenodo (DOI:
+10.5281/zenodo.18829935)](https://doi.org/10.5281/zenodo.18829935).
 
 ## Exploring Bundled Data
 
@@ -309,10 +314,13 @@ This includes the software citation and the accepted 2026 JAWRA paper
 reference. Repository-level citation metadata is in `/CITATION.cff`
 (repo root).
 
-## Testing
+## Testing & Building
 
 ``` bash
-pixi run test-r
+pixi run test-r          # run R tests (testthat)
+pixi run check-r         # R CMD check (no manual)
+pixi run build-r         # build R source tarball
+pixi run check-r-cran    # CRAN submission check on built tarball
 ```
 
 Or from R:
@@ -326,7 +334,15 @@ devtools::test("nwsrfs_r")
 [**Live documentation
 site**](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/)
 
-Local preview:
+Build locally with pixi:
+
+``` bash
+pixi run build-docs-r          # build pkgdown site
+pixi run build-docs-r-readme   # render README.qmd to HTML
+pixi run build-docs            # build all docs (Python + R + R README)
+```
+
+Or from R:
 
 ``` r
 pkgdown::build_site(pkg = "nwsrfs_r", install = FALSE, preview = FALSE)
