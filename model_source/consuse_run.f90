@@ -102,9 +102,9 @@ subroutine consuse(sim_length, year, month, day, &
   real:: IRFSTOR,ACCUM,DECAY
   double precision:: interp_day, dayn, dayi, d,peadj_step
   integer, dimension(12) :: mdays, mdays_prev
-  real, dimension(sim_length):: ETD,QNAT
-  real, dimension(sim_length):: QADJ,QDIV,QRFIN,QRFOUT
-  real, dimension(sim_length):: QOL,QCD,CE,RFSTOR
+  real, allocatable, dimension(:):: ETD,QNAT
+  real, allocatable, dimension(:):: QADJ,QDIV,QRFIN,QRFOUT
+  real, allocatable, dimension(:):: QOL,QCD,CE,RFSTOR
   double precision, dimension(12):: peadj_m_prev, peadj_m_next
 
   ! ! local spin-up varibles
@@ -124,8 +124,12 @@ subroutine consuse(sim_length, year, month, day, &
   ! ! temp
 ! !  double precision, dimension(sim_length), intent(out):: ETD_out
   
+  allocate(ETD(sim_length), QNAT(sim_length))
+  allocate(QADJ(sim_length), QDIV(sim_length), QRFIN(sim_length), QRFOUT(sim_length))
+  allocate(QOL(sim_length), QCD(sim_length), CE(sim_length), RFSTOR(sim_length))
+
   ! ! Lookup Tables
-  mdays =      (/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /) 
+  mdays =      (/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /)
   mdays_prev = (/ 31, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30 /) 
   
   ! ! Convert double precision to single precision 

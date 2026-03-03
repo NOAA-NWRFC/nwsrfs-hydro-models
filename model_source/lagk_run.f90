@@ -128,12 +128,12 @@ subroutine lagk(n_hrus, ita, itb, &
   real, dimension(n_hrus):: lagk_kmax, lagk_lagmax, lagk_qmax
   real, dimension(n_hrus):: lagk_kmin, lagk_lagmin, lagk_qmin
   real, dimension(22, n_hrus):: lagtbl, ktbl
-  real, dimension(sim_length, n_hrus):: qa 
+  real, allocatable, dimension(:,:):: qa
   real, dimension(500,n_hrus):: p
   real, dimension(100,n_hrus):: c
   real, dimension(100):: c_cpy
-  real, dimension(sim_length ,n_hrus):: qb, qc
-  real, dimension(sim_length ,n_hrus):: storage_st, co_st
+  real, allocatable, dimension(:,:):: qb, qc
+  real, allocatable, dimension(:,:):: storage_st, co_st
   integer, dimension(n_hrus):: jlag, jk
   integer:: nh, i
   real::  ndq, lag_entry, k_entry
@@ -141,6 +141,10 @@ subroutine lagk(n_hrus, ita, itb, &
   ! ! output 
   double precision, dimension(sim_length ,n_hrus), intent(out):: lagk_out
   double precision, dimension(sim_length ,n_hrus), intent(out):: inflow_st_out, storage_st_out, co_st_out
+
+  allocate(qa(sim_length, n_hrus))
+  allocate(qb(sim_length, n_hrus), qc(sim_length, n_hrus))
+  allocate(storage_st(sim_length, n_hrus), co_st(sim_length, n_hrus))
 
   ! ! Convert double precision to single precision.
   !NEED TO COMMENT OUT UNIT CONVERSION BELOW IF USING ENGL

@@ -57,13 +57,13 @@ subroutine  fa_ts(n_hrus, dt, sim_length, year, month, day, hour, &
   integer:: nh,i,k           ! AWW index for looping through areas
   integer:: dt_hours, ts_per_day, ts_in_day    ! model timestep in hours and number of timesteps per day
   ! area weighted forcings for climo calculations
-  double precision, dimension(sim_length):: map_aw, ptps_aw, mat_aw, pet_aw
+  double precision, allocatable, dimension(:):: map_aw, ptps_aw, mat_aw, pet_aw
   ! fa limits, static set by external data 
   double precision, dimension(12,2):: map_fa_limits, mat_fa_limits, pet_fa_limits, ptps_fa_limits
   double precision:: dr, rho, omega_s, Ra ! pet calculation varible
-  integer, dimension(sim_length):: jday ! julian day for pet calculations
+  integer, allocatable, dimension(:):: jday ! julian day for pet calculations
   double precision:: pet_ts, tmax_daily, tmin_daily, tave_daily ! pet for a time step and required temperature varible
-  double precision, dimension(sim_length, n_hrus):: pet_hs ! pet unadjusted by pet_adj
+  double precision, allocatable, dimension(:,:):: pet_hs ! pet unadjusted by pet_adj
   double precision:: map_step, ptps_step, mat_step, pet_step !adj forcing for current ts in loop
   double precision:: mat_adj_step, map_adj_step, pet_adj_step, ptps_adj_step, peadj_step !adj for current ts in loop
   double precision, dimension(12):: map_climo, mat_climo, pet_climo, ptps_climo !monthly climo
@@ -89,7 +89,11 @@ subroutine  fa_ts(n_hrus, dt, sim_length, year, month, day, hour, &
   ! plane 1: map_fa, plane 2: mat_fa, plane 3: ptps_fa, plane 4:  pet_fa
   !double precision, dimension(4,sim_length, n_hrus):: fa_ts
 
-  mdays =      (/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /) 
+  allocate(map_aw(sim_length), ptps_aw(sim_length), mat_aw(sim_length), pet_aw(sim_length))
+  allocate(jday(sim_length))
+  allocate(pet_hs(sim_length, n_hrus))
+
+  mdays =      (/ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 /)
   mdays_prev = (/ 31, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30 /) 
 
   map_fa = 0 
