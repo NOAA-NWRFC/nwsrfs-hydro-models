@@ -19,6 +19,37 @@ The wrapped model suite includes SAC-SMA, SNOW-17, UNIT-HG, LAG-K, CHANLOSS, and
 * Tested OS: macOS and Red Hat Linux (Windows via WSL is expected to work)
 * Tested timestep: 6-hour model timestep
 
+## Development Environment (pixi)
+
+[pixi](https://pixi.prefix.dev/) manages all dependencies (Python, R, gfortran, meson, etc.) in a single reproducible environment from `pixi.toml`. No separate conda env or system R install needed.
+
+```bash
+git clone https://github.com/NOAA-NWRFC/nwsrfs-hydro-models.git
+cd nwsrfs-hydro-models
+
+pixi install                  # create environment
+pixi run install-py           # build & install Python package (editable)
+pixi run install-r            # build & install R package
+pixi run test-py              # run Python tests
+pixi run test-r               # run R tests
+pixi run test-all             # run both
+pixi run check-r              # R CMD check (no manual)
+pixi run build-r              # build R source tarball
+pixi run check-r-cran         # CRAN submission check on built tarball
+pixi run build-docs           # build all docs (Python + R + R README)
+pixi run build-docs-py        # build Python Sphinx docs only
+pixi run build-docs-r         # build R pkgdown docs only
+pixi run build-docs-r-readme  # render R README.qmd to HTML
+```
+
+To activate the environment in your shell (e.g., for interactive R or Python):
+
+```bash
+pixi shell
+```
+
+If you use [direnv](https://direnv.net/), the `.envrc` includes `pixi shell-hook` so the environment activates automatically when you `cd` into the repo.
+
 ## Quick Start
 
 ### R (nwsrfsr)
@@ -38,6 +69,14 @@ R CMD INSTALL nwsrfs_r
 ```
 
 ### Python (nwsrfs_py)
+
+Using pixi (recommended):
+
+```bash
+pixi run install-py
+```
+
+Or with conda:
 
 ```bash
 conda create -n nwsrfs_env python=3.10
@@ -71,6 +110,12 @@ Local preview entry points:
 * Python HTML: `nwsrfs_py/docs/build/html/index.html`
 * R HTML: `nwsrfs_r/docs/reference/index.html`
 * Combined landing page: `pages/index.html`
+
+## Related Repositories & Data
+
+* **[nwsrfs-hydro-autocalibration](https://github.com/NOAA-NWRFC/nwsrfs-hydro-autocalibration)** — Automated calibration framework for NWSRFS models using evolving dynamically dimensioned search (EDDS). Uses the R and Python packages from this repository.
+
+* **Sample calibration data**: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18829935.svg)](https://doi.org/10.5281/zenodo.18829935) — Input data for 5 example basins (FSSO3, SAKW1, SFLN2, WCHW1, WGCM8) archived on Zenodo.
 
 ## Credits and References
 

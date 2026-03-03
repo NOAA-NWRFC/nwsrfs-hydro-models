@@ -42,9 +42,7 @@
 #'
 #' @importFrom utils read.csv
 #' @export
-nwsrfs_run = function(autocalb_dir, run_dir = NULL,
-                      forcing_adj = TRUE, shift_sf = TRUE) {
-
+nwsrfs_run = function(autocalb_dir, run_dir = NULL, forcing_adj = TRUE, shift_sf = TRUE) {
   # Validate directory
   if (!dir.exists(autocalb_dir)) {
     stop(autocalb_dir, " is not a directory.")
@@ -68,12 +66,17 @@ nwsrfs_run = function(autocalb_dir, run_dir = NULL,
 
   # Read pars
   pars_path = file.path(results_path, "pars_optimal.csv")
-  if (!file.exists(pars_path)) stop(pars_path, " is missing")
+  if (!file.exists(pars_path)) {
+    stop(pars_path, " is missing")
+  }
   pars = read.csv(pars_path, stringsAsFactors = FALSE)
 
   # Read forcings
-  forcing_files = sort(list.files(autocalb_dir, pattern = "^forcing_por_.*\\.csv$",
-    full.names = TRUE))
+  forcing_files = sort(list.files(
+    autocalb_dir,
+    pattern = "^forcing_por_.*\\.csv$",
+    full.names = TRUE
+  ))
   if (length(forcing_files) == 0) {
     stop("POR forcing csv files are missing.")
   }
@@ -83,16 +86,18 @@ nwsrfs_run = function(autocalb_dir, run_dir = NULL,
   names(forcing_raw) = zone_from_file
 
   # Read daily flow
-  daily_flow_files = list.files(autocalb_dir, pattern = "^flow_daily_.*\\.csv$",
-    full.names = TRUE)
+  daily_flow_files = list.files(autocalb_dir, pattern = "^flow_daily_.*\\.csv$", full.names = TRUE)
   if (length(daily_flow_files) != 1) {
     stop("Expected exactly one flow_daily_*.csv file, found ", length(daily_flow_files))
   }
   daily_flow = read.csv(daily_flow_files[1], stringsAsFactors = FALSE)
 
   # Read instantaneous flow (optional)
-  inst_flow_files = list.files(autocalb_dir, pattern = "^flow_instantaneous_.*\\.csv$",
-    full.names = TRUE)
+  inst_flow_files = list.files(
+    autocalb_dir,
+    pattern = "^flow_instantaneous_.*\\.csv$",
+    full.names = TRUE
+  )
   inst_flow = if (length(inst_flow_files) == 1) {
     read.csv(inst_flow_files[1], stringsAsFactors = FALSE)
   } else {
@@ -100,8 +105,7 @@ nwsrfs_run = function(autocalb_dir, run_dir = NULL,
   }
 
   # Read upflow files (optional)
-  upflow_files = sort(list.files(autocalb_dir, pattern = "^upflow_.*\\.csv$",
-    full.names = TRUE))
+  upflow_files = sort(list.files(autocalb_dir, pattern = "^upflow_.*\\.csv$", full.names = TRUE))
   upflow = if (length(upflow_files) > 0) {
     uf = lapply(upflow_files, read.csv)
     names(uf) = sub("upflow_", "", sub("\\.csv$", "", basename(upflow_files)))
@@ -135,7 +139,7 @@ nwsrfs_run = function(autocalb_dir, run_dir = NULL,
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' run = load_example("NRKW1")
 #' plot(run$sim, type = "l")
 #' }
@@ -212,9 +216,15 @@ update_pars = function(run, new_pars) {
 # %%
 # Internal: core model chain
 
-.run_model_chain = function(pars, forcing_raw, upflow, daily_flow, inst_flow,
-                            forcing_adj = TRUE, shift_sf = TRUE) {
-
+.run_model_chain = function(
+  pars,
+  forcing_raw,
+  upflow,
+  daily_flow,
+  inst_flow,
+  forcing_adj = TRUE,
+  shift_sf = TRUE
+) {
   dt_hours = 6L
 
   # --- Interrogate pars to detect model components ---
@@ -274,8 +284,14 @@ update_pars = function(run, new_pars) {
     sacsnow_tci = sac_snow(dt_hours, forcings_adj, pars)
 
     # Route through UH
-    sacsnow_sf = uh(dt_hours, sacsnow_tci, pars,
-      sum_zones = TRUE, start_of_timestep = shift_sf, backfill = TRUE)
+    sacsnow_sf = uh(
+      dt_hours,
+      sacsnow_tci,
+      pars,
+      sum_zones = TRUE,
+      start_of_timestep = shift_sf,
+      backfill = TRUE
+    )
 
     sim_flow = sim_flow + sacsnow_sf
   }

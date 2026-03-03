@@ -1,0 +1,47 @@
+[workspace]
+name = "nwsrfs-hydro-models"
+channels = ["conda-forge"]
+platforms = ["osx-arm64", "linux-64"]
+
+[dependencies]
+# Python
+python = ">=3.10,<3.13"
+numpy = "*"
+pandas = "*"
+scipy = "*"
+pip = "*"
+# Build tools
+meson = "*"
+meson-python = "*"
+ninja = "*"
+# Fortran compiler
+fortran-compiler = "*"
+c-compiler = "*"
+# R
+r-base = ">=4.1"
+# Testing
+pytest = "*"
+r-testthat = "*"
+# R dev tools
+r-devtools = ">=2.4.6,<3"
+r-roxygen2 = "*"
+r-pkgdown = "*"
+sphinx = ">=5,<6"
+sphinx-autodoc-typehints = "*"
+sphinx_rtd_theme = "*"
+quarto = ">=1.8.27,<2"
+tidy-html5 = ">=5.9.14,<6"
+
+[tasks]
+install-py = { cmd = "pip install --no-build-isolation -e nwsrfs_py", description = "Install Python package (editable)" }
+install-r = { cmd = "R CMD INSTALL nwsrfs_r", description = "Install R package" }
+test-py = { cmd = "pytest nwsrfs_py/tests/ -v -s", depends-on = ["install-py"], description = "Run Python tests" }
+test-r = { cmd = "RENV_CONFIG_AUTOLOADER_ENABLED=FALSE Rscript -e \"testthat::test_check('nwsrfsr')\"", cwd = "nwsrfs_r/tests", depends-on = ["install-r"], description = "Run R tests" }
+build-r = { cmd = "R CMD build nwsrfs_r", depends-on = ["install-r"], description = "Build R source tarball" }
+check-r = { cmd = "R CMD check nwsrfs_r --no-manual", depends-on = ["install-r"], description = "R CMD check (no manual)" }
+check-r-cran = { cmd = "R CMD check --as-cran nwsrfsr_*.tar.gz", depends-on = ["install-r", "build-r"], description = "CRAN submission check on built tarball" }
+test-all = { depends-on = ["test-py", "test-r"], description = "Run all tests" }
+build-docs-py = { cmd = "cd nwsrfs_py/docs && make html", description = "Build Python Sphinx docs" }
+build-docs-r = { cmd = "RENV_CONFIG_AUTOLOADER_ENABLED=FALSE Rscript -e \"pkgdown::build_site(pkg='nwsrfs_r', install=FALSE, preview=FALSE)\"", depends-on = ["install-r"], description = "Build R pkgdown docs" }
+build-docs-r-readme = { cmd = "cd nwsrfs_r; quarto render README.qmd --to html -M embed-resources:true -o README.html ", description = "Build R README.html" }
+build-docs = { depends-on = ["build-docs-py", "build-docs-r", "build-docs-r-readme"], description = "Build all docs" }

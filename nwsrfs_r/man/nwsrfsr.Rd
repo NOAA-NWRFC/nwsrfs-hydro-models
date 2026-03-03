@@ -6,7 +6,7 @@
 \alias{nwsrfsr}
 \title{nwsrfsr: NWS River Forecast System Hydrologic Models}
 \description{
-R wrappers for NWSRFS Fortran hydrologic models used operationally by NOAA's
+R interface to NWSRFS Fortran hydrologic models used operationally by NOAA's
 National Weather Service River Forecast Centers. Includes SAC-SMA soil moisture
 accounting, SNOW-17 snow accumulation/ablation, gamma unit hydrograph routing,
 Lag-K channel routing, channel loss/gain, and consumptive use modules.
@@ -33,6 +33,7 @@ flow timeseries from observed and simulated data.
 Useful links:
 \itemize{
   \item \url{https://github.com/NOAA-NWRFC/nwsrfs-hydro-models}
+  \item \url{https://noaa-nwrfc.github.io/nwsrfs-hydro-models/}
   \item Report bugs at \url{https://github.com/NOAA-NWRFC/nwsrfs-hydro-models/issues}
 }
 

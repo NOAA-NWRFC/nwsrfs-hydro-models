@@ -3,5 +3,15 @@
 ^nwsrfsr\.Rproj$
 ^\.Rproj\.user$
 ^README\.Rmd$
+^README\.qmd$
+^README\.html$
+^NOTICE$
 ^data-raw$
 ^cran-comments\.md$
+^\.github$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^LICENSE\.md$
+^LICENSE\.note$
+^README\.html$

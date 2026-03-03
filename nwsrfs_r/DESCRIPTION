@@ -1,36 +1,38 @@
 Package: nwsrfsr
 Title: NWS Hydrology Models: SAC-SMA, SNOW17, UH, CONSUSE, CHANLOSS
-Version: 0.1.0
+Version: 1.0.0
 Authors@R: c(
-           person(given = "Cameron",
+          person(given = "Cameron",
              family = "Bracken",
              role = c("aut", "cre"),
              email = "cameron.bracken@pnnl.gov",
              comment = c(ORCID = "0000-0003-1917-402X")),
-           person(given = "Geoffrey",
+          person(given = "Geoffrey",
              family = "Walters",
              role = c("aut"),
              email = "geoffrey.walters@noaa.gov",
-             comment = c(ORCID = "0009-0009-3804-8898")))
-Description: Provides functions to call Fortran versions of NWS operational 
+             comment = c(ORCID = "0009-0009-3804-8898")),
+          person("National Oceanic and Atmospheric Administration", 
+             role = "cph", 
+             comment = "Work produced by U.S. Government employees is not subject to copyright."))
+Description: Interface to the National Weather Service operational 
              hydrology models, Sacramento Soil Moisture Accounting (SAC-SMA), 
              Snow Accumulation and Ablation (SNOW17). Also provides an 
-             interface to the unit hydrograph routing model, consumptive use 
-             and channel loss/gain modules. The Fortran code used in this package 
+             interface to the unit hydrograph routing model (UH), consumptive use (CONSUSE)
+             and channel loss/gain modules (CHANLOSS). The Fortran code used in this package 
              is considered "legacy" and is not supported officially by NWS,
              but it should not have any significant differences from current 
              operational models. 
-License: Apache License 2.0 + file LICENSE
+License: Apache License (>= 2) + file LICENSE
 Encoding: UTF-8
 LazyData: true
 LazyDataCompression: xz
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
-Imports:
-    reshape2
-Suggests: 
-    testthat, data.table, lubridate
-URL: https://github.com/NOAA-NWRFC/nwsrfs-hydro-models
+Suggests:
+    testthat
+URL: https://github.com/NOAA-NWRFC/nwsrfs-hydro-models, https://noaa-nwrfc.github.io/nwsrfs-hydro-models/
 BugReports: https://github.com/NOAA-NWRFC/nwsrfs-hydro-models/issues
+Config/testthat/edition: 3
 Depends:
     R (>= 4.1.0)

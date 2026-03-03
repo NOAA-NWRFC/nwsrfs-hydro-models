@@ -1,4 +1,4 @@
-# nwsrfsr 0.1.0
+# nwsrfsr 1.0.0
 
 * Initial CRAN release
 * Low-level Fortran wrappers: sac_snow(), uh(), lagk(), chanloss(), consuse(), fa_nwrfc()

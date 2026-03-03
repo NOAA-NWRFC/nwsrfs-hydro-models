@@ -321,6 +321,7 @@ class NwsrfsRun(_NwrfcAcPrep,
 
     Files and folders in ``autocalb_dir`` must follow file conventions of the 
     `NOAA-NWRFC/nwsrfs-hydro-autocalibration repository <https://github.com/NOAA-NWRFC/nwsrfs-hydro-autocalibration>`_ optimization tools.
+    Sample calibration data is available on `Zenodo <https://doi.org/10.5281/zenodo.18829935>`_.
 
     If no ``run_dir`` is provided, the first ``'results_*'`` directory found within the ``autocalb_dir`` path will be used.
 

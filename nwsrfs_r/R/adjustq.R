@@ -21,10 +21,15 @@
 #' @return A data.frame with columns: datetime (POSIXct), flow_cfs (adjusted flow)
 #' @importFrom stats approx
 #' @export
-adjustq = function(daily_flow, inst_flow, sim = NULL,
-                   blend = 10L, interp_type = "ratio",
-                   error_tol = 0.01, max_iterations = 15L) {
-
+adjustq = function(
+  daily_flow,
+  inst_flow,
+  sim = NULL,
+  blend = 10L,
+  interp_type = "ratio",
+  error_tol = 0.01,
+  max_iterations = 15L
+) {
   blend = as.integer(blend)
   max_iterations = as.integer(max_iterations)
   if (!interp_type %in% c("ratio", "difference")) {
@@ -36,21 +41,44 @@ adjustq = function(daily_flow, inst_flow, sim = NULL,
   obs_daily = data.frame(date = obs_daily_dates, flow_cfs = daily_flow$flow_cfs)
 
   inst_dt = as.POSIXct(
-    paste0(inst_flow$year, "-", sprintf("%02d", inst_flow$month), "-",
-           sprintf("%02d", inst_flow$day), " ", sprintf("%02d", inst_flow$hour), ":00:00"),
+    paste0(
+      inst_flow$year,
+      "-",
+      sprintf("%02d", inst_flow$month),
+      "-",
+      sprintf("%02d", inst_flow$day),
+      " ",
+      sprintf("%02d", inst_flow$hour),
+      ":00:00"
+    ),
     tz = "UTC"
   )
   obs_inst = data.frame(datetime = inst_dt, flow_cfs = inst_flow$flow_cfs)
 
   if (!is.null(sim)) {
     sim_dt = as.POSIXct(
-      paste0(sim$year, "-", sprintf("%02d", sim$month), "-",
-             sprintf("%02d", sim$day), " ", sprintf("%02d", sim$hour), ":00:00"),
+      paste0(
+        sim$year,
+        "-",
+        sprintf("%02d", sim$month),
+        "-",
+        sprintf("%02d", sim$day),
+        " ",
+        sprintf("%02d", sim$hour),
+        ":00:00"
+      ),
       tz = "UTC"
     )
     sim_df = data.frame(datetime = sim_dt, simulated = sim$flow_cfs)
-    result = .adjustq_with_sim(obs_daily, obs_inst, sim_df, blend, interp_type,
-                               error_tol, max_iterations)
+    result = .adjustq_with_sim(
+      obs_daily,
+      obs_inst,
+      sim_df,
+      blend,
+      interp_type,
+      error_tol,
+      max_iterations
+    )
   } else {
     result = .inst_mean_q_merge_internal(obs_daily, obs_inst, error_tol, max_iterations)
   }
@@ -92,9 +120,15 @@ adjustq_load_example = function(sim = TRUE, ...) {
 # %%
 # Internal: AdjustQ with simulation
 
-.adjustq_with_sim = function(obs_daily, obs_inst, sim_df, blend, interp_type,
-                             error_tol, max_iterations) {
-
+.adjustq_with_sim = function(
+  obs_daily,
+  obs_inst,
+  sim_df,
+  blend,
+  interp_type,
+  error_tol,
+  max_iterations
+) {
   # Snap instantaneous obs to nearest 6hr grid (within 15min)
   obs_begin = as.POSIXct(format(min(obs_inst$datetime), "%Y-%m-%d"), tz = "UTC")
   obs_end = as.POSIXct(format(max(obs_inst$datetime) + 86400, "%Y-%m-%d"), tz = "UTC")
@@ -104,7 +138,9 @@ adjustq_load_example = function(sim = TRUE, ...) {
   for (i in seq_along(grid_6h)) {
     diffs = abs(as.numeric(difftime(obs_inst$datetime, grid_6h[i], units = "mins")))
     closest = which.min(diffs)
-    if (diffs[closest] <= 15 && !is.na(obs_inst$flow_cfs[closest]) && obs_inst$flow_cfs[closest] > 0) {
+    if (
+      diffs[closest] <= 15 && !is.na(obs_inst$flow_cfs[closest]) && obs_inst$flow_cfs[closest] > 0
+    ) {
       obs_6h$observed[i] = obs_inst$flow_cfs[closest]
     }
   }
@@ -228,12 +264,13 @@ adjustq_load_example = function(sim = TRUE, ...) {
 # Internal: inst_mean_q_merge (no simulation)
 
 .inst_mean_q_merge_internal = function(obs_daily, obs_inst, error_tol, max_iterations) {
-
   # Resample daily to 6hr with forward fill, shifted by 6hr
   daily_6h_dates = seq(min(obs_daily$date), max(obs_daily$date), by = "day")
   daily_6h_list = lapply(daily_6h_dates, \(d) {
     flow = obs_daily$flow_cfs[obs_daily$date == d]
-    if (length(flow) == 0) flow = NA_real_
+    if (length(flow) == 0) {
+      flow = NA_real_
+    }
     # Create 4 timesteps: 06:00, 12:00, 18:00, 00:00+1day (shifted by 6hr)
     dts = as.POSIXct(d, tz = "UTC") + c(6, 12, 18, 24) * 3600
     data.frame(datetime = dts, daily_flow = flow)
@@ -248,8 +285,12 @@ adjustq_load_example = function(sim = TRUE, ...) {
   for (i in seq_along(grid_6h)) {
     diffs = abs(as.numeric(difftime(obs_inst$datetime, grid_6h[i], units = "mins")))
     closest = which.min(diffs)
-    if (length(closest) > 0 && diffs[closest] <= 15 &&
-        !is.na(obs_inst$flow_cfs[closest]) && obs_inst$flow_cfs[closest] > 0) {
+    if (
+      length(closest) > 0 &&
+        diffs[closest] <= 15 &&
+        !is.na(obs_inst$flow_cfs[closest]) &&
+        obs_inst$flow_cfs[closest] > 0
+    ) {
       inst_6h$inst_flow[i] = obs_inst$flow_cfs[closest]
     }
   }
@@ -276,7 +317,6 @@ adjustq_load_example = function(sim = TRUE, ...) {
 # Internal: daily volume matching (iterative)
 
 .adjustq_daily = function(working, obs_daily, error_tol, max_iterations) {
-
   iter = 1L
   max_error = error_tol + 1
 
@@ -300,7 +340,9 @@ adjustq_load_example = function(sim = TRUE, ...) {
     hours = as.integer(format(working$datetime, "%H"))
     is_12z = hours == 12 & !is.na(daily_avg)
 
-    if (sum(is_12z) == 0) break
+    if (sum(is_12z) == 0) {
+      break
+    }
 
     # Build daily ratio table
     daily_dates_12z = as.Date(working$datetime[is_12z])
@@ -312,7 +354,9 @@ adjustq_load_example = function(sim = TRUE, ...) {
     )
     daily_ratio_df = merge(daily_ratio_df, obs_daily, by = "date", all.x = TRUE)
     daily_ratio_df$ratio = daily_ratio_df$flow_cfs / daily_ratio_df$daily_sim
-    daily_ratio_df$pbias = abs((daily_ratio_df$daily_sim - daily_ratio_df$flow_cfs) / daily_ratio_df$daily_sim)
+    daily_ratio_df$pbias = abs(
+      (daily_ratio_df$daily_sim - daily_ratio_df$flow_cfs) / daily_ratio_df$daily_sim
+    )
 
     # Map daily ratio to 6hr timesteps using Python's two-step interpolation:
     # 1. Assign ratio at 12:00 timestamps
@@ -331,11 +375,15 @@ adjustq_load_example = function(sim = TRUE, ...) {
     }
 
     known = which(!is.na(ratios))
-    if (length(known) < 1) break
+    if (length(known) < 1) {
+      break
+    }
 
     # Step 2: nearest with limit=1 (fill 1 step in each direction)
     for (k in known) {
-      if (k > 1 && is.na(ratios[k - 1])) ratios[k - 1] = ratios[k]
+      if (k > 1 && is.na(ratios[k - 1])) {
+        ratios[k - 1] = ratios[k]
+      }
       if (k < n && is.na(ratios[k + 1])) ratios[k + 1] = ratios[k]
     }
 

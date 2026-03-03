@@ -8,7 +8,6 @@ adjustq(
   daily_flow,
   inst_flow,
   sim = NULL,
-  sim_dates = NULL,
   blend = 10L,
   interp_type = "ratio",
   error_tol = 0.01,
@@ -20,11 +19,9 @@ adjustq(
 
 \item{inst_flow}{Data.frame with columns year, month, day, hour, flow_cfs (instantaneous obs)}
 
-\item{sim}{Numeric vector of simulated flow (6hr), or NULL. If provided,
-small/large gap filling uses simulation as fallback.}
-
-\item{sim_dates}{Data.frame with year, month, day, hour columns matching sim,
-or NULL. Required if sim is not NULL.}
+\item{sim}{Data.frame with columns year, month, day, hour, flow_cfs
+(simulated 6hr flow), or NULL. If provided, small/large gap filling uses
+simulation as fallback.}
 
 \item{blend}{Integer; threshold for small vs large gap in timesteps. Default 10.}
 

@@ -1,6 +1,6 @@
 #' nwsrfsr: NWS River Forecast System Hydrologic Models
 #'
-#' R wrappers for NWSRFS Fortran hydrologic models used operationally by NOAA's
+#' R interface to NWSRFS Fortran hydrologic models used operationally by NOAA's
 #' National Weather Service River Forecast Centers. Includes SAC-SMA soil moisture
 #' accounting, SNOW-17 snow accumulation/ablation, gamma unit hydrograph routing,
 #' Lag-K channel routing, channel loss/gain, and consumptive use modules.
@@ -22,8 +22,13 @@
 "_PACKAGE"
 
 utils::globalVariables(c(
-  "nrkw1_pars", "nrkw1_forcing", "nrkw1_upflow",
-  "nrkw1_daily_flow", "nrkw1_inst_flow",
-  "sfln2_pars", "sfln2_forcing",
-  "sfln2_daily_flow", "sfln2_inst_flow"
+  "nrkw1_pars",
+  "nrkw1_forcing",
+  "nrkw1_upflow",
+  "nrkw1_daily_flow",
+  "nrkw1_inst_flow",
+  "sfln2_pars",
+  "sfln2_forcing",
+  "sfln2_daily_flow",
+  "sfln2_inst_flow"
 ))

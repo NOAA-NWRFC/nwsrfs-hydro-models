@@ -2,7 +2,7 @@
 
 `nwsrfs_py` is a Python interface to NWSRFS hydrologic models using `f2py` wrappers around the FORTRAN implementation.
 
-It is designed to support NWRFC autocalibration workflows and provides classes for simulation and AdjustQ operations.
+It is designed to support [NWRFC autocalibration](https://github.com/NOAA-NWRFC/nwsrfs-hydro-autocalibration) workflows and provides classes for simulation and AdjustQ operations. Sample calibration data is [archived on Zenodo](https://doi.org/10.5281/zenodo.18829935).
 
 ## Included Model Components
 
@@ -21,7 +21,17 @@ It is designed to support NWRFC autocalibration workflows and provides classes f
 
 ## Installation
 
-Recommended environment setup:
+### Using pixi (recommended)
+
+From the repo root:
+
+```bash
+pixi run install-py
+```
+
+This handles all dependencies (Python, gfortran, meson, ninja, numpy) via the `pixi.toml` environment. See the [top-level README](../README.md#development-environment-pixi) for setup details.
+
+### Using conda
 
 ```bash
 conda create -n nwsrfs_env python=3.10

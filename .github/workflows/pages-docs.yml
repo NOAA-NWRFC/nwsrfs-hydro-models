@@ -21,36 +21,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-
-      - name: Install documentation dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install sphinx sphinx-rtd-theme sphinx-autodoc-typehints numpy pandas scipy
+      - name: Set up pixi
+        uses: prefix-dev/setup-pixi@v0.8.8
 
       - name: Build Sphinx docs (Python package)
-        run: |
-          sphinx-build -b html nwsrfs_py/docs/source _site/python
-
-      - name: Set up R
-        uses: r-lib/actions/setup-r@v2
-
-      - name: Install R dependencies
-        uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          working-directory: nwsrfs_r
-          extra-packages: any::pkgdown
-          needs: website
+        run: pixi run sphinx-build -b html nwsrfs_py/docs/source _site/python
 
       - name: Build pkgdown site (R package)
         run: |
-          Rscript -e 'if (!requireNamespace("pkgdown", quietly = TRUE)) install.packages("pkgdown", repos = "https://cloud.r-project.org")'
-          Rscript -e 'pkgdown::build_site(pkg = "nwsrfs_r", install = TRUE, preview = FALSE, new_process = FALSE)'
+          pixi run build-docs-r
           mkdir -p _site/r
           cp -R nwsrfs_r/docs/. _site/r/
+
+      - name: Build top-level README.html
+        run: pixi run pandoc README.md -s -o _site/README.html
 
       - name: Add site landing page and Pages metadata
         run: |
