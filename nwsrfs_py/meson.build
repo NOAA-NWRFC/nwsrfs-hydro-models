@@ -6,7 +6,6 @@ project('nwsrfspy', 'c', 'fortran',
 
 py = import('python').find_installation(pure: false)
 module_name = 'nwsrfs_src'
-src_dir = meson.current_source_dir() / 'src'
 
 incdir_numpy = run_command(py,
   ['-c', 'import numpy; print(numpy.get_include())'],
@@ -22,7 +21,7 @@ incdir_f2py = run_command(py,
 # 1. Fortran sources
 # -------------------------
 
-fortran_sources = [
+fortran_sources = files(
   'src/types.f90', 'src/sorting.f90', 'src/stats.f90', 'src/utilities.f90',
   'src/uh_optim.f90', 'src/uh2p_get_scale.f90', 'src/FA.f90', 'src/lagk_run.f90',
   'src/sac_snow.f90', 'src/consuse_run.f90', 'src/chanloss.f90', 'src/rsnwelev_run.f90',
@@ -31,7 +30,7 @@ fortran_sources = [
   'src/umemov.f', 'src/umemst.f', 'src/PACK19.f', 'src/exsnow19.f', 'src/aesc19.f',
   'src/rout19.f', 'src/zero19.f', 'src/duamel.f', 'src/sac1.f', 'src/ex_sac1.f',
   'src/melt19.f', 'src/ex57.f', 'src/ex42.f'
-]
+)
 
 generated_f2py_sources = [
   module_name + 'module.c',
@@ -62,6 +61,13 @@ fortranobject_c = incdir_f2py / 'fortranobject.c'
 # -----------------------------------------
 # 3. Build the Python extension module
 # -----------------------------------------
+py_dep = py.dependency()
+
+
+ext_link_args = []
+if host_machine.system() == 'darwin'
+  ext_link_args += ['-Wl,-undefined,dynamic_lookup']
+endif
 
 py.extension_module(
   module_name,
@@ -73,7 +79,8 @@ py.extension_module(
     fortranobject_c,
   ],
   include_directories: inc_np,
-  link_args: ['-Wl,-undefined,dynamic_lookup'],
+  dependencies: py_dep,
+  link_args: ext_link_args,
   subdir: 'nwsrfs_py/wrapper',
   install: true
 )
@@ -82,42 +89,31 @@ py.extension_module(
 # 4. Install Python package files
 # -----------------------------------------
 
-py.install_sources(
+# 1. ALL Python files in one list
+all_package_files = files(
+  # Base package files
   'nwsrfs_py/__init__.py',
   'nwsrfs_py/simulation.py',
   'nwsrfs_py/adjustq.py',
   'nwsrfs_py/utils.py',
-  subdir: 'nwsrfs_py'
-)
-
-py.install_sources(
+  
+  # Wrapper files
   'nwsrfs_py/wrapper/__init__.py',
   'nwsrfs_py/wrapper/nwsrfs_f2py_wrapper.py',
-  subdir: 'nwsrfs_py/wrapper'
-)
-
-py.install_sources(
+  
+  # Data root
   'nwsrfs_py/data/__init__.py',
   'nwsrfs_py/data/README.md',
-  subdir: 'nwsrfs_py/data'
-)
-
-# Install files into data/SFLN2
-data_SFLN2_files = [
+  
+  # SFLN2 Data
   'nwsrfs_py/data/SFLN2/__init__.py',
   'nwsrfs_py/data/SFLN2/flow_instantaneous_SFLN2.csv',
   'nwsrfs_py/data/SFLN2/forcing_por_SFLN2-1.csv',
   'nwsrfs_py/data/SFLN2/forcing_por_SFLN2-2.csv',
   'nwsrfs_py/data/SFLN2/forcing_por_SFLN2-CU.csv',
   'nwsrfs_py/data/SFLN2/flow_daily_SFLN2.csv',
-]
-py.install_sources(
-  data_SFLN2_files,
-  subdir: 'nwsrfs_py/data/SFLN2'
-)
-
-# Install files into data/SFLN2/results_por_01
-data_SFLN2_results_por_01_files = [
+  
+  # SFLN2 Results
   'nwsrfs_py/data/SFLN2/results_por_01/__init__.py',
   'nwsrfs_py/data/SFLN2/results_por_01/pars_optimal.csv',
   'nwsrfs_py/data/SFLN2/results_por_01/adc_SFLN2-1.csv',
@@ -131,14 +127,8 @@ data_SFLN2_results_por_01_files = [
   'nwsrfs_py/data/SFLN2/results_por_01/uh_6hr_SFLN2-1.csv',
   'nwsrfs_py/data/SFLN2/results_por_01/uh_6hr_SFLN2-2.csv',
   'nwsrfs_py/data/SFLN2/results_por_01/uh_6hr_SFLN2-CU.csv',
-]
-py.install_sources(
-  data_SFLN2_results_por_01_files,
-  subdir: 'nwsrfs_py/data/SFLN2/results_por_01'
-)
 
-# Install files into data/NRKW1
-data_NRKW1_files = [
+  # NRKW1 Data
   'nwsrfs_py/data/NRKW1/__init__.py',
   'nwsrfs_py/data/NRKW1/flow_instantaneous_NRKW1.csv',
   'nwsrfs_py/data/NRKW1/upflow_NSSW1.csv',
@@ -147,14 +137,8 @@ data_NRKW1_files = [
   'nwsrfs_py/data/NRKW1/forcing_por_NRKW1-1.csv',
   'nwsrfs_py/data/NRKW1/upflow_NFNW1.csv',
   'nwsrfs_py/data/NRKW1/flow_daily_NRKW1.csv',
-]
-py.install_sources(
-  data_NRKW1_files,
-  subdir: 'nwsrfs_py/data/NRKW1'
-)
 
-# Install files into data/NRKW1/results_por_02
-data_NRKW1_results_por_02_files = [
+  # NRKW1 Results
   'nwsrfs_py/data/NRKW1/results_por_02/__init__.py',
   'nwsrfs_py/data/NRKW1/results_por_02/pars_optimal.csv',
   'nwsrfs_py/data/NRKW1/results_por_02/optimal_routed_flow.csv',
@@ -162,21 +146,17 @@ data_NRKW1_results_por_02_files = [
   'nwsrfs_py/data/NRKW1/results_por_02/optimal_6hr_inst.csv',
   'nwsrfs_py/data/NRKW1/results_por_02/optimal_states_6hr.csv',
   'nwsrfs_py/data/NRKW1/results_por_02/lagk_tables.csv',
-]
-py.install_sources(
-  data_NRKW1_results_por_02_files,
-  subdir: 'nwsrfs_py/data/NRKW1/results_por_02'
-)
 
-# Install files into data/NRKW1/results_por_02
-data_Adjustq_check_files = [
+  # Adjustq check
   'nwsrfs_py/data/Adjustq_check/__init__.py',
   'nwsrfs_py/data/Adjustq_check/NRKW1_w_sim.csv',
-  'nwsrfs_py/data/Adjustq_check/NRKW1_wout_sim.csv',
-]
+  'nwsrfs_py/data/Adjustq_check/NRKW1_wout_sim.csv'
+)
+
+# 2. Install everything in one command while maintaining the directory tree
 py.install_sources(
-  data_Adjustq_check_files,
-  subdir: 'nwsrfs_py/data/Adjustq_check'
+  all_package_files,
+  preserve_path: true
 )
 
 # -----------------------------------------

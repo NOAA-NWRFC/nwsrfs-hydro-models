@@ -17,6 +17,34 @@ dependencies = [                                               # Runtime depende
     "scipy"
 ]
 
+keywords = [
+    "hydrology",
+    "nwsrfs",
+    "conceptual-modeling",
+    "operational-forecasting",
+    "operations",
+    "noaa",
+    "national-weather-service",
+    "nws",
+    "river-forecast-centers",
+    "rfc"
+]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",                  # Change to 4 - Beta or 5 - Production/Stable later
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Hydrology",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    #"Programming Language :: Python :: 3.11",
+    #"Programming Language :: Python :: 3.12",
+    "Programming Language :: Fortran",
+    "License :: OSI Approved :: Apache Software License",         
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
+    #"Operating System :: Microsoft :: Windows",
+]
+
 [project.optional-dependencies]
 docs = [
     "sphinx",
@@ -24,10 +52,3 @@ docs = [
     "sphinx-rtd-theme"
 ]
 test = ["pytest"]
-
-[table]
-description = """
-This is a multi-line description.
-It can span multiple lines.
-"""
-

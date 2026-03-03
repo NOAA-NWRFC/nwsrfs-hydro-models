@@ -1,0 +1,32 @@
+name: Test Python Models
+
+on:
+  push:
+    # Runs on your current branch and will continue to work when merged to main
+    branches: ["main", "pypi_prep"]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    # This matrix replaces the parallel array from GitLab
+    strategy:
+      # If one Python version fails, let the others finish so you can see all results
+      fail-fast: false 
+      matrix:
+        pixi_env: ["py310", "py311", "py312"]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up pixi
+        uses: prefix-dev/setup-pixi@v0.8.8
+        with:
+          # Tells the setup action to cache the specific environment for this matrix leg
+          environments: ${{ matrix.pixi_env }}
+
+      - name: Run Python tests
+        # Uses the specific environment variable injected by the matrix
+        run: pixi run -e ${{ matrix.pixi_env }} test-py

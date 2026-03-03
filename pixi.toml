@@ -45,3 +45,21 @@ build-docs-py = { cmd = "cd nwsrfs_py/docs && make html", description = "Build P
 build-docs-r = { cmd = "RENV_CONFIG_AUTOLOADER_ENABLED=FALSE Rscript -e \"pkgdown::build_site(pkg='nwsrfs_r', install=FALSE, preview=FALSE)\"", depends-on = ["install-r"], description = "Build R pkgdown docs" }
 build-docs-r-readme = { cmd = "cd nwsrfs_r; quarto render README.qmd --to html -M embed-resources:true -o README.html ", description = "Build R README.html" }
 build-docs = { depends-on = ["build-docs-py", "build-docs-r", "build-docs-r-readme"], description = "Build all docs" }
+
+[environments]
+# Explicitly preserves the current behavior for your colleagues and CI
+default = { features = [], solve-group = "default" } 
+
+# Adds the matrix environments for GitLab CI
+py310 = { features = ["py310"], solve-group = "default" }
+py311 = { features = ["py311"], solve-group = "default" }
+py312 = { features = ["py312"], solve-group = "default" }
+
+[feature.py310.dependencies]
+python = "3.10.*"
+
+[feature.py311.dependencies]
+python = "3.11.*"
+
+[feature.py312.dependencies]
+python = "3.12.*"
