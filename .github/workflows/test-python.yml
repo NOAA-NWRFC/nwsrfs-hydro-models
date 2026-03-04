@@ -29,4 +29,6 @@ jobs:
 
       - name: Run Python tests
         # Uses the specific environment variable injected by the matrix
-        run: pixi run -e ${{ matrix.pixi_env }} test-py
+        run: |
+          pixi run -e ${{ matrix.pixi_env }} python -c "import sys; print(sys.version)"
+          pixi run -e ${{ matrix.pixi_env }} test-py
