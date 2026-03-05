@@ -18,7 +18,7 @@ Arguments:
               Example: /Users/you/miniconda3/envs/nwsrfs-pypi
               If omitted, uses current PATH python.
   STAGE_DIR   Optional destination directory.
-              Default: /tmp/nwsrfs_py_release
+              Default: ${TMPDIR:-$HOME/tmp}/nwsrfs_py_release
 EOF
 }
 
@@ -31,7 +31,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PKG_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 REPO_ROOT="$(cd "${PKG_DIR}/.." && pwd)"
 CONDA_ENV_PREFIX="${1:-}"
-STAGE_DIR="${2:-/tmp/nwsrfs_py_release}"
+DEFAULT_TMP_BASE="${TMPDIR:-$HOME/tmp}"
+STAGE_DIR="${2:-${DEFAULT_TMP_BASE}/nwsrfs_py_release}"
 RELEASE_DIR="${STAGE_DIR}/nwsrfs_py"
 
 if [[ -n "${CONDA_ENV_PREFIX}" ]]; then

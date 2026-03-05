@@ -31,6 +31,8 @@ sphinx-autodoc-typehints = "*"
 sphinx_rtd_theme = "*"
 quarto = ">=1.8.27,<2"
 tidy-html5 = ">=5.9.14,<6"
+twine = ">=6.2.0,<7"
+python-build = ">=1.4.0,<2"
 
 [tasks]
 clean-py-src-artifacts = { cmd = "find model_source -type f \\( -name '*.mod' -o -name '*.smod' -o -name '*.o' -o -name '*.so' -o -name '*.dylib' -o -name '*.a' \\) -delete", description = "Remove stale compiled Fortran artifacts from model_source" }
