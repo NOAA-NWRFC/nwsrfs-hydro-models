@@ -70,13 +70,20 @@ R CMD INSTALL nwsrfs_r
 
 ### Python (nwsrfs_py)
 
-Using pixi (recommended):
+Install from PyPI:
+
+```bash
+pip install nwsrfspy
+python -c "import nwsrfs_py; print('Success')"
+```
+
+For repository development, use pixi (recommended):
 
 ```bash
 pixi run install-py
 ```
 
-Or with conda:
+Or with conda from source:
 
 ```bash
 conda create -n nwsrfs_env python=3.10
