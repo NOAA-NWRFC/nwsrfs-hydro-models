@@ -1,0 +1,75 @@
+name: Build Wheels (cibuildwheel)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main", "pypi_prep"]
+    tags: ["v*"]
+
+jobs:
+  build_wheels:
+    name: Build ${{ matrix.os }} wheels
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest", "macos-latest", "windows-latest"]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install macOS Fortran compiler
+        if: runner.os == 'macOS'
+        run: brew install gcc
+
+      - name: Install Windows Fortran compiler
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc-fortran
+
+      - name: Add Windows MinGW to PATH
+        if: runner.os == 'Windows'
+        shell: bash
+        run: echo "C:/msys64/mingw64/bin" >> "$GITHUB_PATH"
+
+      - name: Materialize package links for build
+        shell: bash
+        run: |
+          set -euxo pipefail
+          rm -rf nwsrfs_py/src
+          cp -R model_source nwsrfs_py/src
+          rm -f nwsrfs_py/LICENSE
+          cp LICENSE nwsrfs_py/LICENSE
+          rm -f nwsrfs_py/NOTICE
+          cp NOTICE nwsrfs_py/NOTICE
+          find nwsrfs_py/src -type f \( -name '*.o' -o -name '*.so' -o -name '*.dylib' -o -name '*.a' -o -name '*.mod' -o -name '*.smod' \) -delete
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.22.0
+        env:
+          CIBW_BUILD: "cp310-* cp311-* cp312-*"
+          CIBW_SKIP: "*-manylinux_i686 *-musllinux_* *-win32"
+          CIBW_TEST_COMMAND: "python -c \"import nwsrfs_py; from nwsrfs_py import simulation, adjustq; print('wheel import ok')\""
+          CIBW_BEFORE_BUILD: "python -m pip install --upgrade pip"
+        with:
+          package-dir: nwsrfs_py
+
+      - name: Validate wheel metadata
+        run: |
+          python -m pip install --upgrade twine
+          python -m twine check wheelhouse/*.whl
+
+      - name: Upload wheel artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.os }}
+          path: wheelhouse/*.whl
