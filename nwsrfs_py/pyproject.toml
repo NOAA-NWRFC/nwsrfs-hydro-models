@@ -1,5 +1,5 @@
 [build-system]
-requires = ["meson-python", "numpy", "ninja"] # What packages are needed to build this project
+requires = ["meson-python", "meson>=1.1.0", "numpy", "ninja"] # What packages are needed to build this project
 build-backend = "mesonpy"  # The tool that runs the build process (here, setuptools)
 
 [project]
