@@ -99,6 +99,8 @@ C
       DO 5 J=A,B
       IOR=I-J+1
       !if(I.lt.10)write(*,*)QB(I)+U1(J)*Q(IOR)
+CGW   ADDED IF STATMENT TO PROTECT FROM OVER ALLOCATION OF Q DIM
+      IF(IOR.GT.N-MM) GO TO 5
       QB(I)=QB(I)+U1(J)*Q(IOR)
  5    CONTINUE
  4    CONTINUE

@@ -15,7 +15,7 @@ jobs:
       # If one Python version fails, let the others finish so you can see all results
       fail-fast: false 
       matrix:
-        os: ["ubuntu-latest", "windows-latest"]
+        os: ["macos-latest","ubuntu-latest", "windows-latest"]
         pixi_env: ["py310", "py311", "py312"]
 
     steps:
