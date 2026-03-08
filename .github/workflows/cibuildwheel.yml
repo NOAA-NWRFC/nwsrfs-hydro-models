@@ -3,7 +3,7 @@ name: Build Wheels (cibuildwheel)
 on:
   workflow_dispatch:
   push:
-    branches: ["main"]
+    branches: ["main",'pywheel_bug']
     tags: ["v*"]
 
 jobs:
@@ -78,8 +78,14 @@ jobs:
           cp NOTICE nwsrfs_py/NOTICE
           find nwsrfs_py/src -type f \( -name '*.o' -o -name '*.so' -o -name '*.dylib' -o -name '*.a' -o -name '*.mod' -o -name '*.smod' \) -delete
 
-      - name: Build wheels
-        uses: pypa/cibuildwheel@v2.22.0
+      - name: Install cibuildwheel
+        run: |
+          # Pinned for reproducibility and to avoid behavior drift in wheel build bootstrap.
+          # Revisit periodically (or when CI starts failing) and bump intentionally after validating all OS jobs.
+          python -m pip install --upgrade "cibuildwheel==3.1.4"
+
+      - name: Build wheels (retry on transient network/rate-limit failures)
+        uses: nick-fields/retry@v3
         env:
           # Update python tags intentionally when support policy changes (e.g., add cp313, drop cp310).
           CIBW_BUILD: "cp310-* cp311-* cp312-*"
@@ -96,7 +102,12 @@ jobs:
           # Homebrew gcc runtime currently requires macOS 15+; lowering this target without changing toolchain will fail.
           CIBW_ENVIRONMENT_MACOS: "MACOSX_DEPLOYMENT_TARGET=15.0"
         with:
-          package-dir: nwsrfs_py
+          # GitHub can occasionally return 429 while cibuildwheel fetches virtualenv.pyz.
+          # Retry the whole build to avoid failing on transient infrastructure errors.
+          timeout_minutes: 120
+          max_attempts: 3
+          retry_wait_seconds: 30
+          command: python -m cibuildwheel nwsrfs_py --output-dir wheelhouse
 
       - name: Validate wheel metadata
         run: |

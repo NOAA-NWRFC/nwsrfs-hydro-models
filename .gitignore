@@ -71,3 +71,6 @@ setup_*.sh
 # R pkgdown site output
 /nwsrfs_r/docs/
 /nwsrfs_r/docs/_pkgdown.yml
+
+#pypi distribution
+/nwsrfs_py/dist/*
