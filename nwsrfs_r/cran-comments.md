@@ -28,3 +28,4 @@ across all platforms:
   - R-oldrelease: https://win-builder.r-project.org/SNPBLmbsk2xE/
   - R-devel: https://win-builder.r-project.org/J2KmSRwBV8Ut/
   - R-devel (with Makevars.win): https://win-builder.r-project.org/1Z5VozPj1YRl/
+  - https://win-builder.r-project.org/qM24yJf454P9/
