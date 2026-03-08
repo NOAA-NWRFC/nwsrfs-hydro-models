@@ -58,6 +58,12 @@ setup_*.sh
 *_report.md
 *_checklist.md
 
+# R build arifacts
+00*.log
+
+# rendered md should not usually be included, but might in specefic cases using -f 
+*.html
+
 # python package docs
 /nwsrfs_py/docs/build/
 /nwsrfs_py/docs/_build/

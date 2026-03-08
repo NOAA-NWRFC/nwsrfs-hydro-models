@@ -22,7 +22,7 @@ Using [pixi](https://pixi.prefix.dev/) (recommended for development — provides
 pixi run install-r
 ```
 
-See the [top-level README](../README.md#development-environment-pixi) for pixi setup details.
+See the [top-level README](https://github.com/NOAA-NWRFC/nwsrfs-hydro-models#development-environment-pixi) for pixi setup details.
 
 Or from R:
 

@@ -1,11 +1,9 @@
 
       SUBROUTINE initCommonBlocksPin(FILENAME)
 
-      CHARACTER*1024 FILENAME
+      CHARACTER(LEN=1024) FILENAME
       COMMON/IONUM/IN,IPR,IPU
       COMMON /FATLGK/ IATL,C1,C2
-      
-      DATA  IATL, C1, C2 / 1, 12.0, 100.0 /
       
 
       IN = 1

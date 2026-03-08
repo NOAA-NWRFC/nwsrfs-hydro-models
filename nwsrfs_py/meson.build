@@ -29,7 +29,7 @@ fortran_sources = files(
   'src/fop7.f', 'src/fserc7.f', 'src/fslag7.f', 'src/pin7.f', 'src/pina7.f',
   'src/umemov.f', 'src/umemst.f', 'src/PACK19.f', 'src/exsnow19.f', 'src/aesc19.f',
   'src/rout19.f', 'src/zero19.f', 'src/duamel.f', 'src/sac1.f', 'src/ex_sac1.f',
-  'src/melt19.f', 'src/ex57.f', 'src/ex42.f'
+  'src/melt19.f', 'src/ex57.f', 'src/ex42.f', 'src/blockdata_fatlgk.f'
 )
 
 generated_f2py_sources = [
