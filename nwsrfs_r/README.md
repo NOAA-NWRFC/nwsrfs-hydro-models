@@ -24,7 +24,8 @@ provides R, gfortran, and test dependencies):
 pixi run install-r
 ```
 
-See the [top-level README](../README.md#development-environment-pixi)
+See the [top-level
+README](https://github.com/NOAA-NWRFC/nwsrfs-hydro-models#development-environment-pixi)
 for pixi setup details.
 
 Or from R:
