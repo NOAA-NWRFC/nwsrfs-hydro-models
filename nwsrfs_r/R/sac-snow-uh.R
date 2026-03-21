@@ -1400,9 +1400,9 @@ rsnwelev <- function(forcing, pars, ae_tbl) {
 
   fortran_tbl <- matrix(NA, nrow(ae_tbl) * 2, n_zones)
   for (i in 1:n_zones) {
-    col_a <- ae_tbl[, i + 1]
-    col_b <- ae_tbl[, n_zones + 2]
-    fortran_tbl[, i] <- as.vector(rbind(col_a, col_b))
+    vec_a <- ae_tbl[[1]]
+    vec_b <- ae_tbl[[i + 1]]
+    fortran_tbl[, i] <- c(rbind(vec_a,vec_b))
   }
 
   output_matrix <- matrix(0, nrow = sim_length, ncol = n_zones)
