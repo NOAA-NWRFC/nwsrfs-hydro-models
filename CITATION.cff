@@ -12,7 +12,7 @@ repository-code: "https://github.com/NOAA-NWRFC/nwsrfs-hydro-models"
 url: "https://noaa-nwrfc.github.io/nwsrfs-hydro-models/"
 preferred-citation:
   type: article
-  title: "A comprehensive calibration framework for the Northwest River Forecast Center"
+  title: "A Comprehensive Calibration Framework for the Northwest River Forecast Center"
   authors:
     - family-names: "Walters"
       given-names: "Geoffrey"
@@ -20,10 +20,30 @@ preferred-citation:
     - family-names: "Bracken"
       given-names: "Cameron"
       orcid: "https://orcid.org/0000-0003-1917-402X"
+    - family-names: "Gillies"
+      given-names: "Brad"
+    - family-names: "Pope"
+      given-names: "Leah"
+    - family-names: "Pai"
+      given-names: "Henry"
+    - family-names: "Chokshi"
+      given-names: "Sonali"
+    - family-names: "Stegemiller"
+      given-names: "Victor"
+    - family-names: "King"
+      given-names: "Stephen"
+    - family-names: "Bracken"
+      given-names: "Julie"
+    - family-names: "Dixon"
+      given-names: "Taylor"
+    - family-names: "Intermill"
+      given-names: "Joe"
   year: 2026
-  journal: "Journal of the American Water Resources Association"
-  url: "https://eartharxiv.org/repository/view/8993/"
-  notes: "Accepted for publication."
+  journal: "JAWRA Journal of the American Water Resources Association"
+  volume: 62
+  issue: 2
+  doi: "10.1111/1752-1688.70112"
+  url: "https://doi.org/10.1111/1752-1688.70112"
 references:
   - type: dataset
     title: "NWSRFS Autocalibration Sample Runs"

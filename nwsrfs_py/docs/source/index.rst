@@ -56,9 +56,9 @@ For model background, see the `NWSRFS User Manual <https://www.weather.gov/owp/o
 How to Cite Us
 --------------
 
-If you use this software or the underlying calibration framework in your research, we ask that you please cite our accepted paper:
+If you use this software or the underlying calibration framework in your research, we ask that you please cite our published paper:
 
-   Walters, G., & Bracken, C. (2026). A comprehensive calibration framework for the Northwest River Forecast Center. *Journal of the American Water Resources Association*. Accepted for publication. `EarthArXiv Preprint <https://eartharxiv.org/repository/view/8993/>`_.
+   Walters, G., Bracken, C., Gillies, B., et al. (2026). A comprehensive calibration framework for the Northwest River Forecast Center. *JAWRA Journal of the American Water Resources Association*, 62(2), e70112. `https://doi.org/10.1111/1752-1688.70112 <https://doi.org/10.1111/1752-1688.70112>`_.
 
 **BibTeX:**
 
@@ -66,10 +66,14 @@ If you use this software or the underlying calibration framework in your researc
 
    @article{walters2026calibration,
      title={A comprehensive calibration framework for the Northwest River Forecast Center},
-     author={Walters, Geoffrey and Bracken, Cameron},
+     author={Walters, Geoffrey and Bracken, Cameron and Gillies, Brad and Pope, Leah and Pai, Henry and Chokshi, Sonali and Stegemiller, Victor and King, Stephen and Bracken, Julie and Dixon, Taylor and Intermill, Joe},
      year={2026},
-     journal={Journal of the American Water Resources Association},
-     note={Accepted for publication. Preprint available at \url{https://eartharxiv.org/repository/view/8993/}}
+     journal={JAWRA Journal of the American Water Resources Association},
+     volume={62},
+     number={2},
+     pages={e70112},
+     doi={10.1111/1752-1688.70112},
+     url={https://doi.org/10.1111/1752-1688.70112}
    }
 
 **Citing the Software Directly:**

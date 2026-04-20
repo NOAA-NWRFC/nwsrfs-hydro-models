@@ -309,7 +309,7 @@ Citation
 citation("nwsrfsr")
 ```
 
-This includes the software citation and the accepted 2026 JAWRA paper reference.
+This includes the software citation and the published 2026 JAWRA paper reference.
 Repository-level citation metadata is in `/CITATION.cff` (repo root).
 
 Testing & Building
