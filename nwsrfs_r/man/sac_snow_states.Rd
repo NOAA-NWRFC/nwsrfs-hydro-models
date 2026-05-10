@@ -22,7 +22,6 @@ and adjusted forcing data.
 Execute SAC-SMA, SNOW17, return total channel inflow per zone, and model states
 }
 \examples{
-\donttest{
 # Simple: full model chain via the bundled example, tci and states returned together
 run <- load_example("NRKW1")
 head(run$sacsnow_tci)
@@ -34,5 +33,4 @@ data(nrkw1_pars)
 dt_hours <- 6
 forcing_adj <- fa_nwrfc(dt_hours, nrkw1_forcing, nrkw1_pars)
 states <- sac_snow_states(dt_hours, forcing_adj, nrkw1_pars)
-}
 }

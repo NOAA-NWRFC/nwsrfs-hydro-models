@@ -4,17 +4,17 @@ Version: 1.0.0
 Authors@R: c(
           person(given = "Cameron",
              family = "Bracken",
-             role = c("aut", "cre"),
+             role = c("ctb"),
              email = "cameron.bracken@pnnl.gov",
              comment = c(ORCID = "0000-0003-1917-402X")),
           person(given = "Geoffrey",
              family = "Walters",
-             role = c("aut"),
+             role = c("ctb"),
              email = "geoffrey.walters@noaa.gov",
              comment = c(ORCID = "0009-0009-3804-8898")),
           person("National Oceanic and Atmospheric Administration", 
              role = "cph", 
-             comment = "Work produced by U.S. Government employees is not subject to copyright."))
+             comment = "Work produced by U.S. Government employees is not subject to copyright, see inst/COPYRIGHTS for more details."))
 Description: Interface to the National Weather Service operational 
              hydrology models, Sacramento Soil Moisture Accounting (SAC-SMA), 
              Snow Accumulation and Ablation (SNOW17). Also provides an 

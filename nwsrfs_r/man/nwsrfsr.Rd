@@ -46,4 +46,9 @@ Authors:
   \item Geoffrey Walters \email{geoffrey.walters@noaa.gov} (\href{https://orcid.org/0009-0009-3804-8898}{ORCID})
 }
 
+Other contributors:
+\itemize{
+  \item National Oceanic and Atmospheric Administration (Work produced by U.S. Government employees is not subject to copyright.) [copyright holder]
+}
+
 }

@@ -22,7 +22,6 @@ Vector of routed flow in cfs
 Execute SAC-SMA, SNOW17, UH and LAG-K with given parameters
 }
 \examples{
-\donttest{
 # Simple: full model chain via the bundled example (NRKW1 has upstream tribs)
 run <- load_example("NRKW1")
 head(run$sim)
@@ -35,5 +34,4 @@ data(nrkw1_upflow)
 dt_hours <- 6
 forcing_adj <- fa_nwrfc(dt_hours, nrkw1_forcing, nrkw1_pars)
 flow_cfs <- sac_snow_uh_lagk(dt_hours, forcing_adj, nrkw1_upflow, nrkw1_pars)
-}
 }
