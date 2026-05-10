@@ -75,4 +75,20 @@ sfln2_inst_flow = read.csv(file.path(sfln2_dir, "flow_instantaneous_SFLN2.csv"),
 save(sfln2_inst_flow, file = file.path(r_data, "sfln2_inst_flow.rda"), compress = "xz")
 
 cat("SFLN2 data saved\n")
+
+# %%
+# --- Area-elevation curve for SFLN2 (used by rsnwelev) ---
+# col1 = cumulative area quantile, subsequent cols = elevation per zone (ft)
+area_elev_curve = read.csv(
+  file.path("nwsrfs_r", "data-raw", "area_elev_curve.csv"),
+  check.names = FALSE,
+  stringsAsFactors = FALSE
+)
+save(
+  area_elev_curve,
+  file = file.path(r_data, "area_elev_curve.rda"),
+  compress = "xz"
+)
+
+cat("area_elev_curve data saved\n")
 cat("Done.\n")

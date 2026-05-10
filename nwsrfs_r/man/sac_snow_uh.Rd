@@ -20,10 +20,17 @@ Vector of routed flow in cfs
 Execute SAC-SMA, SNOW17 and UH with given parameters
 }
 \examples{
-\dontrun{
+\donttest{
+# Simple: full model chain via the bundled example
+run <- load_example("NRKW1")
+head(run$sim)
+
+# Low-level: populate etd_mm / pet_mm via fa_nwrfc first,
+# then call the combined SAC-SMA / SNOW17 / UH wrapper.
 data(nrkw1_forcing)
 data(nrkw1_pars)
 dt_hours <- 6
-flow_cfs <- sac_snow_uh(dt_hours, nrkw1_forcing, nrkw1_pars)
+forcing_adj <- fa_nwrfc(dt_hours, nrkw1_forcing, nrkw1_pars)
+flow_cfs <- sac_snow_uh(dt_hours, forcing_adj, nrkw1_pars)
 }
 }
