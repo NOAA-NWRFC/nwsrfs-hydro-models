@@ -33,10 +33,8 @@ Matrix (1 column per zone) of unrouted channel inflow
 Conduct NWRFC style forcing adjustments
 }
 \examples{
-\donttest{
 data(nrkw1_forcing)
 data(nrkw1_pars)
 dt_hours <- 6
 adj <- fa_adj_nwrfc(dt_hours, nrkw1_forcing, nrkw1_pars)
-}
 }

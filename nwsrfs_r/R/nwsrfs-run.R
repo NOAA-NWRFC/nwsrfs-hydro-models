@@ -139,10 +139,8 @@ nwsrfs_run = function(autocalb_dir, run_dir = NULL, forcing_adj = TRUE, shift_sf
 #' @export
 #'
 #' @examples
-#' \donttest{
 #' run = load_example("NRKW1")
 #' plot(run$sim, type = "l")
-#' }
 load_example = function(lid = "NRKW1", forcing_adj = TRUE, shift_sf = TRUE) {
   lid = toupper(lid)
 

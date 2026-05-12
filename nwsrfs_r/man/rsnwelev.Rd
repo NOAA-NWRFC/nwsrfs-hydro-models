@@ -21,9 +21,12 @@ with that derived from rsnwelev model
 Replace ptps column with ptps derived using rain snow line code (lapse rate + MAT)
 }
 \examples{
-\dontrun{
-data(nrkw1_forcing)
-data(nrkw1_pars)
-forcing_adj <- rsnwelev(nrkw1_forcing, nrkw1_pars, area_elev_curve)
-}
+# area_elev_curve is bundled for SFLN2 (2 zones); pair it with SFLN2 data.
+data(sfln2_forcing)
+data(sfln2_pars)
+data(area_elev_curve)
+# rsnwelev only needs the zones that match the area-elevation table,
+# so drop the SFLN2-CU consumptive-use zone before calling.
+forcing_zones <- sfln2_forcing[c("SFLN2-1", "SFLN2-2")]
+forcing_adj <- rsnwelev(forcing_zones, sfln2_pars, area_elev_curve)
 }

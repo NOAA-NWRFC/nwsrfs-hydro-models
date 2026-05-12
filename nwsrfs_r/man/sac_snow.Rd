@@ -24,10 +24,16 @@ and adjusted forcing data.
 Execute SAC-SMA, SNOW17, return total channel inflow per zone, and model states
 }
 \examples{
-\dontrun{
+# Simple: full model chain via the bundled example
+run <- load_example("NRKW1")
+head(run$sacsnow_tci)
+
+# Low-level: populate etd_mm / pet_mm via fa_nwrfc first,
+# then call the SAC-SMA / SNOW17 wrapper directly. sac_snow() requires
+# forcing data frames that already contain etd_mm.
 data(nrkw1_forcing)
 data(nrkw1_pars)
 dt_hours <- 6
-flow <- sac_snow(dt_hours, nrkw1_forcing, nrkw1_pars)
-}
+forcing_adj <- fa_nwrfc(dt_hours, nrkw1_forcing, nrkw1_pars)
+tci <- sac_snow(dt_hours, forcing_adj, nrkw1_pars)
 }

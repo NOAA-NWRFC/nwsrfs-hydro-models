@@ -2,30 +2,11 @@
 
 0 errors | 0 warnings | 2 notes
 
-* This is a new submission.
-* The LICENSE file contains a U.S. Federal Government copyright disclaimer 
-  (17 U.S.C. §105), which is why it is included alongside the CRAN-recognized 
-  `Apache License (>= 2)` identifier.
+* This is a new submission, it adresses several comments from the initial CRAN submission. 
+* The previous submission only listed the R wrapper authors. We have now credited every contributor whose code is included in the package with ctb roles (Eric Anderson, George F. Smith, and Janice M. Lewis for the legacy NWSRFS SAC-SMA/SNOW-17/LAG-K Fortran code; John E. Pask and Ondřej Čertík for the MIT-licensed sorting/types modules from the fortran-utils project), and the copyright holders as cph (NOAA for USG-authored legacy code, Battelle Memorial Institute for the PNNL-authored wrapper). A file-by-file breakdown with upstream license notices is in inst/COPYRIGHTS. Separately, to eliminate the earlier LGPL / Apache-2 license mismatch we removed the Burkardt-derived LGPL code in model_source/uh_optim.f90 (unused glomin_uh2p, dgamma_burkardt, and Brent's zero_uh2p) and replaced the one routine that was actually used with a permissively licensed root finding algorithm from Jacob Williams (https://github.com/jacobwilliams/roots-fortran). A copy of the roots-fortran license is included in the source code and in inst/LICENSE_roots_fortran.md. The package is now uniformly Apache-2 plus the MIT-compatible fortran-utils files.
 
 ## Notes
 
 * The package wraps legacy NWS Fortran hydrologic models via `.Fortran()`.
-* Fortran source in `src/` is shared with a companion Python package via symlink;
-  the symlink is resolved at build time.
-* Some examples use `\dontrun{}` because they require data
-  that is not set up in the example code. The high-level entry points
-  (`load_example()`, `fa_nwrfc()`, `fa_adj_nwrfc()`) use `\donttest{}` and
-  run successfully.
-* Package includes both Makevars and Makevars.win. The Windows variant omits -fPIC (not needed on Windows). Win-builder R-devel, R-release, and R-oldrelease all build and pass tests successfully with 0 errors
-  and 0 warnings.
-
-## Win-builder results
-
-Tested on win-builder with 0 errors, 0 warnings, 2 NOTEs (new submission + license)
-across all platforms:
-
-  - R-release: https://win-builder.r-project.org/T6Egg9Kbaqu8/
-  - R-oldrelease: https://win-builder.r-project.org/SNPBLmbsk2xE/
-  - R-devel: https://win-builder.r-project.org/J2KmSRwBV8Ut/
-  - R-devel (with Makevars.win): https://win-builder.r-project.org/1Z5VozPj1YRl/
-  - https://win-builder.r-project.org/qM24yJf454P9/
+* The authorship has been clarified with roles being changed to ctb.
+* Included inst/COPYRIGHT with file-by-file details about the copyright.

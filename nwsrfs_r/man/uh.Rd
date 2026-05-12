@@ -35,11 +35,15 @@ Vector of routed flow in cfs
 Two parameter unit hydrograph routing for one or more basin zones
 }
 \examples{
-\dontrun{
+# Simple: full model chain via the bundled example; routed flow per zone
+run <- load_example("NRKW1")
+head(run$sacsnow_sf)
+
+# Low-level: run FA -> SAC-SMA/SNOW17 to get TCI, then route it with UH.
 data(nrkw1_forcing)
 data(nrkw1_pars)
 dt_hours <- 6
-tci <- sac_snow(dt_hours, nrkw1_forcing, nrkw1_pars)
+forcing_adj <- fa_nwrfc(dt_hours, nrkw1_forcing, nrkw1_pars)
+tci <- sac_snow(dt_hours, forcing_adj, nrkw1_pars)
 flow_cfs <- uh(dt_hours, tci, nrkw1_pars)
-}
 }

@@ -9,6 +9,7 @@ FA.o: utilities.o
 utilities.o: types.o stats.o sorting.o
 stats.o: types.o sorting.o
 uh2p_get_scale.o: uh_optim.o
+uh_optim.o: root_module.o
 
 # These files use obsolete features and so fail when using the default -std=f95
 fka7.o: fka7.f

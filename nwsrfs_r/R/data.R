@@ -133,3 +133,21 @@
 #' }
 #' @name sfln2_inst_flow
 "sfln2_inst_flow"
+
+# %%
+# --- Area-elevation curve (used by rsnwelev) ---
+
+#' Area-elevation curve for the zones of SFLN2
+#'
+#' A dataset containing the percent area covered at a complete range of
+#' elevations for the two zones of Salmon Falls Creek (SFLN2). Used as
+#' input to [rsnwelev()].
+#'
+#' @format A data.frame with 21 rows and 3 columns:
+#' \describe{
+#'   \item{quantile}{Cumulative area fraction of the basin below the reference elevation}
+#'   \item{SFLN2-1}{Reference elevations for zone 1 (ft)}
+#'   \item{SFLN2-2}{Reference elevations for zone 2 (ft)}
+#' }
+#' @name area_elev_curve
+"area_elev_curve"

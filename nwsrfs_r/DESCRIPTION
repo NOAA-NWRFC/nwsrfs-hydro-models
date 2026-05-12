@@ -9,21 +9,48 @@ Authors@R: c(
              comment = c(ORCID = "0000-0003-1917-402X")),
           person(given = "Geoffrey",
              family = "Walters",
-             role = c("aut"),
+             role = "aut",
              email = "geoffrey.walters@noaa.gov",
              comment = c(ORCID = "0009-0009-3804-8898")),
-          person("National Oceanic and Atmospheric Administration", 
-             role = "cph", 
-             comment = "Work produced by U.S. Government employees is not subject to copyright."))
-Description: Interface to the National Weather Service operational 
-             hydrology models, Sacramento Soil Moisture Accounting (SAC-SMA), 
-             Snow Accumulation and Ablation (SNOW17). Also provides an 
+          person(given = "Eric",
+             family = "Anderson",
+             role = "ctb",
+             comment = "Original SNOW-17 and SAC-SMA Fortran code (NOAA/HRL)"),
+          person(given = "George F.",
+             family = "Smith",
+             role = "ctb",
+             comment = "Original LAG-K Fortran code (NOAA/HRL)"),
+          person(given = "Janice M.",
+             family = "Lewis",
+             role = "ctb",
+             comment = "Interpolation and LAG-K Fortran code (NOAA/HRL)"),
+          person(given = "John E.",
+             family = "Pask",
+             role = "ctb",
+             comment = "Original sorting routines (LLNL); see inst/COPYRIGHTS"),
+          person(given = "Ondrej",
+             family = "Certik",
+             role = "ctb",
+             comment = "MIT-licensed fortran-utils sorting and types modules; see inst/COPYRIGHTS"),
+          person(given = "Jacob",
+             family = "Williams",
+             role = c("ctb", "cph"),
+             comment = "BSD-3-clause roots-fortran library (src/root_module.f90); see inst/LICENSE_roots_fortran.md and inst/COPYRIGHTS"),
+          person("National Oceanic and Atmospheric Administration",
+             role = "cph",
+             comment = "International-rights holder for U.S. Government-authored components, including legacy NWSRFS Fortran and contributions by NOAA employees (C. Bracken through 2022-06-30, G. Walters); see inst/COPYRIGHTS"),
+          person("Battelle Memorial Institute",
+             role = "cph",
+             comment = "Copyright holder for PNNL-authored contributions by C. Bracken from 2022-07-01 onward; see inst/COPYRIGHTS"))
+Description: Interface to the National Weather Service operational
+             hydrology models, Sacramento Soil Moisture Accounting (SAC-SMA),
+             Snow Accumulation and Ablation (SNOW17). Also provides an
              interface to the unit hydrograph routing model (UH), consumptive use (CONSUSE)
-             and channel loss/gain modules (CHANLOSS). The Fortran code used in this package 
+             and channel loss/gain modules (CHANLOSS). The Fortran code used in this package
              is considered "legacy" and is not supported officially by NWS,
-             but it should not have any significant differences from current 
-             operational models. 
-License: Apache License (>= 2) + file LICENSE
+             but it should not have any significant differences from current
+             operational models.
+License: Apache License (>= 2)
 Encoding: UTF-8
 LazyData: true
 LazyDataCompression: xz

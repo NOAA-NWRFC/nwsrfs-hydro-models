@@ -7,12 +7,17 @@
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' # Simple: full model chain via the bundled example
+#' run <- load_example("NRKW1")
+#' head(run$sim)
+#'
+#' # Low-level: populate etd_mm / pet_mm via fa_nwrfc first,
+#' # then call the combined SAC-SMA / SNOW17 / UH wrapper.
 #' data(nrkw1_forcing)
 #' data(nrkw1_pars)
 #' dt_hours <- 6
-#' flow_cfs <- sac_snow_uh(dt_hours, nrkw1_forcing, nrkw1_pars)
-#' }
+#' forcing_adj <- fa_nwrfc(dt_hours, nrkw1_forcing, nrkw1_pars)
+#' flow_cfs <- sac_snow_uh(dt_hours, forcing_adj, nrkw1_pars)
 sac_snow_uh <- function(dt_hours, forcing, pars) {
   tci <- sac_snow(dt_hours, forcing, pars)
   flow_cfs <- uh(dt_hours, tci, pars)
@@ -30,13 +35,18 @@ sac_snow_uh <- function(dt_hours, forcing, pars) {
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' # Simple: full model chain via the bundled example (NRKW1 has upstream tribs)
+#' run <- load_example("NRKW1")
+#' head(run$sim)
+#'
+#' # Low-level: populate etd_mm / pet_mm via fa_nwrfc first, then chain
+#' # SAC-SMA / SNOW17 / UH with Lag-K routing of upstream tributaries.
 #' data(nrkw1_forcing)
 #' data(nrkw1_pars)
 #' data(nrkw1_upflow)
 #' dt_hours <- 6
-#' flow_cfs <- sac_snow_uh_lagk(dt_hours, nrkw1_forcing, nrkw1_upflow, nrkw1_pars)
-#' }
+#' forcing_adj <- fa_nwrfc(dt_hours, nrkw1_forcing, nrkw1_pars)
+#' flow_cfs <- sac_snow_uh_lagk(dt_hours, forcing_adj, nrkw1_upflow, nrkw1_pars)
 sac_snow_uh_lagk <- function(dt_hours, forcing, uptribs, pars) {
   tci <- sac_snow(dt_hours, forcing, pars)
   flow_cfs <- uh(dt_hours, tci, pars)
@@ -56,12 +66,17 @@ sac_snow_uh_lagk <- function(dt_hours, forcing, uptribs, pars) {
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' # Simple: full model chain via the bundled example, tci and states returned together
+#' run <- load_example("NRKW1")
+#' head(run$sacsnow_tci)
+#'
+#' # Low-level: populate etd_mm / pet_mm via fa_nwrfc first, then
+#' # get per-zone tci and states directly.
 #' data(nrkw1_forcing)
 #' data(nrkw1_pars)
 #' dt_hours <- 6
-#' states <- sac_snow_states(dt_hours, nrkw1_forcing, nrkw1_pars)
-#' }
+#' forcing_adj <- fa_nwrfc(dt_hours, nrkw1_forcing, nrkw1_pars)
+#' states <- sac_snow_states(dt_hours, forcing_adj, nrkw1_pars)
 sac_snow_states <- function(dt_hours, forcing, pars) {
   sac_snow(dt_hours, forcing, pars, return_states = TRUE)
 }
@@ -78,12 +93,18 @@ sac_snow_states <- function(dt_hours, forcing, pars) {
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' # Simple: full model chain via the bundled example
+#' run <- load_example("NRKW1")
+#' head(run$sacsnow_tci)
+#'
+#' # Low-level: populate etd_mm / pet_mm via fa_nwrfc first,
+#' # then call the SAC-SMA / SNOW17 wrapper directly. sac_snow() requires
+#' # forcing data frames that already contain etd_mm.
 #' data(nrkw1_forcing)
 #' data(nrkw1_pars)
 #' dt_hours <- 6
-#' flow <- sac_snow(dt_hours, nrkw1_forcing, nrkw1_pars)
-#' }
+#' forcing_adj <- fa_nwrfc(dt_hours, nrkw1_forcing, nrkw1_pars)
+#' tci <- sac_snow(dt_hours, forcing_adj, nrkw1_pars)
 #' @useDynLib nwsrfsr sacsnow_
 sac_snow <- function(dt_hours, forcing, pars, return_states = FALSE) {
   pars <- as.data.frame(pars)
@@ -464,13 +485,17 @@ uh2p_root <- function(scale, shape, dt_hours, toc) {
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' # Simple: full model chain via the bundled example; routed flow per zone
+#' run <- load_example("NRKW1")
+#' head(run$sacsnow_sf)
+#'
+#' # Low-level: run FA -> SAC-SMA/SNOW17 to get TCI, then route it with UH.
 #' data(nrkw1_forcing)
 #' data(nrkw1_pars)
 #' dt_hours <- 6
-#' tci <- sac_snow(dt_hours, nrkw1_forcing, nrkw1_pars)
+#' forcing_adj <- fa_nwrfc(dt_hours, nrkw1_forcing, nrkw1_pars)
+#' tci <- sac_snow(dt_hours, forcing_adj, nrkw1_pars)
 #' flow_cfs <- uh(dt_hours, tci, nrkw1_pars)
-#' }
 #' @useDynLib nwsrfsr duamel_
 uh <- function(dt_hours, tci, pars, sum_zones = TRUE, start_of_timestep = TRUE, backfill = TRUE) {
   sec_per_day <- 86400
@@ -1129,12 +1154,10 @@ forcing_adjust_mat <- function(
 #' @export
 #'
 #' @examples
-#' \donttest{
 #' data(nrkw1_forcing)
 #' data(nrkw1_pars)
 #' dt_hours <- 6
 #' forcing_adj <- fa_nwrfc(dt_hours, nrkw1_forcing, nrkw1_pars)
-#' }
 #' @useDynLib nwsrfsr fa_ts_
 #' @importFrom stats reshape
 fa_nwrfc <- function(
@@ -1349,12 +1372,10 @@ fa_nwrfc <- function(
 #' @export
 #'
 #' @examples
-#' \donttest{
 #' data(nrkw1_forcing)
 #' data(nrkw1_pars)
 #' dt_hours <- 6
 #' adj <- fa_adj_nwrfc(dt_hours, nrkw1_forcing, nrkw1_pars)
-#' }
 #' @importFrom stats reshape
 fa_adj_nwrfc <- function(
   dt_hours,
@@ -1382,11 +1403,14 @@ fa_adj_nwrfc <- function(
 #' @export
 #'
 #' @examples
-#' \dontrun{
-#' data(nrkw1_forcing)
-#' data(nrkw1_pars)
-#' forcing_adj <- rsnwelev(nrkw1_forcing, nrkw1_pars, area_elev_curve)
-#' }
+#' # area_elev_curve is bundled for SFLN2 (2 zones); pair it with SFLN2 data.
+#' data(sfln2_forcing)
+#' data(sfln2_pars)
+#' data(area_elev_curve)
+#' # rsnwelev only needs the zones that match the area-elevation table,
+#' # so drop the SFLN2-CU consumptive-use zone before calling.
+#' forcing_zones <- sfln2_forcing[c("SFLN2-1", "SFLN2-2")]
+#' forcing_adj <- rsnwelev(forcing_zones, sfln2_pars, area_elev_curve)
 #' @useDynLib nwsrfsr rsnwelev_
 rsnwelev <- function(forcing, pars, ae_tbl) {
   # rsnwelev(n_hrus,sim_length, &
@@ -1402,7 +1426,7 @@ rsnwelev <- function(forcing, pars, ae_tbl) {
   for (i in 1:n_zones) {
     vec_a <- ae_tbl[[1]]
     vec_b <- ae_tbl[[i + 1]]
-    fortran_tbl[, i] <- c(rbind(vec_a,vec_b))
+    fortran_tbl[, i] <- c(rbind(vec_a, vec_b))
   }
 
   output_matrix <- matrix(0, nrow = sim_length, ncol = n_zones)

@@ -1,0 +1,280 @@
+nwsrfsr — copyright and attribution
+====================================
+
+This file enumerates the origin, authorship, and license of the source files
+shipped in this package. The package as a whole is distributed under the
+Apache License (>= 2). Every file below is either original to this package,
+in the United States public domain (U.S. Government work), or under a license
+compatible with Apache-2 redistribution.
+
+Authorship timeline notes
+-------------------------
+
+Cameron Bracken contributed to this codebase in two distinct employment
+capacities:
+
+  * Through 2022-06-30, as a federal employee of the U.S. Government
+    (NOAA National Weather Service, Northwest River Forecast Center).
+    Contributions during this period are U.S. Government work, not subject
+    to copyright in the United States (17 U.S.C. section 105), with
+    NOAA/Department of Commerce reserving international rights. These
+    contributions are listed in Section 1 below.
+
+  * From 2022-07-01 onward, as an employee of Pacific Northwest National
+    Laboratory (operated by Battelle Memorial Institute under U.S.
+    Department of Energy contract DE-AC05-76RL01830). Contributions
+    during this period are copyrighted by Battelle Memorial Institute
+    and distributed under the Apache License (>= 2). These contributions
+    are listed in Section 3 below.
+
+Geoffrey Walters has contributed throughout as a federal employee of
+NOAA/NWRFC; his contributions are U.S. Government work (Section 1).
+
+The git history in this repository is authoritative for the precise
+date of any particular contribution.
+
+
+1. U.S. Government-authored components (public domain in the United States)
+---------------------------------------------------------------------------
+
+The legacy NWSRFS Fortran source files were created by U.S. Government
+employees at the NOAA National Weather Service Hydrologic Research
+Laboratory (HRL) and the Northwest River Forecast Center (NWRFC).
+Software created by U.S. Government employees is not subject to copyright
+in the United States (17 U.S.C. section 105). The United States /
+Department of Commerce reserves all rights to seek and obtain copyright
+protection in countries other than the United States for software
+authored in its entirety by the Department of Commerce. To this end,
+the Department of Commerce hereby grants to Recipient a royalty-free,
+nonexclusive license to use, copy, and create derivative works of the
+Software outside of the United States.
+
+Copyright holder (for international rights): National Oceanic and
+Atmospheric Administration (NOAA), U.S. Department of Commerce.
+
+Files (all in src/, linked to ../model_source/):
+
+  aesc19.f, exsnow19.f, PACK19.f, melt19.f, rout19.f, zero19.f
+      SNOW-17 accumulation and ablation.
+      Originally written by Eric Anderson (NOAA/HRL), May 1980, with later
+      modifications by E. Anderson (2005-2006) and G. Walters (NOAA/NWRFC).
+
+  sac1.f, ex_sac1.f, ex42.f, ex57.f
+      Sacramento Soil Moisture Accounting model.
+      Originally written by Eric Anderson (NOAA/HRL), 1979-1991, with later
+      modifications by G. Walters (NOAA/NWRFC).
+
+  fka7.f, flag7.f, fop7.f, fserc7.f, fslag7.f
+      Lag-and-K routing subroutines.
+      Originally written by George F. Smith (NOAA/HRL), December 1979.
+
+  fintp7.f
+      Interpolation subroutine.
+      Originally written by Janice M. Lewis (NOAA/HRL), October 1992.
+
+  flag7.f (additional modifications)
+      Multiple-intercept interpolation logic added by Janice M. Lewis
+      (NOAA/HRL), October 1992.
+
+  blockdata_fatlgk.f, duamel.f, initCommonBlocksPin.f, pin7.f
+      Supporting routines from the NWSRFS source tree, authored by
+      U.S. Government employees at NOAA/HRL. No third-party copyright.
+
+  chanloss.f90, consuse_run.f90, FA.f90, lagk_run.f90, rsnwelev_run.f90,
+  sac_snow.f90
+      Modern Fortran driver routines that call the legacy subroutines.
+      Authored by U.S. Government employees at NOAA/NWRFC
+      (G. Walters and C. Bracken during his NOAA tenure, through
+      2022-06-30).
+
+  stats.f90
+      Median and normal-PDF helpers (original 2021-02-08, commit
+      ddd7a98). Authored by C. Bracken during his NOAA tenure.
+      Uses the MIT-licensed sorting module in Section 2.
+
+  utilities.f90
+      Forcing-adjustment utility functions including
+      forcing_adjust_map_pet_ptps (original 2021-02-08, commit ddd7a98).
+      Authored by C. Bracken during his NOAA tenure.
+      Uses the MIT-licensed sorting module in Section 2.
+
+  uh2p_get_scale.f90 (subroutines uh2p_get_scale_root,
+  uh2p_len_obj_root_test, uh2p_call)
+      UH-scale driver subroutines. Original versions authored by
+      C. Bracken during his NOAA tenure (2021-11-22 / 2022-04-22,
+      commits f45b90a and 8ba0b91).
+
+  uh_optim.f90 (functions uh2p_len_obj_root, scale_uplimit, uh2p_len,
+  uh2p)
+      Gamma unit-hydrograph length and ordinate helpers. Originally
+      authored by C. Bracken during his NOAA tenure (2022-04-22,
+      commit 8ba0b91).
+
+  The corresponding original R wrapper code in R/ (as the
+  rfchydromodels package) and the bundled example data preparation
+  were also authored by C. Bracken during his NOAA tenure, prior to
+  2022-07-01. Subsequent renames, refactors, and additions fall under
+  Section 3.
+
+
+2. Vendored third-party components under permissive licenses
+------------------------------------------------------------
+
+2a. MIT License (fortran-utils)
+
+  sorting.f90
+      Sorting and argsort module from the fortran-utils project by
+      Ondrej Certik (https://github.com/certik/fortran-utils), based on
+      earlier code by John E. Pask (Lawrence Livermore National Laboratory).
+      Distributed under the MIT License (reproduced below).
+
+  types.f90
+      Small module of precision and vector type aliases from the same
+      fortran-utils project. MIT License.
+
+The MIT License notice, required to be preserved in all copies or
+substantial portions of the software:
+
+    Copyright (c) 2012 Ondrej Certik
+
+    Permission is hereby granted, free of charge, to any person obtaining
+    a copy of this software and associated documentation files (the
+    "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish,
+    distribute, sublicense, and/or sell copies of the Software, and to
+    permit persons to whom the Software is furnished to do so, subject to
+    the following conditions:
+
+    The above copyright notice and this permission notice shall be
+    included in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+    NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+    BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+    ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+    CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+
+2b. BSD 3-Clause License (roots-fortran)
+
+  root_module.f90
+      Bracketed-interval root solver library from the roots-fortran
+      project by Jacob Williams
+      (https://github.com/jacobwilliams/roots-fortran). The `zero_uh2p`
+      function in uh_optim.f90 invokes the `brent` solver from this
+      module `root_scalar(method, fun, ax, bx, ...)`. Copyright (c) 
+      2021-2025 Jacob Williams.
+
+      Local modifications vs upstream:
+        (1) File renamed from root_module.F90 (capital F = preprocessed)
+            to root_module.f90 and the C-preprocessor conditionals that
+            select the real kind (REAL32/REAL64/REAL128) were resolved
+            to the default real64 branch, so the file compiles with R's
+            standard Makeconf suffix rules.
+        (2) The nested helper `isign` inside the toms748 solver was
+            renamed to `rf_isign` to avoid shadowing the Fortran
+            intrinsic `isign` (CRAN -Wintrinsic-shadow warning).
+        (3) The BSD-3-clause notice below was copied verbatim from the
+            upstream LICENSE.md into the file header of
+            src/root_module.f90 itself, so the notice travels with the
+            source redistribution (clause 1 requirement).
+      No other changes were made. The same upstream license text is
+      also reproduced verbatim in inst/LICENSE_roots_fortran.md for
+      user access via system.file(), and below in this file.
+
+The 3-clause BSD license notice, required to be reproduced when
+distributing source code:
+
+    Roots-Fortran: Root solvers for modern Fortran
+    <https://github.com/jacobwilliams/roots-fortran>
+
+    Copyright (c) 2021-2025, Jacob Williams
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
+
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+
+    * Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in
+      the documentation and/or other materials provided with the
+      distribution.
+
+    * The names of its contributors may not be used to endorse or
+      promote products derived from this software without specific
+      prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+    "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+    LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+    FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+    COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+    INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+    BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+    LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+    CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+    LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+    ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+    POSSIBILITY OF SUCH DAMAGE.
+
+
+3. PNNL/Battelle-authored components (Apache License >= 2)
+----------------------------------------------------------
+
+Copyright holder: Battelle Memorial Institute (operator of Pacific
+Northwest National Laboratory under U.S. Department of Energy contract
+DE-AC05-76RL01830).
+
+The following contributions were made by C. Bracken during his PNNL
+tenure (2022-07-01 onward):
+
+  uh_optim.f90 (function zero_uh2p and module state/callback glue)
+      Thin wrapper that invokes the `brent` solver from the BSD-3-clause
+      roots-fortran library (Section 2b above). Authored in 2026.
+      Replaces an earlier LGPL-licensed implementation ported from
+      J. Burkardt's Fortran libraries; no code from those libraries
+      remains in the package. The wrapper itself (one-argument objective
+      callback, module-scope parameter-passing state, fallback handling)
+      is original to this package.
+
+  Packaging and build infrastructure
+      CRAN packaging work including DESCRIPTION, CITATION, LICENSE,
+      LICENSE.md, NAMESPACE (insofar as authored by C. Bracken after
+      2022-07-01), this inst/COPYRIGHTS file, Makevars.win, the pixi
+      environment configuration, CI workflow files under
+      .github/workflows/, and the renaming and restructuring of the
+      R package from rfchydromodels to nwsrfsr.
+
+  R-side fixes and enhancements authored after 2022-07-01
+      Bug fixes, example cleanup, roxygen documentation improvements,
+      and miscellaneous refactoring in R/ committed under
+      cameron.bracken@pnnl.gov.
+
+Because several Fortran and R source files contain both pre-2022-07-01
+(Section 1) and post-2022-07-01 (Section 3) C. Bracken contributions,
+the git history in this repository is authoritative for any
+line-level or commit-level attribution. The authoritative indicator
+is the commit author date:
+
+  * Commits authored on or before 2022-06-30 correspond to NOAA tenure
+    (Section 1).
+  * Commits authored on or after 2022-07-01 correspond to PNNL tenure
+    (Section 3).
+
+C. Bracken used the author email cameron.bracken@gmail.com across
+both employment periods (2020-2025); that email alone is not a
+reliable affiliation indicator. The cameron.bracken@pnnl.gov and
+32280+cameronbracken@users.noreply.github.com author emails were
+used only during PNNL tenure.
+
+
+4. Contact
+----------
+
+Questions about attribution or licensing should be directed to the
+package maintainer listed in DESCRIPTION.
