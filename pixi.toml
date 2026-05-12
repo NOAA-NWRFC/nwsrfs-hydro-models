@@ -5,22 +5,22 @@ platforms = ["osx-arm64", "linux-64", "win-64"]
 
 [dependencies]
 # Python
-python = ">=3.10,<3.13"
-numpy = "*"
+python = ">=3.10.20,<3.15"
+numpy = ">=2.2.6,<3"
 pandas = "*"
-scipy = "*"
+scipy = ">=1.15.2,<2"
 pip = "*"
 # Build tools
-meson = "*"
-meson-python = "*"
-ninja = "*"
+meson = ">=1.1.0"
+meson-python = ">=0.19.0,<0.20"
+ninja = ">=1.13.2,<2"
 # Fortran compiler
 fortran-compiler = "*"
 c-compiler = "*"
 # R
 r-base = ">=4.1"
 # Testing
-pytest = "*"
+pytest = ">=9.0.3,<10"
 r-testthat = "*"
 # R dev tools
 r-devtools = ">=2.4.6,<3"

@@ -32,6 +32,14 @@ fortran_sources = files(
   'src/melt19.f', 'src/ex57.f', 'src/ex42.f', 'src/blockdata_fatlgk.f'
 )
 
+# root_module.f90 (roots-fortran, BSD-3) is compiled into the extension
+# but NOT passed to f2py — it uses abstract derived types and OOP features
+# that f2py cannot wrap. Its public entry points are only called from
+# other Fortran code (uh_optim.f90), not from Python directly.
+fortran_internal_sources = files(
+  'src/root_module.f90',
+)
+
 generated_f2py_sources = [
   module_name + 'module.c',
   module_name + '-f2pywrappers.f',
@@ -76,6 +84,7 @@ py.extension_module(
     f2py_wrapper[1], # f2py wrappers for legacy Fortran procedures
     f2py_wrapper[2], # f2py wrappers for Fortran 90 module procedures
     fortran_sources,
+    fortran_internal_sources,
     fortranobject_c,
   ],
   include_directories: inc_np,
