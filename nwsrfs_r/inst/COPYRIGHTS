@@ -2,16 +2,15 @@ nwsrfsr — copyright and attribution
 ====================================
 
 This file enumerates the origin, authorship, and license of the source files
-shipped in this package. The package as a whole is distributed under the
+in this package. The package as a whole is distributed under the
 Apache License (>= 2). Every file below is either original to this package,
-in the United States public domain (U.S. Government work), or under a license
-compatible with Apache-2 redistribution.
+in the United States public domain (created by U.S. Government employees as 
+part of their job), or under a license compatible with Apache-2 redistribution.
 
 Authorship timeline notes
 -------------------------
 
-Cameron Bracken contributed to this codebase in two distinct employment
-capacities:
+Cameron Bracken contributed to this codebase in two capacities:
 
   * Through 2022-06-30, as a federal employee of the U.S. Government
     (NOAA National Weather Service, Northwest River Forecast Center).
@@ -28,7 +27,7 @@ capacities:
     are listed in Section 3 below.
 
 Geoffrey Walters has contributed throughout as a federal employee of
-NOAA/NWRFC; his contributions are U.S. Government work (Section 1).
+NOAA/NWRFC; his contributions are U.S. Government work (see section 1).
 
 The git history in this repository is authoritative for the precise
 date of any particular contribution.
@@ -234,23 +233,22 @@ The following contributions were made by C. Bracken during his PNNL
 tenure (2022-07-01 onward):
 
   uh_optim.f90 (function zero_uh2p and module state/callback glue)
-      Thin wrapper that invokes the `brent` solver from the BSD-3-clause
+      Wrapper that invokes the `brent` solver from the BSD-3-clause
       roots-fortran library (Section 2b above). Authored in 2026.
       Replaces an earlier LGPL-licensed implementation ported from
       J. Burkardt's Fortran libraries; no code from those libraries
-      remains in the package. The wrapper itself (one-argument objective
-      callback, module-scope parameter-passing state, fallback handling)
-      is original to this package.
+      remains in the package. The wrapper itself is original to this 
+      package.
 
   Packaging and build infrastructure
       CRAN packaging work including DESCRIPTION, CITATION, LICENSE,
-      LICENSE.md, NAMESPACE (insofar as authored by C. Bracken after
+      LICENSE.md, NAMESPACE (parts authored by C. Bracken after
       2022-07-01), this inst/COPYRIGHTS file, Makevars.win, the pixi
       environment configuration, CI workflow files under
       .github/workflows/, and the renaming and restructuring of the
       R package from rfchydromodels to nwsrfsr.
 
-  R-side fixes and enhancements authored after 2022-07-01
+  R fixes and enhancements authored after 2022-07-01
       Bug fixes, example cleanup, roxygen documentation improvements,
       and miscellaneous refactoring in R/ committed under
       cameron.bracken@pnnl.gov.
