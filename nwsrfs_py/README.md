@@ -35,6 +35,15 @@ print(sim_flow.head())
 
 Python docs: [https://NOAA-NWRFC.github.io/nwsrfs-hydro-models/python/](https://NOAA-NWRFC.github.io/nwsrfs-hydro-models/python/)
 
+## Attribution
+
+`nwsrfs_py` packages and wraps legacy NWSRFS FORTRAN components together with newer support modules.
+
+Detailed source provenance, contributor attribution, and third-party license
+notices are documented in [COPYRIGHTS](COPYRIGHTS).
+
+Current package maintainers are Geoffrey Walters and Cameron Bracken.
+
 ## Build From Source (Developers)
 
 Source builds require a Fortran toolchain plus build tools.

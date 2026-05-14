@@ -21,16 +21,21 @@ incdir_f2py = run_command(py,
 # 1. Fortran sources
 # -------------------------
 
-fortran_sources = files(
+f2py_sources = files(
   'src/types.f90', 'src/sorting.f90', 'src/stats.f90', 'src/utilities.f90',
-  'src/uh_optim.f90', 'src/uh2p_get_scale.f90', 'src/FA.f90', 'src/lagk_run.f90',
-  'src/sac_snow.f90', 'src/consuse_run.f90', 'src/chanloss.f90', 'src/rsnwelev_run.f90',
-  'src/initCommonBlocksPin.f', 'src/fintp7.f', 'src/fka7.f', 'src/flag7.f',
-  'src/fop7.f', 'src/fserc7.f', 'src/fslag7.f', 'src/pin7.f', 'src/pina7.f',
-  'src/umemov.f', 'src/umemst.f', 'src/PACK19.f', 'src/exsnow19.f', 'src/aesc19.f',
-  'src/rout19.f', 'src/zero19.f', 'src/duamel.f', 'src/sac1.f', 'src/ex_sac1.f',
-  'src/melt19.f', 'src/ex57.f', 'src/ex42.f', 'src/blockdata_fatlgk.f'
+  'src/uh_optim.f90', 'src/uh2p_get_scale.f90', 'src/FA.f90',
+  'src/lagk_run.f90', 'src/sac_snow.f90', 'src/consuse_run.f90', 'src/chanloss.f90',
+  'src/rsnwelev_run.f90','src/initCommonBlocksPin.f', 'src/fintp7.f', 'src/fka7.f',
+  'src/flag7.f', 'src/fop7.f', 'src/fserc7.f', 'src/fslag7.f', 'src/pin7.f',
+  'src/pina7.f', 'src/umemov.f', 'src/umemst.f', 'src/PACK19.f', 'src/exsnow19.f',
+  'src/aesc19.f', 'src/rout19.f', 'src/zero19.f', 'src/duamel.f', 'src/sac1.f',
+  'src/ex_sac1.f', 'src/melt19.f', 'src/ex57.f', 'src/ex42.f', 'src/blockdata_fatlgk.f'
 )
+
+# f2py cannot parse the modern derived types and parameter objects in
+# root_module.f90, but the extension still needs that object code at link
+# time because uh_optim uses root_scalar from the module.
+fortran_sources = files('src/root_module.f90') + f2py_sources
 
 generated_f2py_sources = [
   module_name + 'module.c',
@@ -44,7 +49,7 @@ generated_f2py_sources = [
 
 f2py_wrapper = custom_target(
   module_name + '_f2py',
-  input: fortran_sources,
+  input: f2py_sources,
   output: generated_f2py_sources,
   command: [
     py, '-m', 'numpy.f2py',
@@ -91,6 +96,12 @@ py.extension_module(
 
 # 1. ALL Python files in one list
 all_package_files = files(
+  
+  # Legal/attribution record
+  'LICENSE',
+  'COPYRIGHTS',
+  'NOTICE',
+
   # Base package files
   'nwsrfs_py/__init__.py',
   'nwsrfs_py/simulation.py',

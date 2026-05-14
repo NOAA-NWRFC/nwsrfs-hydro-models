@@ -3,7 +3,7 @@ name: Build Wheels (cibuildwheel)
 on:
   workflow_dispatch:
   push:
-    branches: ["main"]
+    branches: ["main","py_root_module"]
     tags: ["v*"]
 
 jobs:

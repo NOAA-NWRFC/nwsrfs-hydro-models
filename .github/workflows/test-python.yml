@@ -3,7 +3,7 @@ name: Test Python Models
 on:
   push:
     # Runs on your current branch and will continue to work when merged to main
-    branches: ["main"]
+    branches: ["main","py_root_module"]
   workflow_dispatch:
 
 jobs:
