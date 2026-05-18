@@ -6,8 +6,14 @@ build-backend = "mesonpy"  # The tool that runs the build process (here, setupto
 name = "nwsrfspy"                                              # The name of the installable package (used by pip)
 version = "1.0.0"                                              # Semantic version (major.minor.patch)
 description = "Python tools for NWS RFC NWSRFS modeling with FORTRAN source code integration" # Short description for metadata         
-authors = [{ name = "Geoffrey Walters PE", email = "geoffrey.walters@noaa.gov" },
-           { name = "Cameron Bracken", email = "cameron.bracken@pnnl.gov" }] # Author info (list of tables)
+authors = [
+    { name = "Geoffrey Walters PE", email = "geoffrey.walters@noaa.gov" },
+    { name = "Cameron Bracken", email = "cameron.bracken@pnnl.gov" },
+] # Package authors
+maintainers = [
+    { name = "Geoffrey Walters PE", email = "geoffrey.walters@noaa.gov" },
+    { name = "Cameron Bracken", email = "cameron.bracken@pnnl.gov" },
+] # Current package maintainers
 readme = "README.md"                                           # File to use for long description on PyP
 license = { file = "LICENSE" }                                 # file with license information
 requires-python = ">=3.10"                                      # Minimum required Python version

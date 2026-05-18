@@ -23,7 +23,7 @@ double precision, private :: g_shape
 double precision, private :: g_toc
 double precision, private :: g_dt_hours
 
-private :: objective_callback
+private :: objective_callback, objective_callback_method
 
 contains
 
@@ -146,6 +146,19 @@ function objective_callback(x) result(f)
 end function
 
 
+function objective_callback_method(me, x) result(f)
+  ! root_module's object-oriented solvers accept callbacks with a
+  ! class(root_solver) first argument.
+  use root_module, only: root_solver
+
+  class(root_solver), intent(inout) :: me
+  double precision, intent(in) :: x
+  double precision :: f
+
+  f = uh2p_len_obj_root(x, g_shape, g_toc, g_dt_hours)
+end function
+
+
 function zero_uh2p(a_in, b_in, machep, t, shape, toc, dt_hours)
   ! Find a root of uh2p_len_obj_root on [a_in, b_in] using the Brent
   ! solver from the roots-fortran library by Jacob Williams.
@@ -159,7 +172,7 @@ function zero_uh2p(a_in, b_in, machep, t, shape, toc, dt_hours)
   !
   ! Returns the estimated root.
 
-  use root_module, only: root_scalar
+  use root_module, only: brent_solver
 
   double precision, intent(in):: a_in, b_in, machep, t
   double precision, intent(in):: shape, toc, dt_hours
@@ -168,15 +181,15 @@ function zero_uh2p(a_in, b_in, machep, t, shape, toc, dt_hours)
   double precision:: xzero, fzero
   double precision:: fa, fb
   integer:: iflag
+  type(brent_solver) :: solver
 
   ! Stash extra parameters for the one-argument objective_callback
   g_shape = shape
   g_toc = toc
   g_dt_hours = dt_hours
 
-  call root_scalar('brent', objective_callback, a_in, b_in, &
-                   xzero, fzero, iflag, &
-                   atol = t, rtol = 2d0 * machep)
+  call solver%initialize(objective_callback_method, atol = t, rtol = 2d0 * machep)
+  call solver%solve(a_in, b_in, xzero, fzero, iflag)
 
   if (iflag == 0) then
     zero_uh2p = xzero
