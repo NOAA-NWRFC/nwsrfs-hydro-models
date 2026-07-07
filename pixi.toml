@@ -43,6 +43,11 @@ test-r = { cmd = "Rscript -e \"Sys.setenv(RENV_CONFIG_AUTOLOADER_ENABLED='FALSE'
 build-r = { cmd = "R CMD build nwsrfs_r", depends-on = ["install-r"], description = "Build R source tarball" }
 check-r = { cmd = "Rscript -e \"f <- Sys.glob('nwsrfsr_*.tar.gz'); if (length(f) != 1) stop('Expected one nwsrfsr_*.tar.gz file'); status <- system2('R', c('CMD','check','--no-manual', f)); if (!identical(status, 0L)) quit(status = status)\"", depends-on = ["install-r", "build-r"], description = "R CMD check (no manual)" }
 check-r-cran = { cmd = "Rscript -e \"f <- Sys.glob('nwsrfsr_*.tar.gz'); if (length(f) != 1) stop('Expected one nwsrfsr_*.tar.gz file'); status <- system2('R', c('CMD','check','--as-cran', f)); if (!identical(status, 0L)) quit(status = status)\"", depends-on = ["install-r", "build-r"], description = "CRAN submission check on built tarball" }
+check-win-devel = { cmd = "Rscript -e \"devtools::check_win_devel('nwsrfs_r')\"", depends-on = ["install-r"], description = "Submit to win-builder (R-devel); results emailed to maintainer" }
+check-win-release = { cmd = "Rscript -e \"devtools::check_win_release('nwsrfs_r')\"", depends-on = ["install-r"], description = "Submit to win-builder (R-release); results emailed to maintainer" }
+check-win-oldrelease = { cmd = "Rscript -e \"devtools::check_win_oldrelease('nwsrfs_r')\"", depends-on = ["install-r"], description = "Submit to win-builder (R-oldrelease); results emailed to maintainer" }
+check-mac-release = { cmd = "Rscript -e \"devtools::check_mac_release('nwsrfs_r')\"", depends-on = ["install-r"], description = "Submit to macOS builder (R-release); results emailed to maintainer" }
+check-online = { depends-on = ["check-win-devel"], description = "Submit to online build service (win-builder R-devel)" }
 test-all = { depends-on = ["test-py", "test-r"], description = "Run all tests" }
 clean-docs-py = { cmd = "python -m sphinx -M clean nwsrfs_py/docs/source nwsrfs_py/docs/build", cwd = ".", description = "Cleans Python Sphinx docs" }
 build-docs-py = { cmd = "python -m sphinx -M html nwsrfs_py/docs/source nwsrfs_py/docs/build", cwd = ".", depends-on = ["clean-docs-py"], description = "Build Python Sphinx docs" }

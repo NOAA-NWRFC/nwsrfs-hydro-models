@@ -1,3 +1,6 @@
+# pixi lock file 
+pixi.lock
+
 # Compiled Object files
 *.slo
 *.lo
