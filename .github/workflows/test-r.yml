@@ -75,3 +75,28 @@ jobs:
           upload-snapshots: true
           build_args: 'c("--no-manual")'
           error-on: '"warning"'
+
+      # Guard against the CRAN Debian failure: gfortran emits stack trampolines
+      # for root_module.f90's internal callbacks, marking the shared object's
+      # stack executable, which modern loaders refuse. The load-time rejection
+      # only shows up on newer gfortran (CRAN uses 16; ubuntu-latest ships 13),
+      # so instead we inspect the built .so directly: this catches the defect on
+      # any gfortran version. The configure script's -ftrampoline-impl=heap is
+      # what keeps GNU_STACK non-executable.
+      - name: Check shared object does not require executable stack
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/lib"
+          R CMD INSTALL --no-docs --library="$RUNNER_TEMP/lib" nwsrfs_r
+          so=$(find "$RUNNER_TEMP/lib/nwsrfsr" -name '*.so' | head -n1)
+          echo "Inspecting $so"
+          readelf -lW "$so" | grep -E 'GNU_STACK' || { echo "No GNU_STACK segment (OK)"; exit 0; }
+          flags=$(readelf -lW "$so" | awk '/GNU_STACK/ {print $7}')
+          echo "GNU_STACK flags: $flags"
+          if echo "$flags" | grep -q 'E'; then
+            echo "::error::Shared object requires an executable stack (GNU_STACK=$flags). This is the CRAN Debian load failure."
+            exit 1
+          fi
+          echo "GNU_STACK is not executable — OK"
