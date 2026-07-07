@@ -32,10 +32,11 @@ f2py_sources = files(
   'src/ex_sac1.f', 'src/melt19.f', 'src/ex57.f', 'src/ex42.f', 'src/blockdata_fatlgk.f'
 )
 
-# f2py cannot parse the modern derived types and parameter objects in
-# root_module.f90, but the extension still needs that object code at link
-# time because uh_optim uses root_scalar from the module.
-fortran_sources = files('src/root_module.f90') + f2py_sources
+# zero_brent.f90 (Brent's method, Burkardt's MIT-licensed version) is compiled
+# and linked but kept out of the f2py parse set: uh_optim calls zero_brent as an
+# external function, and a bare Fortran function with a procedure argument is not
+# something f2py needs to wrap for Python.
+fortran_sources = files('src/zero_brent.f90') + f2py_sources
 
 generated_f2py_sources = [
   module_name + 'module.c',

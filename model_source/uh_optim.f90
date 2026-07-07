@@ -2,28 +2,26 @@ module uh_optim
 
 ! Unit-hydrograph scale optimization utilities.
 !
-! The original project-authored helper routines in this file
-! (uh2p_len_obj_root, scale_uplimit, uh2p_len, uh2p) are distributed
-! under the Apache License (>= 2), matching the rest of the package.
+! All routines in this file are distributed under the Apache License (>= 2),
+! matching the rest of the package.
 !
-! `zero_uh2p` below is a thin wrapper around the `brent` solver from the
-! roots-fortran library by Jacob Williams
-! (https://github.com/jacobwilliams/roots-fortran), vendored into this
-! package as `model_source/root_module.f90`. roots-fortran is
-! distributed under a 3-clause BSD-style license; see
-! `inst/LICENSE_roots_fortran.md` and Section 2b of `inst/COPYRIGHTS`.
+! `zero_uh2p` below finds the gamma-UH scale by bracketed root finding using
+! Brent's method. The solver itself, `zero_brent` in
+! `model_source/zero_brent.f90`, is Richard Brent's algorithm in the
+! MIT-licensed Fortran 90 version by John Burkardt (see inst/COPYRIGHTS,
+! Section 2); it is vendored verbatim and not modified here.
 
 implicit none
 
-! Module-scope state used to pass extra parameters (shape, toc, dt_hours)
-! to the one-argument objective callback required by root_scalar(). Not
-! thread-safe, but nwsrfsr only calls zero_uh2p serially from R's
-! .Fortran interface, one simulation at a time.
+! Module-scope state used to pass extra parameters (shape, toc, dt_hours) to
+! the one-argument objective function `objective_callback`. Not thread-safe,
+! but nwsrfsr only calls zero_uh2p serially from R's .Fortran interface, one
+! simulation at a time.
 double precision, private :: g_shape
 double precision, private :: g_toc
 double precision, private :: g_dt_hours
 
-private :: objective_callback, objective_callback_method
+private :: objective_callback
 
 contains
 
@@ -136,75 +134,63 @@ end function
 
 
 function objective_callback(x) result(f)
-  ! One-argument wrapper matching the func2 interface expected by
-  ! root_scalar(). Extra parameters come from module-private state
-  ! (g_shape, g_toc, g_dt_hours) populated immediately before the
-  ! root_scalar() call below.
+  ! One-argument objective passed to the Brent solver. Extra parameters come
+  ! from module-private state (g_shape, g_toc, g_dt_hours) populated by
+  ! zero_uh2p immediately before the solve. This is a module procedure (not an
+  ! internal one), so passing it as an actual argument does not require a
+  ! compiler trampoline.
   double precision, intent(in):: x
   double precision:: f
   f = uh2p_len_obj_root(x, g_shape, g_toc, g_dt_hours)
 end function
 
 
-function objective_callback_method(me, x) result(f)
-  ! root_module's object-oriented solvers accept callbacks with a
-  ! class(root_solver) first argument.
-  use root_module, only: root_solver
-
-  class(root_solver), intent(inout) :: me
-  double precision, intent(in) :: x
-  double precision :: f
-
-  f = uh2p_len_obj_root(x, g_shape, g_toc, g_dt_hours)
-end function
-
-
-function zero_uh2p(a_in, b_in, machep, t, shape, toc, dt_hours)
-  ! Find a root of uh2p_len_obj_root on [a_in, b_in] using the Brent
-  ! solver from the roots-fortran library by Jacob Williams.
+function zero_uh2p(a_in, b_in, t, shape, toc, dt_hours)
+  ! Find a root of uh2p_len_obj_root on [a_in, b_in] using Brent's method.
   !
   ! Inputs:
   !   a_in, b_in : bracketing interval, must satisfy f(a_in)*f(b_in) <= 0
-  !   machep     : machine epsilon (used for relative tolerance)
-  !   t          : absolute tolerance
+  !   t          : positive error tolerance passed to zero_brent
   !   shape, toc, dt_hours : parameters forwarded to the objective via
   !                          module-scope state variables
   !
-  ! Returns the estimated root.
+  ! Returns the estimated root. If the interval is not a valid bracket
+  ! (endpoints have the same sign), returns the endpoint with the smaller
+  ! absolute residual, matching the previous defensive fallback behaviour.
 
-  use root_module, only: brent_solver
-
-  double precision, intent(in):: a_in, b_in, machep, t
+  double precision, intent(in):: a_in, b_in, t
   double precision, intent(in):: shape, toc, dt_hours
   double precision:: zero_uh2p
 
-  double precision:: xzero, fzero
+  ! zero_brent is Brent's method (Burkardt's MIT-licensed Fortran 90 version),
+  ! vendored verbatim in zero_brent.f90. It takes the objective as an external
+  ! function. objective_callback is a module procedure, so passing it here does
+  ! not require a compiler trampoline (which would mark the shared object's
+  ! stack executable).
+  double precision, external:: zero_brent
+
   double precision:: fa, fb
-  integer:: iflag
-  type(brent_solver) :: solver
+  integer:: calls
 
   ! Stash extra parameters for the one-argument objective_callback
   g_shape = shape
   g_toc = toc
   g_dt_hours = dt_hours
 
-  call solver%initialize(objective_callback_method, atol = t, rtol = 2d0 * machep)
-  call solver%solve(a_in, b_in, xzero, fzero, iflag)
-
-  if (iflag == 0) then
-    zero_uh2p = xzero
-  else
-    ! Solver did not converge; fall back to whichever endpoint has the
-    ! smaller absolute residual. Matches the defensive behaviour of the
-    ! previous implementation when a bracket could not be established.
-    fa = uh2p_len_obj_root(a_in, shape, toc, dt_hours)
-    fb = uh2p_len_obj_root(b_in, shape, toc, dt_hours)
+  ! zero_brent requires a sign-changing bracket. Guard against a degenerate
+  ! interval the same way the previous implementation did.
+  fa = uh2p_len_obj_root(a_in, shape, toc, dt_hours)
+  fb = uh2p_len_obj_root(b_in, shape, toc, dt_hours)
+  if ((fa > 0d0 .and. fb > 0d0) .or. (fa < 0d0 .and. fb < 0d0)) then
     if (abs(fa) <= abs(fb)) then
       zero_uh2p = a_in
     else
       zero_uh2p = b_in
     end if
+    return
   end if
+
+  zero_uh2p = zero_brent(a_in, b_in, t, objective_callback, calls)
 
 end function
 

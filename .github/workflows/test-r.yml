@@ -76,13 +76,14 @@ jobs:
           build_args: 'c("--no-manual")'
           error-on: '"warning"'
 
-      # Guard against the CRAN Debian failure: gfortran emits stack trampolines
-      # for root_module.f90's internal callbacks, marking the shared object's
-      # stack executable, which modern loaders refuse. The load-time rejection
-      # only shows up on newer gfortran (CRAN uses 16; ubuntu-latest ships 13),
-      # so instead we inspect the built .so directly: this catches the defect on
-      # any gfortran version. The configure script's -ftrampoline-impl=heap is
-      # what keeps GNU_STACK non-executable.
+      # Regression guard for the CRAN Debian load failure. Passing an internal
+      # (nested) procedure as a callback makes gfortran emit a stack trampoline,
+      # which marks the shared object's stack executable; modern loaders then
+      # refuse to load it ("cannot enable executable stack"). The current code
+      # avoids this by using only module-level procedures as callbacks. The
+      # load-time rejection only surfaces on newer gfortran (CRAN uses 16;
+      # ubuntu-latest ships 13), so we inspect the built .so's GNU_STACK segment
+      # directly, which catches a regression on any gfortran version.
       - name: Check shared object does not require executable stack
         if: runner.os == 'Linux'
         shell: bash

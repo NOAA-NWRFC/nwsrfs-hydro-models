@@ -36,7 +36,7 @@ subroutine uh2p_get_scale_root(shape, toc, dt_hours, scale)
   b = scale_uplimit(shape, dt_hours, max_len)
 
   ! write(*,*)a, b, machine_eps, t, scale, shape, toc, dt_hours
-  scale = zero_uh2p(a, b, machine_eps, t, shape, toc, dt_hours)
+  scale = zero_uh2p(a, b, t, shape, toc, dt_hours)
 
 end subroutine
 

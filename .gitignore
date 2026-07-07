@@ -83,7 +83,3 @@ setup_*.sh
 
 #pypi distribution
 /nwsrfs_py/dist/*
-
-# Generated from model_source/Makevars.in by nwsrfs_r/configure
-model_source/Makevars
-nwsrfs_r/src/Makevars

@@ -1,3 +1,2 @@
-# Shell/config scripts and makefiles must use LF (CRAN requirement)
-nwsrfs_r/configure text eol=lf
+# Makefiles must use LF (CRAN requirement)
 model_source/Makevars* text eol=lf
