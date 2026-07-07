@@ -27,6 +27,12 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
+      # nwsrfs_r/.Rprofile sources renv/activate.R, which would hijack the
+      # library and break setup-r-dependencies (pak not found in the renv lib).
+      # renv keeps these files out of the built package via .Rbuildignore, so
+      # disabling the autoloader here does not affect what CRAN checks. This
+      # mirrors the RENV_CONFIG_AUTOLOADER_ENABLED=FALSE used in the pixi tasks.
+      RENV_CONFIG_AUTOLOADER_ENABLED: "FALSE"
 
     steps:
       - uses: actions/checkout@v4

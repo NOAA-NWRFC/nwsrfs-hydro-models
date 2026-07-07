@@ -38,6 +38,12 @@ on:
         description: "Unique ID. You can leave this empty now."
         type: string
 
+env:
+  # nwsrfs_r/.Rprofile sources renv/activate.R; disable the autoloader so it
+  # does not hijack the R library on the runner. renv files are .Rbuildignore'd,
+  # so this does not change what R-hub checks. Mirrors the pixi tasks.
+  RENV_CONFIG_AUTOLOADER_ENABLED: "FALSE"
+
 jobs:
   setup:
     runs-on: ubuntu-latest
