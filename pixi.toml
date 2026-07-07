@@ -41,7 +41,7 @@ install-r = { cmd = "R CMD INSTALL nwsrfs_r", description = "Install R package" 
 test-py = { cmd = "pytest nwsrfs_py/tests/ -v -s", cwd = ".", depends-on = ["install-py"], description = "Run Python tests" }
 test-r = { cmd = "Rscript -e \"Sys.setenv(RENV_CONFIG_AUTOLOADER_ENABLED='FALSE'); testthat::test_check('nwsrfsr')\"", cwd = "nwsrfs_r/tests", depends-on = ["install-r"], description = "Run R tests" }
 build-r = { cmd = "R CMD build nwsrfs_r", depends-on = ["install-r"], description = "Build R source tarball" }
-check-r = { cmd = "R CMD check nwsrfs_r --no-manual", depends-on = ["install-r"], description = "R CMD check (no manual)" }
+check-r = { cmd = "Rscript -e \"f <- Sys.glob('nwsrfsr_*.tar.gz'); if (length(f) != 1) stop('Expected one nwsrfsr_*.tar.gz file'); status <- system2('R', c('CMD','check','--no-manual', f)); if (!identical(status, 0L)) quit(status = status)\"", depends-on = ["install-r", "build-r"], description = "R CMD check (no manual)" }
 check-r-cran = { cmd = "Rscript -e \"f <- Sys.glob('nwsrfsr_*.tar.gz'); if (length(f) != 1) stop('Expected one nwsrfsr_*.tar.gz file'); status <- system2('R', c('CMD','check','--as-cran', f)); if (!identical(status, 0L)) quit(status = status)\"", depends-on = ["install-r", "build-r"], description = "CRAN submission check on built tarball" }
 test-all = { depends-on = ["test-py", "test-r"], description = "Run all tests" }
 clean-docs-py = { cmd = "python -m sphinx -M clean nwsrfs_py/docs/source nwsrfs_py/docs/build", cwd = ".", description = "Cleans Python Sphinx docs" }
