@@ -1,3 +1,4 @@
+^\.Rprofile$
 ^renv$
 ^renv\.lock$
 ^nwsrfsr\.Rproj$

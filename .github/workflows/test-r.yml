@@ -1,0 +1,71 @@
+name: Test R Package
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  R-CMD-check:
+    runs-on: ${{ matrix.config.os }}
+
+    name: ${{ matrix.config.os }} (R ${{ matrix.config.r }})
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - { os: macos-latest, r: "release" }
+          - { os: windows-latest, r: "release" }
+          - { os: ubuntu-latest, r: "devel", http-user-agent: "release" }
+          - { os: ubuntu-latest, r: "release" }
+          - { os: ubuntu-latest, r: "oldrel-1" }
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The R package lives in nwsrfs_r/ and reaches the shared Fortran source
+      # through committed symlinks (src -> ../model_source, NOTICE -> ../NOTICE).
+      # Git symlinks are not restored as real directories on Windows runners, so
+      # replace them with copies before the check. Safe on all platforms.
+      - name: Materialize symlinked sources
+        shell: bash
+        run: |
+          set -euxo pipefail
+          rm -rf nwsrfs_r/src
+          cp -R model_source nwsrfs_r/src
+          rm -f nwsrfs_r/NOTICE
+          cp NOTICE nwsrfs_r/NOTICE
+          # Drop any stale compiled Fortran artifacts so the check builds clean.
+          find nwsrfs_r/src -type f \
+            \( -name '*.o' -o -name '*.so' -o -name '*.dylib' -o -name '*.a' \
+            -o -name '*.mod' -o -name '*.smod' -o -name '*.obj' -o -name '*.dll' \
+            -o -name '*.lib' \) -delete
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ matrix.config.r }}
+          http-user-agent: ${{ matrix.config.http-user-agent }}
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::rcmdcheck
+          needs: check
+          working-directory: nwsrfs_r
+
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          working-directory: nwsrfs_r
+          upload-snapshots: true
+          build_args: 'c("--no-manual")'
+          error-on: '"warning"'

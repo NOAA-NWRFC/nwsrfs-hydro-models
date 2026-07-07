@@ -4,6 +4,7 @@ on:
   push:
     # Runs on your current branch and will continue to work when merged to main
     branches: ["main"]
+  pull_request:
   workflow_dispatch:
 
 jobs:
