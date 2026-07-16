@@ -101,3 +101,25 @@ jobs:
             exit 1
           fi
           echo "GNU_STACK is not executable — OK"
+
+      # Regression guard for the CRAN parallel-make install failure. Fortran 90
+      # modules must be compiled before any file that `use`s them; make cannot
+      # infer this, so src/Makevars declares the edges explicitly. CRAN builds
+      # with make -j, but check-r-package builds serially and never exercises
+      # ordering. Install cold under a high -j (with --shuffle=reverse on GNU
+      # make >= 4.4 for deterministic worst-case ordering) so a missing module
+      # dependency fails here instead of only on CRAN.
+      - name: Check parallel build ordering (Fortran module deps)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          find nwsrfs_r/src -type f \( -name '*.o' -o -name '*.mod' -o -name '*.so' \) -delete
+          if make --version | head -1 | grep -qE '4\.(4|[5-9])|[5-9]\.'; then
+            export MAKEFLAGS="-j$(nproc) --shuffle=reverse"
+          else
+            export MAKEFLAGS="-j$(nproc)"
+          fi
+          echo "Building with MAKEFLAGS=$MAKEFLAGS"
+          mkdir -p "$RUNNER_TEMP/plib"
+          R CMD INSTALL --no-docs --library="$RUNNER_TEMP/plib" nwsrfs_r

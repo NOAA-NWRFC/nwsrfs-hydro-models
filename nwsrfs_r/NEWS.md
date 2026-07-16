@@ -1,3 +1,9 @@
+# nwsrfsr 1.0.2
+
+* Fix installation failure under parallel make (`make -j`) by declaring the
+  missing Fortran module dependencies (`sorting.o: types.o` and
+  `sac_snow.o: utilities.o`) in `src/Makevars` and `src/Makevars.win`.
+
 # nwsrfsr 1.0.0
 
 * Initial CRAN release

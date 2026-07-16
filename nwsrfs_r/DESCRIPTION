@@ -1,6 +1,6 @@
 Package: nwsrfsr
 Title: NWS Hydrology Models: SAC-SMA, SNOW17, UH, CONSUSE, CHANLOSS
-Version: 1.0.0
+Version: 1.0.2
 Authors@R: c(
           person(given = "Cameron",
              family = "Bracken",
