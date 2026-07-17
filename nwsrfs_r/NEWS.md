@@ -1,3 +1,16 @@
+# nwsrfsr 1.0.3
+
+* Fix a segfault (`memory not mapped`) reached by the `rsnwelev()` example on
+  the CRAN gcc build. The example passed zero-length `talr`/`pxtemp` vectors to
+  the Fortran routine, which reads them as `dimension(n_hrus)`, causing an
+  out-of-bounds read. `rsnwelev()` now selects one parameter value per forcing
+  zone and raises a clear R error when `elev`, `talr` or `pxtemp` are missing,
+  and the example supplies the required parameters.
+* Fix uninitialised-memory reads reported by valgrind in the Lag/K routines.
+  `pin7`/`fka7` compared an uninitialised dimension string (setup calls were
+  disabled in the wrapper port) and `flag7` read unwritten slots of its scratch
+  array; all three are now initialised. Model output is unchanged.
+
 # nwsrfsr 1.0.2
 
 * Fix installation failure under parallel make (`make -j`) by declaring the

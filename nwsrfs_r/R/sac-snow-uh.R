@@ -1394,12 +1394,18 @@ fa_adj_nwrfc <- function(
 
 #' Replace ptps column with ptps derived using rain snow line code (lapse rate + MAT)
 #'
-#' @param forcing data frame with columns for forcing inputs
-#' @param pars rsnwelev and snow17 parameters
-#' @param ae_tbl data.table with col1 containing quantile info and subsequent col with elev for each zone
+#' @param forcing named list of per-zone forcing data frames (each with a
+#'   \code{mat_degc} column). The list names are matched against the parameter
+#'   \code{zone} column.
+#' @param pars parameter data frame that supplies one value per forcing zone for
+#'   each of \code{elev} (reference elevation, m), \code{talr} (temperature
+#'   lapse rate, degC per 100 m) and \code{pxtemp} (rain/snow threshold
+#'   temperature, degC). A \code{zone} column is used to align values with
+#'   \code{forcing} when present.
+#' @param ae_tbl data.frame with col1 containing quantile info and subsequent col with elev for each zone
 #'
-#' @return Matrix (1 column per zone) of the forcing input argument with ptps replaced
-#' with that derived from rsnwelev model
+#' @return The \code{forcing} list with each zone's \code{ptps} column replaced
+#'   by the value derived from the rsnwelev model.
 #' @export
 #'
 #' @examples
@@ -1410,7 +1416,21 @@ fa_adj_nwrfc <- function(
 #' # rsnwelev only needs the zones that match the area-elevation table,
 #' # so drop the SFLN2-CU consumptive-use zone before calling.
 #' forcing_zones <- sfln2_forcing[c("SFLN2-1", "SFLN2-2")]
-#' forcing_adj <- rsnwelev(forcing_zones, sfln2_pars, area_elev_curve)
+#' # rsnwelev needs elev plus a temperature lapse rate (talr, degC/100m) and a
+#' # rain/snow threshold (pxtemp, degC) per zone. The bundled calibration only
+#' # carries elev, so add representative talr/pxtemp rows for the two zones.
+#' zones <- c("SFLN2-1", "SFLN2-2")
+#' rs_pars <- rbind(
+#'   sfln2_pars[sfln2_pars$name == "elev" & sfln2_pars$zone %in% zones, ],
+#'   data.frame(
+#'     p_name = paste0(rep(c("talr_", "pxtemp_"), each = 2), zones),
+#'     name = rep(c("talr", "pxtemp"), each = 2),
+#'     type = "rsnwelev",
+#'     zone = rep(zones, 2),
+#'     value = c(0.5, 0.5, 1.0, 1.0)
+#'   )
+#' )
+#' forcing_adj <- rsnwelev(forcing_zones, rs_pars, area_elev_curve)
 #' @useDynLib nwsrfsr rsnwelev_
 rsnwelev <- function(forcing, pars, ae_tbl) {
   # rsnwelev(n_hrus,sim_length, &
@@ -1419,8 +1439,40 @@ rsnwelev <- function(forcing, pars, ae_tbl) {
   # mat_in, &
   # ptps_out)
 
+  pars <- as.data.frame(pars)
   n_zones <- length(forcing)
   sim_length <- nrow(forcing[[1]])
+
+  # Pull one value per forcing zone, in forcing order, for a given parameter.
+  # The Fortran routine indexes these vectors as dimension(n_hrus), so passing
+  # the wrong length is an out-of-bounds read that segfaults rather than errors.
+  # Match on the zone column when present so a subset of zones (e.g. dropping a
+  # consumptive-use zone) still lines up with `forcing`.
+  zone_names <- names(forcing)
+  zone_param <- function(param) {
+    rows <- pars[pars$name == param, ]
+    if (!is.null(zone_names) && "zone" %in% names(rows)) {
+      vals <- rows$value[match(zone_names, rows$zone)]
+    } else {
+      vals <- rows$value
+    }
+    if (length(vals) != n_zones || anyNA(vals)) {
+      stop(
+        sprintf(
+          "rsnwelev(): parameter '%s' must supply one value per forcing zone (need %d: %s).",
+          param,
+          n_zones,
+          paste(zone_names, collapse = ", ")
+        ),
+        call. = FALSE
+      )
+    }
+    as.double(vals)
+  }
+
+  taelev_in <- zone_param("elev")
+  talr_in <- zone_param("talr")
+  pxtemp_in <- zone_param("pxtemp")
 
   fortran_tbl <- matrix(NA, nrow(ae_tbl) * 2, n_zones)
   for (i in 1:n_zones) {
@@ -1436,9 +1488,9 @@ rsnwelev <- function(forcing, pars, ae_tbl) {
     n_hrus = as.integer(n_zones),
     sim_length = as.integer(sim_length),
     # model parameters
-    taelev_in = pars[pars$name == "elev", ]$value,
-    talr_in = pars[pars$name == "talr", ]$value,
-    pxtemp_in = pars[pars$name == "pxtemp", ]$value,
+    taelev_in = taelev_in,
+    talr_in = talr_in,
+    pxtemp_in = pxtemp_in,
     aetbl_len = as.integer(nrow(ae_tbl)),
     aetbl = as.double(fortran_tbl),
     # forcings

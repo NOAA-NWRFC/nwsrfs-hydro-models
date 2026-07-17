@@ -53,7 +53,7 @@ Other contributors:
   \item Janice M. Lewis (Interpolation and LAG-K Fortran code (NOAA/HRL)) [contributor]
   \item John E. Pask (Original sorting routines (LLNL); see inst/COPYRIGHTS) [contributor]
   \item Ondrej Certik (MIT-licensed fortran-utils sorting and types modules; see inst/COPYRIGHTS) [contributor]
-  \item Jacob Williams (BSD-3-clause roots-fortran library (src/root_module.f90); see inst/LICENSE_roots_fortran.md and inst/COPYRIGHTS) [contributor, copyright holder]
+  \item John Burkardt (MIT-licensed implementation of Brent's zero finder; see inst/COPYRIGHTS) [contributor]
   \item National Oceanic and Atmospheric Administration (International-rights holder for U.S. Government-authored components, including legacy NWSRFS Fortran and contributions by NOAA employees (C. Bracken through 2022-06-30, G. Walters); see inst/COPYRIGHTS) [copyright holder]
   \item Battelle Memorial Institute (Copyright holder for PNNL-authored contributions by C. Bracken from 2022-07-01 onward; see inst/COPYRIGHTS) [copyright holder]
 }

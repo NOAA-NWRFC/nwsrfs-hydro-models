@@ -87,7 +87,16 @@ CFC     1  ', TOTAL CPU TIME = ',F13.2)
 C
 CGW  Added varible
       IB=0
-      COTIME=NDT*6   
+      COTIME=NDT*6
+C
+CCB  QT is a scratch work array. The lag algorithm indexes it sparsely
+CCB  (pairs written at computed offsets) and later reads spans that may
+CCB  include never-written slots, which valgrind flags as conditional
+CCB  jumps on uninitialised values. Zero it up front so those reads are
+CCB  deterministic; it does not change the computed QB output.
+      DO 1 IQT=1,NDT*3
+         QT(IQT)=0.0
+    1 CONTINUE
 C
 C  700 ADD=.TRUE.
       ADD=.TRUE.
