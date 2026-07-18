@@ -13,6 +13,12 @@ CEA     MODIFIED 1/06 BY E. ANDERSON TO CHANGE LOGIC FOR WHEN AEADJ IS
 CEA       SET BACK TO ZERO AND FOR MODIFICATIONS ON HOW SNOF IS HANDLED.
 C.......................................
       REAL LIQW
+CCB  MFC is the first member of /SNUP19/ and is REAL in the other units
+CCB  that share the block (PACK19, exsnow19). Without this declaration the
+CCB  default implicit typing makes it INTEGER here (M is in the I-N range),
+CCB  which LTO flags as a type mismatch. aesc19 never references MFC, so this
+CCB  only aligns the declared type; it does not change any computed value.
+      REAL MFC
       DIMENSION ADC(11)
 C
 C     COMMON BLOCKS

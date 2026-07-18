@@ -19,7 +19,14 @@ C     COMMON BLOCK
       COMMON/SNCO19/WE,NEGHS,LIQW,TINDEX,ACCMAX,SB,SBAESC,SBWS,STORGE,
 CVK     1   AEADJ,NEXLAG,EXLAG(7)
 CEA     1   AEADJ,NEXLAG,EXLAG(7),SNDPT,SNTMP
-     1   AEADJ,NEXLAG,EXLAG(7),SNDPT,SNTMP,TAPREV
+CCB  The other units sharing /SNCO19/ (PACK19, exsnow19) end the block at
+CCB  SNTMP. In the modernized wrapper TAPREV is passed as a dummy argument,
+CCB  not carried through this common block, so the trailing TAPREV member
+CCB  declared here made /SNCO19/ longer than everywhere else, which LTO flags
+CCB  as a length mismatch. zero19 never assigns the TAPREV slot (see the note
+CCB  below: "TAPREV IS LEFT AS IS"), so dropping it aligns the block layout
+CCB  without changing any zeroed carryover value.
+     1   AEADJ,NEXLAG,EXLAG(7),SNDPT,SNTMP
 C
 C    ================================= RCS keyword statements ==========
 CGW      CHARACTER*68     RCSKW1,RCSKW2

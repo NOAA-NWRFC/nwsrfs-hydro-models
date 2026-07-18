@@ -10,6 +10,12 @@
   `pin7`/`fka7` compared an uninitialised dimension string (setup calls were
   disabled in the wrapper port) and `flag7` read unwritten slots of its scratch
   array; all three are now initialised. Model output is unchanged.
+* Fix two `-Wlto-type-mismatch` warnings reported by the CRAN LTO and gcc-ASAN
+  builds. The SNOW-17 `/SNUP19/` common block left its first member `MFC`
+  implicitly typed (INTEGER) in `aesc19` while it is REAL elsewhere, and
+  `/SNCO19/` carried an extra trailing `TAPREV` member in `zero19` that the
+  other units do not (in this port `TAPREV` is a subroutine argument, not a
+  common member). Both are now declared consistently. Model output is unchanged.
 
 # nwsrfsr 1.0.2
 
