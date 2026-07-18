@@ -196,13 +196,23 @@ jobs:
           # this job silently reverting to false failures).
           testout=$(find "$rcheck/tests" -name '*.Rout' -o -name '*.Rout.fail' 2>/dev/null | head -1)
           [ -n "$testout" ] && grep -nE 'FAIL [0-9]+ \| WARN|SKIP [0-9]+' "$testout" | tail -3 || true
-          # Fail explicitly if a Fortran bounds error landed in any transcript.
-          if grep -rqE 'Fortran runtime error|above upper bound|below lower bound' "$rcheck" 2>/dev/null; then
-            echo "::error::Fortran runtime bounds error detected under -fcheck=all"
-            grep -rnE 'Fortran runtime error|above upper bound|below lower bound' "$rcheck" | head
-            exit 1
-          fi
-          echo "OK: no Fortran runtime bounds errors"
+          # Fail explicitly if a Fortran bounds error landed in a run TRANSCRIPT.
+          # Scan only the example/test .Rout(.fail) files, never the whole .Rcheck
+          # tree -- that tree includes 00_pkg_src/ with the package sources, and a
+          # source comment can legitimately contain the phrase "above upper bound".
+          # A real gfortran abort always prints "Fortran runtime error:" (colon),
+          # so match that exact form.
+          transcripts=$(find "$rcheck" \( -name '*.Rout' -o -name '*.Rout.fail' \) 2>/dev/null || true)
+          hit=0
+          for f in $transcripts; do
+            if grep -qE 'Fortran runtime error:' "$f"; then
+              echo "::error::Fortran runtime error in $(basename "$f")"
+              grep -nE 'Fortran runtime error:|Index .* of dimension .* (above upper|below lower) bound' "$f" | head
+              hit=1
+            fi
+          done
+          if [ "$hit" = "1" ]; then exit 1; fi
+          echo "OK: no Fortran runtime bounds errors in example/test transcripts"
 
       - name: Upload check results
         if: always()

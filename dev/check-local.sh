@@ -116,11 +116,18 @@ case "$check" in
     fi
     grep -E 'Status:' /tmp/check.log | tail -1 || true
     grep -hE 'FAIL [0-9]+ \| WARN|SKIP [0-9]+' /tmp/check/nwsrfsr.Rcheck/tests/*.Rout* 2>/dev/null | tail -2 || true
-    if grep -rqE 'Fortran runtime error|above upper bound|below lower bound' /tmp/check/nwsrfsr.Rcheck 2>/dev/null; then
-      echo "FAIL: Fortran runtime bounds error under -fcheck=all"
-      grep -rnE 'Fortran runtime error|above upper bound|below lower bound' /tmp/check/nwsrfsr.Rcheck | head
-      exit 1
-    fi
+    # Scan only run transcripts, not the whole .Rcheck tree: 00_pkg_src/ holds
+    # the package sources, and a source comment can legitimately contain "above
+    # upper bound". A real gfortran abort always prints "Fortran runtime error:".
+    hit=0
+    for f in $(find /tmp/check/nwsrfsr.Rcheck \( -name '*.Rout' -o -name '*.Rout.fail' \) 2>/dev/null); do
+      if grep -qE 'Fortran runtime error:' "$f"; then
+        echo "FAIL: Fortran runtime error in $(basename "$f")"
+        grep -nE 'Fortran runtime error:|Index .* of dimension .* (above upper|below lower) bound' "$f" | head
+        hit=1
+      fi
+    done
+    if [ "$hit" = "1" ]; then exit 1; fi
     if grep -qE '^Status: OK' /tmp/check.log; then
       echo "PASS: Status OK, no bounds errors"
     else
