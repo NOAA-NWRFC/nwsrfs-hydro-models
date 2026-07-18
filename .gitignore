@@ -63,6 +63,8 @@ setup_*.sh
 # Vendored license file for the roots-fortran library must be shipped
 # with the R package (required by its BSD-3-clause license).
 !nwsrfs_r/inst/LICENSE_roots_fortran.md
+# Developer tooling docs are tracked (the *.md rule above would hide them).
+!dev/README.md
 # The CRAN response note is a top-level project record.
 # just in case it is needed to commit to the repo later
 # !cran_authors_review_response.md
