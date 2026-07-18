@@ -5,26 +5,24 @@
 
 ## Fixes in this version
 
-* The `rsnwelev()` example caused a segfault (`memory not mapped`) on the
-  r-devel gcc build. The example passed zero-length parameter vectors to the
-  underlying Fortran routine, which reads them as `dimension(n_hrus)`, so the
-  routine read past the end of the arrays. `rsnwelev()` now selects one
-  parameter value per forcing zone and stops with an informative error when a
-  required parameter is missing, and the example supplies the needed
-  parameters. The example now runs cleanly.
+* An example caused a segfault (`memory not mapped`) on the r-devel gcc build. 
+  The example passed zero-length parameter vectors to the underlying Fortran 
+  routine which read past the end of the arrays. This has been fixed and the 
+  example now runs cleanly.
+
+* We have added a GitHub CI build with valgrind to catch any similar issues 
+  before submission in the future.
 
 * The valgrind report flagged conditional jumps on uninitialised values in the
   Lag/K Fortran routines (`pin7`, `flag7`, `fka7`). These come from setup calls
-  that were disabled when the legacy NWSRFS code was ported to a standalone
-  wrapper, leaving a dimension string and a scratch work array read before they
-  were set. All three are now initialised explicitly. Simulated output for the
-  bundled examples is bit-for-bit unchanged.
+  that were disabled when the legacy code was ported to a standalone
+  wrapper for this package, all three are now initialised explicitly. 
 
 ## R CMD check results
 
 0 errors | 0 warnings | 2 notes
 
-* The 2 notes are the pre-existing new-submission and local-compiler-flag notes
+* The 2 notes are the recent resubmission and local-compiler-flag notes
   described below; they do not appear on the CRAN machines.
 
 ## Previous submissions
