@@ -16,6 +16,10 @@
   `/SNCO19/` carried an extra trailing `TAPREV` member in `zero19` that the
   other units do not (in this port `TAPREV` is a subroutine argument, not a
   common member). Both are now declared consistently. Model output is unchanged.
+* Declare the `umemst` dummy array as assumed-size (`IARRAY(*)`) instead of the
+  legacy `IARRAY(1)`, which made a `gfortran -fcheck=all` build abort with a
+  spurious out-of-bounds error on the first real write. This lets the package
+  run under Fortran runtime bounds checking. Model output is unchanged.
 
 # nwsrfsr 1.0.2
 
