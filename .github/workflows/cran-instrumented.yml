@@ -162,6 +162,24 @@ jobs:
           } > "$HOME/.R/Makevars"
           R CMD build nwsrfs_r
           pkg=$(ls nwsrfsr_*.tar.gz)
+
+          # Check the tarball in an isolated directory that has NO nwsrfs_py/
+          # sibling. Four tests compare the simulation against Python baseline
+          # CSVs, which evaluate differently on Linux/x86 than on the macOS/arm64
+          # host that produced the baselines (a libm floating-point difference,
+          # not a memory fault). To reproduce CRAN's behaviour so those are not
+          # false failures:
+          #   * NOT_CRAN=false makes the two skip_on_cran() tests skip.
+          #     (r-lib/actions/setup-r exports NOT_CRAN=true via $GITHUB_ENV,
+          #     which outranks a job-level env:, so override it inline here.)
+          #   * Running from $RUNNER_TEMP/check, where ../../../nwsrfs_py does not
+          #     exist, makes the two adjustq skip_if_not(file.exists()) tests skip.
+          # The examples (including the rsnwelev one that segfaulted on CRAN) and
+          # the structural tests still run under -fcheck=all.
+          mkdir -p "$RUNNER_TEMP/check"
+          cp "${pkg}" "$RUNNER_TEMP/check/"
+          cd "$RUNNER_TEMP/check"
+          export NOT_CRAN=false
           # A Fortran runtime bounds error during examples/tests aborts the R
           # subprocess, which R CMD check reports as an ERROR and exits non-zero.
           R CMD check --no-manual "${pkg}"
@@ -171,12 +189,17 @@ jobs:
         shell: bash
         run: |
           set -uo pipefail
-          rout="nwsrfsr.Rcheck/nwsrfsr-Ex.Rout"
+          rcheck="$RUNNER_TEMP/check/nwsrfsr.Rcheck"
+          rout="$rcheck/nwsrfsr-Ex.Rout"
           [ -f "$rout" ] && grep -nE 'load_example|sum|Fortran runtime error|Index .* of dimension' "$rout" | head -40 || true
+          # Confirm the FP-sensitive tests skipped rather than ran (guards against
+          # this job silently reverting to false failures).
+          testout=$(find "$rcheck/tests" -name '*.Rout' -o -name '*.Rout.fail' 2>/dev/null | head -1)
+          [ -n "$testout" ] && grep -nE 'FAIL [0-9]+ \| WARN|SKIP [0-9]+' "$testout" | tail -3 || true
           # Fail explicitly if a Fortran bounds error landed in any transcript.
-          if grep -rqE 'Fortran runtime error|above upper bound|below lower bound' nwsrfsr.Rcheck 2>/dev/null; then
+          if grep -rqE 'Fortran runtime error|above upper bound|below lower bound' "$rcheck" 2>/dev/null; then
             echo "::error::Fortran runtime bounds error detected under -fcheck=all"
-            grep -rnE 'Fortran runtime error|above upper bound|below lower bound' nwsrfsr.Rcheck | head
+            grep -rnE 'Fortran runtime error|above upper bound|below lower bound' "$rcheck" | head
             exit 1
           fi
           echo "OK: no Fortran runtime bounds errors"
@@ -186,7 +209,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: fortran-bounds-check-results
-          path: nwsrfsr.Rcheck/**
+          path: ${{ runner.temp }}/check/nwsrfsr.Rcheck/**
           if-no-files-found: warn
           retention-days: 14
 
