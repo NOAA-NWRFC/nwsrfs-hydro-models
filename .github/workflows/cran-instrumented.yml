@@ -1,0 +1,251 @@
+name: CRAN instrumented checks (LTO / bounds / ASAN)
+
+# Emulates the CRAN "additional issue" builds that a plain R CMD check on
+# macOS/Windows/Ubuntu does not exercise. Every memory/portability problem this
+# package has hit on CRAN came from the legacy Fortran and only showed up on an
+# instrumented build:
+#
+#   * LTO            -> COMMON-block and call-signature mismatches
+#                       (e.g. the /SNUP19/ and /SNCO19/ type mismatches)
+#   * Fortran bounds -> out-of-bounds reads (e.g. the rsnwelev segfault),
+#                       caught deterministically with -fcheck=all
+#   * gcc-ASAN/LSan  -> heap/stack/global misuse, use-after-free, leaks
+#
+# valgrind (uninitialised reads) is covered separately by valgrind.yml.
+#
+# The lto and bounds jobs are fast (a few minutes) and run on every push. The
+# asan job uses the r-hub gcc-asan container and is slower, so it runs on
+# demand (workflow_dispatch) and on pushes to the two long-lived branches.
+
+on:
+  push:
+    branches: ["r-github-actions", "main"]
+  pull_request:
+  workflow_dispatch:
+
+permissions: read-all
+
+env:
+  # nwsrfs_r/.Rprofile sources renv/activate.R, which would hijack the R
+  # library. renv files are .Rbuildignore'd so this does not change what is
+  # checked. Mirrors the other R workflows.
+  RENV_CONFIG_AUTOLOADER_ENABLED: "FALSE"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Link-Time Optimization: reproduces CRAN's LTO "additional issue" build.
+  # CRAN compiles the package with -flto and reports -Wlto-type-mismatch for
+  # inconsistent COMMON-block layouts or mismatched call signatures across
+  # Fortran translation units. We inject -flto the same way (FFLAGS/FCFLAGS +
+  # --use-LTO); the five legacy files with hardcoded compile rules in
+  # src/Makevars stay out of LTO exactly as they do on CRAN, so the set of
+  # warnings matches what CRAN sees.
+  # ---------------------------------------------------------------------------
+  lto:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+          use-public-rspm: true
+
+      # The package lives in nwsrfs_r/ and reaches the shared Fortran source
+      # through committed symlinks (src -> ../model_source, NOTICE -> ../NOTICE).
+      # Turn them into real copies and drop stale artifacts so the build tree is
+      # self-contained.
+      - name: Materialize symlinked sources
+        shell: bash
+        run: |
+          set -euxo pipefail
+          rm -rf nwsrfs_r/src
+          cp -R model_source nwsrfs_r/src
+          rm -f nwsrfs_r/NOTICE
+          cp NOTICE nwsrfs_r/NOTICE
+          find nwsrfs_r/src -type f \
+            \( -name '*.o' -o -name '*.so' -o -name '*.dylib' -o -name '*.a' \
+            -o -name '*.mod' -o -name '*.smod' -o -name '*.obj' -o -name '*.dll' \
+            -o -name '*.lib' \) -delete
+
+      - name: R CMD INSTALL --use-LTO
+        shell: bash
+        run: |
+          set -euxo pipefail
+          # Inject -flto into the Fortran flags the way CRAN does, via a user
+          # Makevars, then install with --use-LTO. Capture the full log.
+          # (Write with printf so no leading indentation leaks into the file.)
+          mkdir -p "$HOME/.R"
+          {
+            printf '%s\n' 'LTO_OPT = -flto'
+            printf '%s\n' 'LTO_FC_OPT = -flto'
+            printf '%s\n' 'FFLAGS = -g -O2 -flto'
+            printf '%s\n' 'FCFLAGS = -g -O2 -flto'
+          } > "$HOME/.R/Makevars"
+          mkdir -p "$RUNNER_TEMP/lib"
+          R CMD INSTALL --use-LTO --no-docs --library="$RUNNER_TEMP/lib" nwsrfs_r \
+            2>&1 | tee "$RUNNER_TEMP/lto-install.log"
+
+      - name: Fail on LTO type mismatches
+        shell: bash
+        run: |
+          set -uo pipefail
+          log="$RUNNER_TEMP/lto-install.log"
+          if grep -qE '\-Wlto-type-mismatch|does not match original declaration' "$log"; then
+            echo "::error::LTO type-mismatch warnings found (CRAN would flag these)"
+            grep -nE 'lto-type-mismatch|does not match original declaration|previously declared here|type mismatch in parameter' "$log"
+            exit 1
+          fi
+          echo "OK: no LTO type-mismatch warnings"
+
+  # ---------------------------------------------------------------------------
+  # Fortran runtime bounds checking: builds with -fcheck=all and runs the
+  # examples and full test suite. Out-of-bounds array access (like the
+  # zero-length parameter vector that caused the rsnwelev segfault on CRAN's
+  # gcc build) aborts here with a precise file:line, deterministically, without
+  # needing the exact platform that happened to segfault. -finit-real=snan and
+  # -finit-integer flush uninitialised values so a read of one is more likely
+  # to misbehave visibly.
+  # ---------------------------------------------------------------------------
+  fortran-bounds:
+    runs-on: ubuntu-latest
+    env:
+      # Run the skip_on_cran() tests too, so the heavier baseline-comparison
+      # paths are exercised under bounds checking.
+      NOT_CRAN: "true"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::testthat
+          working-directory: nwsrfs_r
+
+      - name: Materialize symlinked sources
+        shell: bash
+        run: |
+          set -euxo pipefail
+          rm -rf nwsrfs_r/src
+          cp -R model_source nwsrfs_r/src
+          rm -f nwsrfs_r/NOTICE
+          cp NOTICE nwsrfs_r/NOTICE
+          find nwsrfs_r/src -type f \
+            \( -name '*.o' -o -name '*.so' -o -name '*.dylib' -o -name '*.a' \
+            -o -name '*.mod' -o -name '*.smod' -o -name '*.obj' -o -name '*.dll' \
+            -o -name '*.lib' \) -delete
+
+      - name: Install with -fcheck=all
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p "$HOME/.R"
+          {
+            printf '%s\n' 'FFLAGS = -g -O2 -fcheck=all -finit-real=snan -finit-integer=-99999 -fbacktrace'
+            printf '%s\n' 'FCFLAGS = -g -O2 -fcheck=all -finit-real=snan -finit-integer=-99999 -fbacktrace'
+          } > "$HOME/.R/Makevars"
+          mkdir -p "$RUNNER_TEMP/lib"
+          R CMD INSTALL --no-docs --library="$RUNNER_TEMP/lib" nwsrfs_r
+
+      - name: Run examples and tests under bounds checking
+        shell: bash
+        run: |
+          set -euo pipefail
+          export R_LIBS_USER="$RUNNER_TEMP/lib"
+          Rscript -e '
+            .libPaths(c(Sys.getenv("R_LIBS_USER"), .libPaths()))
+            suppressMessages(library(nwsrfsr))
+            # Examples: a Fortran runtime bounds error aborts the process with a
+            # non-zero status, which fails this step.
+            for (stn in c("NRKW1", "SFLN2")) {
+              r <- load_example(stn)
+              col <- names(r)[vapply(r, is.numeric, logical(1))][1]
+              cat(sprintf("%s: sum(%s) = %.6f\n", stn, col, sum(r[[col]], na.rm = TRUE)))
+            }
+            # Full test suite under the same instrumented build.
+            suppressMessages(library(testthat))
+            res <- test_dir("nwsrfs_r/tests/testthat", reporter = "summary",
+                            stop_on_failure = TRUE)
+          '
+
+  # ---------------------------------------------------------------------------
+  # AddressSanitizer + LeakSanitizer: runs R CMD check inside r-hub's gcc-asan
+  # container (the same toolchain CRAN uses for its gcc-ASAN "additional
+  # issue"). Catches heap/stack/global out-of-bounds, use-after-free and leaks
+  # that the bounds check and valgrind can miss. Slower than the other jobs, so
+  # it runs on the long-lived branches and on demand.
+  # ---------------------------------------------------------------------------
+  gcc-asan:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/r-hub/containers/gcc-asan:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Materialize symlinked sources
+        shell: bash
+        run: |
+          set -euxo pipefail
+          rm -rf nwsrfs_r/src
+          cp -R model_source nwsrfs_r/src
+          rm -f nwsrfs_r/NOTICE
+          cp NOTICE nwsrfs_r/NOTICE
+          find nwsrfs_r/src -type f \
+            \( -name '*.o' -o -name '*.so' -o -name '*.dylib' -o -name '*.a' \
+            -o -name '*.mod' -o -name '*.smod' -o -name '*.obj' -o -name '*.dll' \
+            -o -name '*.lib' \) -delete
+
+      - name: Build source tarball
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/check"
+          R CMD build nwsrfs_r
+          cp nwsrfsr_*.tar.gz "$GITHUB_WORKSPACE/check/"
+
+      - name: R CMD check (ASAN/LSan)
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cd "$GITHUB_WORKSPACE/check"
+          pkg=$(ls nwsrfsr_*.tar.gz)
+          R -q -e "pak::pkg_install('deps::./${pkg}', dependencies = TRUE)"
+          # CHECK_ARGS is baked into the image. Do not stop on the first test
+          # error so the whole run is exercised and reported.
+          R CMD check ${CHECK_ARGS:---no-manual --no-vignettes} --no-stop-on-test-error "${pkg}"
+
+      - name: Fail on sanitizer findings
+        shell: bash
+        run: |
+          set -uo pipefail
+          # ASan/LSan reports appear in the example and test transcripts as
+          # "ERROR: AddressSanitizer", "runtime error:", "SUMMARY: AddressSanitizer",
+          # or "detected memory leaks".
+          rcheck="$GITHUB_WORKSPACE/check/nwsrfsr.Rcheck"
+          found=0
+          while IFS= read -r f; do
+            [ -f "$f" ] || continue
+            if grep -qE 'AddressSanitizer|LeakSanitizer|runtime error:|detected memory leaks|heap-buffer-overflow|stack-buffer-overflow|use-after-free' "$f"; then
+              echo "::error::sanitizer finding in $(basename "$f")"
+              grep -nE 'AddressSanitizer|LeakSanitizer|runtime error:|detected memory leaks|heap-buffer-overflow|stack-buffer-overflow|use-after-free|#[0-9]+ 0x' "$f" | head -60
+              found=1
+            fi
+          done < <(find "$rcheck" -name '*.Rout' -o -name '*.Rout.fail' 2>/dev/null)
+          if [ "$found" = "0" ]; then
+            echo "OK: no ASan/LSan findings in example or test transcripts"
+          fi
+          exit $found
+
+      - name: Upload check results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gcc-asan-check-results
+          path: check/nwsrfsr.Rcheck/**
+          if-no-files-found: warn
+          retention-days: 14
