@@ -3,6 +3,52 @@
 Helpers for maintaining the R package. Not part of the package or the CRAN
 build.
 
+## R development environment
+
+R is not managed by pixi. Install and switch R versions with
+[rig](https://github.com/r-lib/rig):
+
+    rig list             # installed versions
+    rig add release      # install the current release
+    rig default 4.6      # pick the default R
+
+Two one-time prerequisites:
+
+1. CRAN's Fortran toolchain, which R's Makeconf expects at `/opt/gfortran`:
+
+       curl -fLO https://mac.r-project.org/tools/gfortran-14.2-universal.pkg
+       sudo installer -pkg gfortran-14.2-universal.pkg -target /
+
+2. The R development packages (testthat, pkgdown, devtools, roxygen2),
+   restored by renv into the project's renv library (kept in the user cache
+   directory, since the project has a DESCRIPTION file):
+
+       cd nwsrfs_r && Rscript -e 'renv::restore()'
+
+renv installs from Posit Package Manager
+(`https://packagemanager.posit.co/cran/latest`), which serves precompiled
+binaries for macOS, Windows and major Linux distros, so restores do not
+compile from source. The pixi R tasks (`pixi run test-r` and friends) use
+the system R and this renv library; only the Python toolchain still comes
+from conda. Maintainer-only packages are declared in
+`nwsrfs_r/dev-dependencies.R` so `renv::snapshot()` keeps them in the
+lockfile.
+
+[rv](https://github.com/A2-ai/rv) is a likely successor to renv here (a
+declarative manager built around a lockfile), but it was pre-1.0 (v0.19) as
+of July 2026. Revisit once it reaches 1.0.
+
+## Cross-package test suite
+
+- `dev/test-cross-package.R` holds the R vs Python comparisons that used to
+  live in the R package test suite (two strict simulation baselines, two
+  adjustq baselines). Run with `pixi run test-cross` (installs both
+  packages first). These only make sense in the monorepo, so they are not
+  part of the CRAN package tests.
+- `dev/regenerate-adjustq-baselines.py` regenerates
+  `nwsrfs_py/nwsrfs_py/data/Adjustq_check/*.csv` from the current Python
+  build (`pixi run 'python dev/regenerate-adjustq-baselines.py'`).
+
 ## `check-local.sh` — CRAN-style instrumented checks in Docker
 
 Runs the two fast instrumented checks from
@@ -30,12 +76,12 @@ emulation they take 30-60 min and many hours. Run those in CI
 
 ### Why the bounds check does not compare against Python baselines
 
-Four tests compare the simulation against Python baseline CSVs in `nwsrfs_py/`.
-`check-local.sh` checks the tarball in isolation with `NOT_CRAN=false`, so the
-tests skip exactly as they do on CRAN: the sibling `nwsrfs_py/` directory is
-not present and `skip_on_cran()` applies. Since 1.0.3 the comparisons
-themselves hold on every platform (see the next section); run them from the
-monorepo with `pixi run test-r`.
+`check-local.sh` checks the tarball in isolation, so the R package's own
+tests must be self-contained: none of them depend on the sibling
+`nwsrfs_py/` directory being present. The R vs Python comparisons live
+outside the package, in `dev/test-cross-package.R` (see "Cross-package test
+suite" above), and only run when invoked directly with `pixi run
+test-cross`.
 
 ## Cross-platform floating-point reproducibility
 
