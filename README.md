@@ -21,7 +21,7 @@ The wrapped model suite includes SAC-SMA, SNOW-17, UNIT-HG, LAG-K, CHANLOSS, and
 
 ## Development Environment (pixi)
 
-[pixi](https://pixi.prefix.dev/) manages the Python toolchain (Python, gfortran for the Python build, meson, quarto, etc.) in a reproducible environment from `pixi.toml`. R is a system install managed with [rig](https://github.com/r-lib/rig); its development packages come as precompiled binaries from [Posit Package Manager](https://packagemanager.posit.co/) via renv. See `dev/README.md` for the one-time R setup (rig, CRAN gfortran, `renv::restore()`).
+[pixi](https://pixi.prefix.dev/) manages the Python toolchain (Python, gfortran for the Python build, meson, quarto, etc.) in a reproducible environment from `pixi.toml`. R is a system install managed with [rig](https://github.com/r-lib/rig); its development packages come as precompiled binaries from [Posit Package Manager](https://packagemanager.posit.co/) via renv. See `dev/README.md` for the one time R setup (rig, CRAN gfortran, `renv::restore()`).
 
 ```bash
 git clone https://github.com/NOAA-NWRFC/nwsrfs-hydro-models.git
