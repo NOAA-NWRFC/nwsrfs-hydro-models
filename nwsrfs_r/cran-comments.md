@@ -18,6 +18,14 @@
   that were disabled when the legacy code was ported to a standalone
   wrapper for this package, all three are now initialised explicitly. 
 
+* This version adds a `configure` script. It probes whether the Fortran
+  compiler accepts `-ffp-contract=off` and generates `src/Makevars` from
+  `src/Makevars.in` with the result (the flag is dropped on compilers that
+  reject it). Fused multiply-add contraction varies by compiler version and
+  CPU and made this iterated hydrology model produce visibly different
+  simulations on different platforms; with contraction off, results agree
+  across macOS, Linux, Windows, x86-64 and arm64.
+
 ## R CMD check results
 
 0 errors | 0 warnings | 2 notes

@@ -111,14 +111,11 @@ jobs:
   # reproduces CRAN's skip behaviour exactly. Four tests compare the simulation
   # against Python baseline CSVs that live in the sibling nwsrfs_py/ directory,
   # which is NOT part of the tarball: two are skip_on_cran(), and the two
-  # adjustq ones use skip_if_not(file.exists(baseline)). The single-precision
-  # SNOW17/SAC math evaluates differently on Linux/x86 than the macOS/arm64 host
-  # that generated the baselines (a libm/floating-point difference present from
-  # the first timestep and independent of -finit / -ffp-contract / -O level), so
-  # those comparisons would be false failures on a Linux runner. From the
-  # tarball they skip just as they do on CRAN (no NOT_CRAN, no baseline files),
-  # while the examples -- including the rsnwelev one that segfaulted on CRAN --
-  # and the structural tests still run under -fcheck=all.
+  # adjustq ones use skip_if_not(file.exists(baseline)). From the tarball they
+  # skip just as they do on CRAN (no NOT_CRAN, no baseline files), while the
+  # examples -- including the rsnwelev one that segfaulted on CRAN -- and the
+  # structural tests still run under -fcheck=all. (Since -ffp-contract=off the
+  # baseline comparisons themselves hold on every platform; see dev/README.md.)
   # ---------------------------------------------------------------------------
   fortran-bounds:
     runs-on: ubuntu-latest
@@ -165,10 +162,8 @@ jobs:
 
           # Check the tarball in an isolated directory that has NO nwsrfs_py/
           # sibling. Four tests compare the simulation against Python baseline
-          # CSVs, which evaluate differently on Linux/x86 than on the macOS/arm64
-          # host that produced the baselines (a libm floating-point difference,
-          # not a memory fault). To reproduce CRAN's behaviour so those are not
-          # false failures:
+          # CSVs that are not shipped in the tarball. To reproduce CRAN's skip
+          # behaviour exactly:
           #   * NOT_CRAN=false makes the two skip_on_cran() tests skip.
           #     (r-lib/actions/setup-r exports NOT_CRAN=true via $GITHUB_ENV,
           #     which outranks a job-level env:, so override it inline here.)

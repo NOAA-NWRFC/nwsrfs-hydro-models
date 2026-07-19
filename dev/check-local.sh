@@ -104,9 +104,10 @@ case "$check" in
     fi
     pkg="$(ls nwsrfsr_*.tar.gz)"
     # Isolated dir (no nwsrfs_py sibling) + NOT_CRAN=false so the four Python
-    # baseline-comparison tests skip exactly as they do on CRAN. They compare
-    # against CSVs generated on macOS/arm64 and cannot match on Linux/x86 (a
-    # libm floating-point difference, not a memory fault). The examples --
+    # baseline-comparison tests skip exactly as they do on CRAN (the sibling
+    # directory with the CSVs is absent there). Since -ffp-contract=off the
+    # comparisons themselves hold on every platform; see "Cross-platform
+    # floating-point reproducibility" in dev/README.md. The examples --
     # including the rsnwelev one that segfaulted on CRAN -- still run under
     # -fcheck=all, and a runtime bounds error there aborts the check.
     mkdir -p /tmp/check && cp "$pkg" /tmp/check/ && cd /tmp/check

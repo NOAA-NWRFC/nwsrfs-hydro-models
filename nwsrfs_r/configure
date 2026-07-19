@@ -1,0 +1,47 @@
+#!/bin/sh
+# Package configure script.
+#
+# Probes whether the Fortran compiler accepts -ffp-contract=off and generates
+# src/Makevars from src/Makevars.in with the result. Compilers may contract
+# a*b+c into a fused multiply-add with a single rounding; whether they do
+# varies by compiler version and CPU (aarch64 fuses, baseline x86-64 cannot).
+# In this package's iterated single-precision model chain those one-ulp
+# differences are amplified by snow model thresholds into visibly different
+# simulations across platforms. With contraction off, results agree across
+# macOS, Linux, x86-64 and arm64 to within libm rounding. gfortran, flang and
+# ifx all accept the flag; a compiler that rejects it simply builds without it.
+
+set -e
+
+# Use the same Fortran compiler and flags R itself uses.
+: "${R_HOME=$(R RHOME)}"
+RBIN="${R_HOME}/bin/R"
+FC=$("${RBIN}" CMD config FC)
+FFLAGS=$("${RBIN}" CMD config FFLAGS)
+
+FPCONTRACT=""
+
+# Probe: compile a trivial Fortran unit with the candidate flag. Discard all
+# output; we only care about the exit status.
+tmpd=$(mktemp -d 2>/dev/null || echo "./conftest.$$")
+mkdir -p "${tmpd}"
+cat > "${tmpd}/conftest.f90" <<'EOF'
+program conftest
+end program conftest
+EOF
+
+if ${FC} ${FFLAGS} -ffp-contract=off -c "${tmpd}/conftest.f90" \
+        -o "${tmpd}/conftest.o" >/dev/null 2>&1; then
+    FPCONTRACT="-ffp-contract=off"
+    echo "configure: Fortran compiler supports -ffp-contract=off; enabling it"
+else
+    echo "configure: Fortran compiler lacks -ffp-contract=off; leaving flags unchanged"
+fi
+
+rm -rf "${tmpd}"
+
+# Generate src/Makevars from the template.
+sed "s|@FPCONTRACT@|${FPCONTRACT}|g" src/Makevars.in > src/Makevars
+
+echo "configure: generated src/Makevars"
+exit 0

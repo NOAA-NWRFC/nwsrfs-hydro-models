@@ -1,8 +1,14 @@
-# Windows always builds with Rtools gfortran, which accepts -ffp-contract=off,
-# so the flag is set directly instead of probed by `configure` (which does not
-# run on Windows). See src/Makevars.in for why contraction is disabled.
-PKG_FFLAGS = -ffp-contract=off
-PKG_FCFLAGS = -ffp-contract=off
+# Template for src/Makevars, filled in by the package `configure` script.
+# @FPCONTRACT@ becomes -ffp-contract=off when the Fortran compiler accepts it,
+# otherwise nothing. Compilers may contract a*b+c into a fused multiply-add
+# with a single rounding; whether they do varies by compiler version and CPU
+# (aarch64 fuses, baseline x86-64 cannot), which made simulation results
+# differ across platforms. Disabling contraction makes results agree across
+# macOS, Linux, x86-64 and arm64 to within libm rounding (~1e-6 mm of total
+# channel inflow over a 43 year run). See dev/README.md in the source
+# repository for the full diagnosis.
+PKG_FFLAGS = @FPCONTRACT@
+PKG_FCFLAGS = @FPCONTRACT@
 
 all: $(SHLIB)
 
@@ -25,12 +31,12 @@ uh2p_get_scale.o: uh_optim.o
 # must carry $(PKG_FFLAGS) themselves or the flags above would silently not
 # apply to these files (exsnow19.f is in the model's hot path).
 fka7.o: fka7.f
-	$(FC) -c -O2 $(PKG_FFLAGS) fka7.f
+	$(FC) -c -fPIC -O2 $(PKG_FFLAGS) fka7.f
 flag7.o: flag7.f
-	$(FC) -c -O2 $(PKG_FFLAGS) flag7.f
+	$(FC) -c -fPIC -O2 $(PKG_FFLAGS) flag7.f
 pin7.o: pin7.f
-	$(FC) -c -O2 $(PKG_FFLAGS) pin7.f
+	$(FC) -c -fPIC -O2 $(PKG_FFLAGS) pin7.f
 ex57.o: ex57.f
-	$(FC) -c -O2 $(PKG_FFLAGS) ex57.f
+	$(FC) -c -fPIC -O2 $(PKG_FFLAGS) ex57.f
 exsnow19.o: exsnow19.f
-	$(FC) -c -O2 $(PKG_FFLAGS) exsnow19.f
+	$(FC) -c -fPIC -O2 $(PKG_FFLAGS) exsnow19.f
