@@ -65,6 +65,8 @@ setup_*.sh
 !nwsrfs_r/inst/LICENSE_roots_fortran.md
 # Developer tooling docs are tracked (the *.md rule above would hide them).
 !dev/README.md
+# Design specs are project records.
+!docs/superpowers/specs/*.md
 # The CRAN response note is a top-level project record.
 # just in case it is needed to commit to the repo later
 # !cran_authors_review_response.md
