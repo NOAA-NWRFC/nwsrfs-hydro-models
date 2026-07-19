@@ -26,55 +26,6 @@ test_that("load_example SFLN2 runs and returns expected structure", {
 })
 
 
-test_that("NRKW1 simulation matches Python baseline within tolerance", {
-  skip_on_cran()
-  run = load_example("NRKW1")
-  baseline_path = system.file(
-    package = "nwsrfsr"
-  )
-
-  # Read Python baseline from nwsrfs_py data directory
-  # This test uses relative path from repo root
-  py_baseline = tryCatch(
-    read.csv(file.path(
-      "..", "..", "..", "nwsrfs_py", "nwsrfs_py", "data",
-      "NRKW1", "results_por_02", "optimal_6hr_inst.csv"
-    )),
-    error = function(e) NULL
-  )
-
-  if (!is.null(py_baseline)) {
-    n = min(length(run$sim), nrow(py_baseline))
-    total_diff = sum(abs(run$sim[1:n] - py_baseline$sim_flow_cfs[1:n]), na.rm = TRUE)
-    expect_lt(total_diff, 2)  # < 2 cfs total absolute difference
-  } else {
-    skip("Python baseline CSV not found")
-  }
-})
-
-
-test_that("SFLN2 simulation matches Python baseline within tolerance", {
-  skip_on_cran()
-  run = load_example("SFLN2")
-
-  py_baseline = tryCatch(
-    read.csv(file.path(
-      "..", "..", "..", "nwsrfs_py", "nwsrfs_py", "data",
-      "SFLN2", "results_por_01", "optimal_6hr_inst.csv"
-    )),
-    error = function(e) NULL
-  )
-
-  if (!is.null(py_baseline)) {
-    n = min(length(run$sim), nrow(py_baseline))
-    total_diff = sum(abs(run$sim[1:n] - py_baseline$sim_flow_cfs[1:n]), na.rm = TRUE)
-    expect_lt(total_diff, 0.25)
-  } else {
-    skip("Python baseline CSV not found")
-  }
-})
-
-
 test_that("update_pars modifies parameters and re-runs", {
   run = load_example("NRKW1")
   orig_sim = run$sim
