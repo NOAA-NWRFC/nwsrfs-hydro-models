@@ -12,9 +12,9 @@ R is not managed by pixi. Install and switch R versions with
     rig add release      # install the current release
     rig default 4.6      # pick the default R
 
-Two one-time prerequisites:
+Two one time prerequisites:
 
-1. CRAN's Fortran toolchain, which R's Makeconf expects at `/opt/gfortran`:
+1. CRAN's Fortran toolchain, which R's Makeconf expects at `/opt/gfortran`. On macOS, install it with:
 
        curl -fLO https://mac.r-project.org/tools/gfortran-14.2-universal.pkg
        sudo installer -pkg gfortran-14.2-universal.pkg -target /
@@ -30,7 +30,7 @@ renv installs from Posit Package Manager
 binaries for macOS, Windows and major Linux distros, so restores do not
 compile from source. The pixi R tasks (`pixi run test-r` and friends) use
 the system R and this renv library; only the Python toolchain still comes
-from conda. Maintainer-only packages are declared in
+from conda. Packages used only by the maintainer are declared in
 `nwsrfs_r/dev-dependencies.R` so `renv::snapshot()` keeps them in the
 lockfile.
 

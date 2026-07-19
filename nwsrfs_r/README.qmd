@@ -16,13 +16,13 @@ an [AdjustQ module](#adjustq-preprocessing) for preprocessing upstream flow.
 Installation
 ------------
 
-Using [pixi](https://pixi.prefix.dev/) (recommended for development — provides R, gfortran, and test dependencies):
+Using [pixi](https://pixi.prefix.dev/) to run the repo tasks:
 
 ```bash
 pixi run install-r
 ```
 
-See the [top-level README](https://github.com/NOAA-NWRFC/nwsrfs-hydro-models#development-environment-pixi) for pixi setup details.
+R itself is a system install, not managed by pixi. See the [top-level README](https://github.com/NOAA-NWRFC/nwsrfs-hydro-models#development-environment-pixi) and `dev/README.md` for one time setup.
 
 Or from R:
 
@@ -341,7 +341,7 @@ pixi run build-docs-r-readme   # render README.qmd to HTML
 pixi run build-docs            # build all docs (Python + R + R README)
 ```
 
-Or from R:
+Or from R, in a session started in `nwsrfs_r/` (pkgdown comes from the renv library activated there):
 
 ```r
 pkgdown::build_site(pkg = "nwsrfs_r", install = FALSE, preview = FALSE)
