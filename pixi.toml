@@ -17,15 +17,8 @@ ninja = "*"
 # Fortran compiler
 fortran-compiler = "*"
 c-compiler = "*"
-# R
-r-base = ">=4.1"
 # Testing
 pytest = "*"
-r-testthat = "*"
-# R dev tools
-r-devtools = ">=2.4.6,<3"
-r-roxygen2 = "*"
-r-pkgdown = "*"
 sphinx = ">=5,<6"
 sphinx-autodoc-typehints = "*"
 sphinx_rtd_theme = "*"
@@ -37,22 +30,22 @@ python-build = ">=1.4.0,<2"
 [tasks]
 clean-py-src-artifacts = { cmd = "python -c \"import os; exts={'.mod','.smod','.o','.so','.dylib','.a','.obj','.dll','.lib'}; root='model_source'; [os.remove(os.path.join(dp,f)) for dp,_,fs in os.walk(root) for f in fs if os.path.splitext(f)[1].lower() in exts]\"", description = "Remove stale compiled Fortran artifacts from model_source" }
 install-py = { cmd = "pip install --no-build-isolation -e nwsrfs_py", cwd = ".", depends-on = ["clean-py-src-artifacts"], description = "Install Python package (editable)" }
-install-r = { cmd = "R CMD INSTALL nwsrfs_r", description = "Install R package" }
+install-r = { cmd = "Rscript -e 'Sys.setenv(R_LIBS = paste(.libPaths(), collapse = .Platform[[\"path.sep\"]])); status <- system2(\"R\", c(\"CMD\", \"INSTALL\", \".\")); if (!identical(status, 0L)) quit(status = status)'", cwd = "nwsrfs_r", description = "Install R package into the renv library" }
 test-py = { cmd = "pytest nwsrfs_py/tests/ -v -s", cwd = ".", depends-on = ["install-py"], description = "Run Python tests" }
-test-r = { cmd = "Rscript -e \"Sys.setenv(RENV_CONFIG_AUTOLOADER_ENABLED='FALSE'); testthat::test_check('nwsrfsr')\"", cwd = "nwsrfs_r/tests", depends-on = ["install-r"], description = "Run R tests" }
+test-r = { cmd = "Rscript -e 'setwd(\"tests\"); testthat::test_check(\"nwsrfsr\")'", cwd = "nwsrfs_r", depends-on = ["install-r"], description = "Run R tests" }
 build-r = { cmd = "R CMD build nwsrfs_r", depends-on = ["install-r"], description = "Build R source tarball" }
-check-r = { cmd = "Rscript -e \"f <- Sys.glob('nwsrfsr_*.tar.gz'); if (length(f) != 1) stop('Expected one nwsrfsr_*.tar.gz file'); status <- system2('R', c('CMD','check','--no-manual', f)); if (!identical(status, 0L)) quit(status = status)\"", depends-on = ["install-r", "build-r"], description = "R CMD check (no manual)" }
-check-r-cran = { cmd = "Rscript -e \"f <- Sys.glob('nwsrfsr_*.tar.gz'); if (length(f) != 1) stop('Expected one nwsrfsr_*.tar.gz file'); status <- system2('R', c('CMD','check','--as-cran', f)); if (!identical(status, 0L)) quit(status = status)\"", depends-on = ["install-r", "build-r"], description = "CRAN submission check on built tarball" }
-check-win-devel = { cmd = "Rscript -e \"devtools::check_win_devel('nwsrfs_r')\"", depends-on = ["install-r"], description = "Submit to win-builder (R-devel); results emailed to maintainer" }
-check-win-release = { cmd = "Rscript -e \"devtools::check_win_release('nwsrfs_r')\"", depends-on = ["install-r"], description = "Submit to win-builder (R-release); results emailed to maintainer" }
-check-win-oldrelease = { cmd = "Rscript -e \"devtools::check_win_oldrelease('nwsrfs_r')\"", depends-on = ["install-r"], description = "Submit to win-builder (R-oldrelease); results emailed to maintainer" }
-check-mac-release = { cmd = "Rscript -e \"devtools::check_mac_release('nwsrfs_r')\"", depends-on = ["install-r"], description = "Submit to macOS builder (R-release); results emailed to maintainer" }
+check-r = { cmd = "Rscript -e 'Sys.setenv(R_LIBS = paste(.libPaths(), collapse = .Platform[[\"path.sep\"]])); f <- Sys.glob(\"../nwsrfsr_*.tar.gz\"); if (length(f) != 1) stop(\"Expected one nwsrfsr_*.tar.gz file\"); status <- system2(\"R\", c(\"CMD\", \"check\", \"--no-manual\", \"-o\", \"..\", f)); if (!identical(status, 0L)) quit(status = status)'", cwd = "nwsrfs_r", depends-on = ["install-r", "build-r"], description = "R CMD check (no manual)" }
+check-r-cran = { cmd = "Rscript -e 'Sys.setenv(R_LIBS = paste(.libPaths(), collapse = .Platform[[\"path.sep\"]])); f <- Sys.glob(\"../nwsrfsr_*.tar.gz\"); if (length(f) != 1) stop(\"Expected one nwsrfsr_*.tar.gz file\"); status <- system2(\"R\", c(\"CMD\", \"check\", \"--as-cran\", \"-o\", \"..\", f)); if (!identical(status, 0L)) quit(status = status)'", cwd = "nwsrfs_r", depends-on = ["install-r", "build-r"], description = "CRAN submission check on built tarball" }
+check-win-devel = { cmd = "Rscript -e 'devtools::check_win_devel(\".\")'", cwd = "nwsrfs_r", depends-on = ["install-r"], description = "Submit to win-builder (R-devel); results emailed to maintainer" }
+check-win-release = { cmd = "Rscript -e 'devtools::check_win_release(\".\")'", cwd = "nwsrfs_r", depends-on = ["install-r"], description = "Submit to win-builder (R-release); results emailed to maintainer" }
+check-win-oldrelease = { cmd = "Rscript -e 'devtools::check_win_oldrelease(\".\")'", cwd = "nwsrfs_r", depends-on = ["install-r"], description = "Submit to win-builder (R-oldrelease); results emailed to maintainer" }
+check-mac-release = { cmd = "Rscript -e 'devtools::check_mac_release(\".\")'", cwd = "nwsrfs_r", depends-on = ["install-r"], description = "Submit to macOS builder (R-release); results emailed to maintainer" }
 check-online = { depends-on = ["check-win-devel"], description = "Submit to online build service (win-builder R-devel)" }
 test-all = { depends-on = ["test-py", "test-r"], description = "Run all tests" }
 clean-docs-py = { cmd = "python -m sphinx -M clean nwsrfs_py/docs/source nwsrfs_py/docs/build", cwd = ".", description = "Cleans Python Sphinx docs" }
 build-docs-py = { cmd = "python -m sphinx -M html nwsrfs_py/docs/source nwsrfs_py/docs/build", cwd = ".", depends-on = ["clean-docs-py"], description = "Build Python Sphinx docs" }
-build-docs-r = { cmd = "Rscript -e \"Sys.setenv(RENV_CONFIG_AUTOLOADER_ENABLED='FALSE'); pkgdown::build_site(pkg='nwsrfs_r', install=FALSE, preview=FALSE)\"", depends-on = ["install-r"], description = "Build R pkgdown docs" }
-build-docs-r-readme = { cmd = "quarto render README.qmd --to html -M embed-resources:true -o README.html", cwd = "nwsrfs_r", description = "Build R README.html" }
+build-docs-r = { cmd = "Rscript -e 'pkgdown::build_site(install = FALSE, preview = FALSE)'", cwd = "nwsrfs_r", depends-on = ["install-r"], description = "Build R pkgdown docs" }
+build-docs-r-readme = { cmd = "quarto render README.qmd --to html -M embed-resources:true -o README.html", cwd = "nwsrfs_r", depends-on = ["install-r"], description = "Build R README.html" }
 build-docs = { depends-on = ["build-docs-py", "build-docs-r", "build-docs-r-readme"], description = "Build all docs" }
 
 [environments]
