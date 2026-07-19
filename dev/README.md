@@ -63,6 +63,16 @@ through meson. With contraction off, results agree across macOS, Linux,
 x86-64 and arm64 to within the libm residual, and the baseline CSVs
 (regenerated once from the non-contracting build) match on every platform.
 
+The R-vs-Python agreement carries a fixed residual worth knowing about. The
+strict baseline tests in `test-nwsrfs-run.R` compare the R simulation against
+CSVs produced by the Python package, with total absolute tolerances of 2 cfs
+(NRKW1) and 0.25 cfs (SFLN2) over the full 43 year runs. They currently sit
+at about 1.9 and 0.235 cfs, identically on every platform. That 94-96% margin
+is the genuine difference between the two wrapper layers around the shared
+Fortran (R glue vs pandas time handling), not platform noise or flakiness, so
+treat any movement in these totals as a real regression in one of the
+wrappers.
+
 Two traps to remember:
 
 - The explicit rules in `Makevars.in` for the legacy `.f` files bypass R's
@@ -91,24 +101,26 @@ source file.
 
 rhub v2 runs on the R-Consortium runners from a locally built tarball, so the
 monorepo stays intact (no need to move the R package to a repo root, which would
-fork the shared `model_source` symlink):
-
-```r
-# install.packages("rhub")
-rhub::rc_new_token()          # one-time email token
-rhub::rc_submit()             # no args -> lists platforms to pick by number
-```
+fork the shared `model_source` symlink). `dev/rhub-submit.sh` wraps the whole
+flow: it assembles a clean package tree (symlinks materialized, renv and stale
+artifacts stripped), runs `R CMD build`, and submits the tarball:
 
 ```bash
-R CMD build nwsrfs_r          # -> nwsrfsr_<version>.tar.gz
+dev/rhub-submit.sh                # build + submit to the default set:
+                                  #   gcc-asan clang-asan valgrind nold ubuntu-next
+dev/rhub-submit.sh valgrind       # specific platforms
+dev/rhub-submit.sh --list         # show all available platforms
+dev/rhub-submit.sh --build-only   # just build the tarball, no submission
 ```
 
+One-time setup:
+
 ```r
-rhub::rc_submit(
-  "nwsrfsr_<version>.tar.gz",
-  platforms = c("gcc-asan", "clang-asan", "valgrind", "nold", "ubuntu-next")
-)
+install.packages("rhub")
+rhub::rc_new_token()   # email token; the submit email defaults to the
+                       # DESCRIPTION maintainer, set RHUB_EMAIL to override
 ```
 
 Results and the tarball become public on the `r-hub2` GitHub org; allow at least
-five minutes between submissions.
+five minutes between submissions. The script prompts before submitting for this
+reason (pass `--yes` to skip).
