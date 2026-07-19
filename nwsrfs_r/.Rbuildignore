@@ -18,3 +18,4 @@
 ^README\.html$
 ^win-builder-notes\.md$
 ^src/Makevars$
+^dev-dependencies\.R$
