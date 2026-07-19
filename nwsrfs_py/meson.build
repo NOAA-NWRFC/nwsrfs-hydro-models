@@ -4,6 +4,16 @@ project('nwsrfspy', 'c', 'fortran',
   default_options : ['warning_level=1'],
 )
 
+# Disable floating-point expression contraction so model results agree across
+# platforms. Compilers may fuse a*b+c into a fused multiply-add with a single
+# rounding; whether they do varies by compiler version and CPU, and in this
+# iterated single-precision model chain the one-ulp differences are amplified
+# into visibly different simulations. The R package applies the same flag (see
+# its configure script), so both wrappers produce matching results everywhere.
+# get_supported_arguments drops the flag on compilers that reject it.
+fc = meson.get_compiler('fortran')
+add_project_arguments(fc.get_supported_arguments('-ffp-contract=off'), language: 'fortran')
+
 py = import('python').find_installation(pure: false)
 module_name = 'nwsrfs_src'
 
