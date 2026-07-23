@@ -1533,3 +1533,130 @@ class GammaUh():
 
         return (ts_inst + ts_next)/2
 
+@dataclass
+class RSnwElev_Pars:
+
+    '''
+    Container for all inputs required to run the NWSRFS RSNWELEV model via F2PY bindings.
+
+    This class supports vectorized execution across multiple zones and timesteps simultaneously. 
+    Input arrays should adhere to the following shape conventions:
+
+    **Dimensions:**
+
+    * **T**: Number of timesteps.
+    * **Z**: Number of zones.
+    * **E**: Number of area elevation curve rows.
+
+    **Array Shapes:**
+
+    * **Temperature** (e.g., ``forcings_mat``): Shape (T,Z)
+    * **Scalar Parameters** (e.g., ``pxtemp``): Shape (Z,)
+    * **Area-Elevation Table Index** (e.g., ``aetbl_index``): Shape (E,)
+    * **Area-Elevation Table Values** (e.g., ``aetbl_values``): Shape (E,Z)
+
+    Args:
+        taelev (np.ndarray): Elevation associated with the ``forcings_mat`` time series (units: m).
+        talr (np.ndarray): Lapse rate during precipitation periods (units: degc/100m).
+        pxtemp (np.ndarray): Rain/snow threshold temperature (units: degc).
+        aetbl_index (np.ndarray): Area-elevation table index array (units: fraction 0-1).
+        aetbl_values (np.ndarray): Area-elevation table values array(units: m).
+        forcings_mat(np.ndarray): Air temperature array for each timestep (units: degc).
+    '''
+
+    taelev: np.ndarray
+    talr: np.ndarray
+    pxtemp: np.ndarray
+    aetbl_index: np.ndarray
+    aetble_values: np.ndarray
+    forcings_mat: np.ndarray
+
+    def __post_init__(self):
+
+        #Convert inputs to double dtypes
+        dbl_list = ['taelev','talr','pxtemp','aetbl_index','aetble_values','forcings_mat']
+        utils._dtype_conversion_batch(self,  np.float64, dbl_list)
+
+        #Convert all arrays to a fortran friendly format
+        utils._arrayasfortran(self)
+
+    def validate(self):
+        """Checks that all inputs meet shape, type, and value constraints."""
+
+        #check that year, month, day have the same length
+        if not utils._validate_array_length(self.year, self.month, self.day, self.hour):
+            raise ValueError("Time arrays (year, month, day) must have the same length")
+
+        #check that periods shape contains the correct shape
+        if len(self.periods[0])!=2:
+            raise ValueError("periods parameter shape must be n x 2")
+
+        #check that cl_type parameter is 1 or 2
+        if not self.cl_type ==1 and not self.cl_type ==2:
+            raise ValueError("cl_type must have a integer value of 1 or 2")
+
+        #check that streamflow input and factor parameters are 1d arrays
+        if not utils._validate_1d_array(self.qin,self.factors):
+            raise ValueError("Streamflow and factors array inputs must have a 1d shape")
+
+        #check that streamflow input has same lengths as year, month, day arrays
+        if not utils._validate_array_length(self.year, self.qin):
+            raise ValueError("Streamflow input must have the same length as time arrays (year, month, day)")
+
+        #check that qin and PET array input are valid:
+        if not utils._validate_positive_values(self.qin):
+            raise ValueError("Streamflow inputs values must be >= 0")
+
+
+class RSnwElev:
+
+    '''
+     Class to run the NWSRFS rsnwelev model via F2PY bindings.
+
+    Args:
+        pars_dataclass (ChanlossPars): Dataclass which contains all inputs to run CHANLOSS.
+        validate (bool): Validate :class:`ChanlossPars` dataclass inputs are correct format/type. Default: ``True``.
+    Attributes:
+        chanloss_pars (ChanlossPars): Dataclass which contains all inputs to run CHANLOSS.
+    '''
+    def __init__(self,
+            pars_dataclass: ChanlossPars,
+            validate:bool = True):
+
+        #Assign parameters
+        self.chanloss_pars = copy.deepcopy(pars_dataclass)
+
+        #Validate chanloss_pars
+        if validate:
+            self.chanloss_pars.validate()
+
+        self.__datetime = utils._datetime_conversion(self.chanloss_pars.year, self.chanloss_pars.month, self.chanloss_pars.day, self.chanloss_pars.hour).rename('datetime')
+
+        #Set raw_output to None until run function is executed
+        self.__raw_output = None
+
+    def __run_wrapper(self):
+        '''
+        Runs CHANLOSS wrapper
+        '''
+
+        #Create a copy to prevent any changes to the par dataclass when running the nwrfs soure code
+        pars = copy.deepcopy(self.chanloss_pars)
+
+        self.__raw_output = nwsrfs_source.chanloss(pars.dt_seconds, pars.year, pars.month, pars.day,
+                                    pars.factors,pars.periods,pars.cl_type, pars.min_flow,
+                                    pars.qin)
+
+    @property
+    def chanloss_qadj(self) -> pd.Series:
+        '''
+        Generates a Series of streamflow with CHANLOSS adjustments applied (units - cfs).
+        '''
+
+        if self.__raw_output is None:
+            self.__run_wrapper()
+
+        qin_adj = pd.Series(self.__raw_output, index=self.__datetime, name='qin_adj')
+
+        return qin_adj
+
