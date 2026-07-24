@@ -21,10 +21,10 @@
 * This version adds a `configure` script. It probes whether the Fortran
   compiler accepts `-ffp-contract=off` and generates `src/Makevars` from
   `src/Makevars.in` with the result (the flag is dropped on compilers that
-  reject it). Fused multiply-add contraction varies by compiler version and
-  CPU and made this iterated hydrology model produce visibly different
-  simulations on different platforms; with contraction off, results agree
-  across macOS, Linux, Windows, x86-64 and arm64.
+  reject it). This was needed due to a compiler-dependent fuesed multiply 
+  add contraction which caused different results on Linux and Mac. With 
+  contraction off, the hydrology model results agree across macOS, Linux, 
+  Windows, both x86-64 and arm64.
 
 ## R CMD check results
 
