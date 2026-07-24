@@ -45,7 +45,9 @@ pip install nwsrfspy
 
 ## Development Environment (for compiling from source)
 
-[pixi](https://pixi.prefix.dev/) manages the Python toolchain (Python, gfortran for the Python build, meson, quarto, etc.) in a reproducible environment from `pixi.toml`. R is a system install managed with [rig](https://github.com/r-lib/rig); its development packages come as precompiled binaries from [Posit Package Manager](https://packagemanager.posit.co/) via renv. See `dev/README.md` for the one time R setup (rig, CRAN gfortran, `renv::restore()`).
+[pixi](https://pixi.prefix.dev/) manages the Python toolchain (Python, gfortran for the Python build, meson, quarto, etc.) in a reproducible environment from `pixi.toml`. The environment will be automatically activated when you run any pixi command. 
+
+To compile the R package from source, R needs to be installed and available on the system `PATH` along with gfortran. See `dev/README.md` for the one time R setup. 
 
 ```bash
 git clone https://github.com/NOAA-NWRFC/nwsrfs-hydro-models.git
