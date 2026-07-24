@@ -13,9 +13,10 @@ name: CRAN instrumented checks (LTO / bounds / ASAN)
 #
 # valgrind (uninitialised reads) is covered separately by valgrind.yml.
 #
-# The lto and bounds jobs are fast (a few minutes) and run on every push. The
-# asan job uses the r-hub gcc-asan container and is slower, so it runs on
-# demand (workflow_dispatch) and on pushes to the two long-lived branches.
+# The lto and bounds jobs are fast (a few minutes) and run on every push and
+# PR. The asan job uses the r-hub gcc-asan container and is slower, so it does
+# not run on the working branch or on PRs: only on push to main and on demand
+# (workflow_dispatch).
 
 on:
   push:
@@ -223,10 +224,11 @@ jobs:
   # container (the same toolchain CRAN uses for its gcc-ASAN "additional
   # issue"). Catches heap/stack/global out-of-bounds, use-after-free and leaks
   # that the bounds check and valgrind can miss. Slower than the other jobs, so
-  # it runs on the long-lived branches and on demand.
+  # it does NOT run on the working branch or on PRs: only on push to main
+  # (pre-CRAN gate) and on demand (workflow_dispatch).
   # ---------------------------------------------------------------------------
   gcc-asan:
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/r-hub/containers/gcc-asan:latest

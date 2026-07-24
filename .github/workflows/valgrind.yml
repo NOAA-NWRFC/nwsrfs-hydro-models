@@ -13,10 +13,12 @@ name: Valgrind (CRAN memtest)
 # VALGRIND_OPTS (--track-origins=yes --leak-check=full) and CHECK_ARGS are baked
 # into the image, so we only have to stage the tarball and call the script.
 
+# Slow (r-hub valgrind container), so it does NOT run on the working branch or
+# on PRs. It runs on push to main (pre-CRAN gate) and on demand from the
+# Actions tab -> "Valgrind (CRAN memtest)" -> "Run workflow".
 on:
   push:
-    branches: ["r-github-actions", "main"]
-  pull_request:
+    branches: ["main"]
   workflow_dispatch:
 
 permissions: read-all
