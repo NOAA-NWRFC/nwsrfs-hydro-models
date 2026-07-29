@@ -481,6 +481,10 @@ uh2p_root <- function(scale, shape, dt_hours, toc) {
 #' @param start_of_timestep should the output flow data be shifted by one timestep to account for
 #'                          forcing data that uses beginning of timestep labeling
 #' @param backfill when start_of_timestep is TRUE, should the first value be duplicated
+#' @param return_inst should instantaneous flow be returned rather than period average.
+#'                    Period average is the mean of a timestep and the one after it, with
+#'                    the final value carried forward. Applied before the
+#'                    start_of_timestep shift.
 #' @return Vector of routed flow in cfs
 #' @export
 #'
@@ -497,7 +501,15 @@ uh2p_root <- function(scale, shape, dt_hours, toc) {
 #' tci <- sac_snow(dt_hours, forcing_adj, nrkw1_pars)
 #' flow_cfs <- uh(dt_hours, tci, nrkw1_pars)
 #' @useDynLib nwsrfsr duamel_
-uh <- function(dt_hours, tci, pars, sum_zones = TRUE, start_of_timestep = TRUE, backfill = TRUE) {
+uh <- function(
+  dt_hours,
+  tci,
+  pars,
+  sum_zones = TRUE,
+  start_of_timestep = TRUE,
+  backfill = TRUE,
+  return_inst = TRUE
+) {
   sec_per_day <- 86400
   dt_seconds <- sec_per_day / (24 / dt_hours)
   dt_days <- dt_seconds / sec_per_day
@@ -548,6 +560,16 @@ uh <- function(dt_hours, tci, pars, sum_zones = TRUE, start_of_timestep = TRUE, 
     }
   }
 
+  # convert instantaneous flow to period average, the mean of each timestep and
+  # the one after it. the final value has no successor so it is carried forward.
+  if (!return_inst) {
+    if (sum_zones) {
+      flow_cfs <- (flow_cfs + c(flow_cfs[-1], flow_cfs[sim_length])) / 2
+    } else {
+      flow_cfs <- (flow_cfs + rbind(flow_cfs[-1, , drop = FALSE], flow_cfs[sim_length, ])) / 2
+    }
+  }
+
   # if the forcing data used was beginning of time step,
   # then the instantaneous output occurs at the end of the timestep
   # so we need to shift the output ahead by one timestep relative
@@ -571,6 +593,19 @@ uh <- function(dt_hours, tci, pars, sum_zones = TRUE, start_of_timestep = TRUE, 
   }
 }
 
+# Internal: number of chanloss modules described by pars. The "n_clmods" row is
+# the authoritative count when present, but it is dropped from the pars carried
+# on an "nwsrfs_run" object (Python drops it too), so fall back to counting the
+# cl_factor_## rows.
+.n_clmods <- function(pars) {
+  n <- pars[pars$name == "n_clmods", ]$value[1]
+  if (!is.na(n)) {
+    return(n)
+  }
+  sum(grepl("^cl_factor_[0-9]+$", pars$name))
+}
+
+
 #' Seasonal chanloss
 #'
 #' @param flow streamflow vector
@@ -588,7 +623,7 @@ chanloss <- function(flow, forcing, dt_hours, pars) {
   #            factor, period, cl_type, &
   #            sim, sim_adj)
 
-  n_clmods = pars[pars$name == 'n_clmods', ]$value[1]
+  n_clmods = .n_clmods(pars)
   cl_type = pars[pars$name == 'cl_type', ]$value[1]
   cl_min_q = pars[pars$name == 'cl_min_q', ]$value[1]
   if (is.na(cl_type)) {
@@ -1141,15 +1176,52 @@ forcing_adjust_mat <- function(
 }
 
 
+# Internal: normalize an adjust/forcing_adj argument to the forcing types that
+# should be adjusted. TRUE means all four, FALSE means none, and a character
+# vector names the subset. Mirrors Python's NwsrfsRun._interrogate_fa_arg().
+.fa_adjust_types <- function(adjust) {
+  fa_types <- c("map", "mat", "ptps", "pet")
+
+  if (is.logical(adjust)) {
+    if (length(adjust) != 1 || is.na(adjust)) {
+      stop("'forcing_adj' must be TRUE, FALSE, or a character vector of forcing types")
+    }
+    return(if (adjust) fa_types else character(0))
+  }
+
+  if (!is.character(adjust)) {
+    stop("'forcing_adj' must be TRUE, FALSE, or a character vector of forcing types")
+  }
+
+  adjust <- unique(tolower(adjust))
+  unknown <- setdiff(adjust, fa_types)
+  if (length(unknown) > 0) {
+    stop(
+      "Forcing type(s) not understood: ",
+      paste(unknown, collapse = ", "),
+      ". Expecting: ",
+      paste(fa_types, collapse = ", ")
+    )
+  }
+
+  fa_types[fa_types %in% adjust]
+}
+
+
 #' Conduct NWRFC style forcing adjustments
 #'
 #' @param dt_hours timestep in hours
 #' @param forcing data frame with with columns for forcing inputs
 #' @param pars sac parameters
 #' @param climo climotology matrix
-#' @param dry_run Do a run without any forcing adjustments, only compute pet and etd
+#' @param dry_run Do a run without any forcing adjustments, only compute pet and etd.
+#'   Shorthand for `adjust = FALSE`; when TRUE it overrides `adjust`.
 #' @param return_adj return monthly adjustment factors only
 #' @param return_climo return the computed monthly climo
+#' @param adjust Which forcings to adjust: TRUE for all of them, FALSE for none,
+#'   or a character vector naming a subset of "map", "mat", "ptps" and "pet".
+#'   Unadjusted forcings still pass through the routine, which computes pet and
+#'   etd, but with neutral adjustment parameters.
 #' @return Matrix (1 column per zone) of unrouted channel inflow
 #' @export
 #'
@@ -1167,11 +1239,14 @@ fa_nwrfc <- function(
   climo = NULL,
   dry_run = FALSE,
   return_adj = FALSE,
-  return_climo = FALSE
+  return_climo = FALSE,
+  adjust = TRUE
 ) {
   if (return_adj & return_climo) {
     stop("Can only return adjustments or climo")
   }
+
+  adjust_types <- if (isTRUE(dry_run)) character(0) else .fa_adjust_types(adjust)
 
   pars <- as.data.frame(pars)
 
@@ -1244,35 +1319,24 @@ fa_nwrfc <- function(
     ptps_limits <- cbind(ptps_lower[, 1], ptps_upper[, 1])
   }
 
-  if (dry_run) {
-    map_fa_pars <- mat_fa_pars <- pet_fa_pars <- ptps_fa_pars <- c(1, 0, 10, 0)
-  } else {
-    # limits are applied basin wide
-    map_fa_pars <- c(
-      pars[pars$name == "map_scale", ]$value[1],
-      pars[pars$name == "map_p_redist", ]$value[1],
-      pars[pars$name == "map_std", ]$value[1],
-      pars[pars$name == "map_shift", ]$value[1]
-    )
-    mat_fa_pars <- c(
-      pars[pars$name == "mat_scale", ]$value[1],
-      pars[pars$name == "mat_p_redist", ]$value[1],
-      pars[pars$name == "mat_std", ]$value[1],
-      pars[pars$name == "mat_shift", ]$value[1]
-    )
-    pet_fa_pars <- c(
-      pars[pars$name == "pet_scale", ]$value[1],
-      pars[pars$name == "pet_p_redist", ]$value[1],
-      pars[pars$name == "pet_std", ]$value[1],
-      pars[pars$name == "pet_shift", ]$value[1]
-    )
-    ptps_fa_pars <- c(
-      pars[pars$name == "ptps_scale", ]$value[1],
-      pars[pars$name == "ptps_p_redist", ]$value[1],
-      pars[pars$name == "ptps_std", ]$value[1],
-      pars[pars$name == "ptps_shift", ]$value[1]
+  # Forcings left out of adjust_types get neutral parameters: scale 1, no
+  # redistribution, no shift. limits are applied basin wide.
+  get_fa_pars <- function(f) {
+    if (!(f %in% adjust_types)) {
+      return(c(1, 0, 10, 0))
+    }
+    c(
+      pars[pars$name == paste0(f, "_scale"), ]$value[1],
+      pars[pars$name == paste0(f, "_p_redist"), ]$value[1],
+      pars[pars$name == paste0(f, "_std"), ]$value[1],
+      pars[pars$name == paste0(f, "_shift"), ]$value[1]
     )
   }
+
+  map_fa_pars <- get_fa_pars("map")
+  mat_fa_pars <- get_fa_pars("mat")
+  pet_fa_pars <- get_fa_pars("pet")
+  ptps_fa_pars <- get_fa_pars("ptps")
 
   peadj_m <- reshape(
     pars[
@@ -1366,8 +1430,11 @@ fa_nwrfc <- function(
 #' @param forcing data frame with with columns for forcing inputs
 #' @param pars sac parameters
 #' @param climo climotology matrix
-#' @param dry_run Do a run without any forcing adjustments, only compute pet and etd
+#' @param dry_run Do a run without any forcing adjustments, only compute pet and etd.
+#'   Shorthand for `adjust = FALSE`; when TRUE it overrides `adjust`.
 #' @param return_climo Return the computed climo, instead of adjustments
+#' @param adjust Which forcings to adjust: TRUE for all of them, FALSE for none,
+#'   or a character vector naming a subset of "map", "mat", "ptps" and "pet".
 #' @return Matrix (1 column per zone) of unrouted channel inflow
 #' @export
 #'
@@ -1383,12 +1450,13 @@ fa_adj_nwrfc <- function(
   pars,
   climo = NULL,
   dry_run = FALSE,
-  return_climo = FALSE
+  return_climo = FALSE,
+  adjust = TRUE
 ) {
   if (return_climo) {
-    fa_nwrfc(dt_hours, forcing, pars, climo, dry_run, return_climo = TRUE)
+    fa_nwrfc(dt_hours, forcing, pars, climo, dry_run, return_climo = TRUE, adjust = adjust)
   } else {
-    fa_nwrfc(dt_hours, forcing, pars, climo, dry_run, return_adj = TRUE)
+    fa_nwrfc(dt_hours, forcing, pars, climo, dry_run, return_adj = TRUE, adjust = adjust)
   }
 }
 

@@ -1,3 +1,25 @@
+# nwsrfsr 1.0.4
+
+* Fix `forcing_adj` being ignored by `load_example()` and `nwsrfs_run()`. The
+  argument was accepted and stored on the returned object, but the model chain
+  always called `fa_nwrfc()` with the calibrated adjustment parameters, so
+  `forcing_adj = FALSE` returned the adjusted simulation. Python's
+  `forcing_adj=False` changes the NRKW1 simulation by about 6 percent, which is
+  why R and Python disagreed on the same call.
+* `forcing_adj` now also accepts a character vector naming a subset of "map",
+  "mat", "ptps" and "pet", matching the Python package. `fa_nwrfc()` and
+  `fa_adj_nwrfc()` gained a corresponding `adjust` argument; `dry_run = TRUE`
+  is unchanged and remains shorthand for adjusting nothing.
+* Add `return_inst` to `load_example()`, `nwsrfs_run()` and `uh()`, matching
+  Python. With `return_inst = FALSE` the unit hydrograph returns period average
+  flow, the mean of each timestep and the one after it with the final value
+  carried forward, computed before the `shift_sf` shift and before Lag-K
+  routing is added. Default TRUE, which is the previous behaviour.
+* Drop the `n_clmods` bookkeeping row from the `pars` table carried on an
+  "nwsrfs_run" object, so it matches the Python parameter table row for row.
+  `chanloss()` now infers the module count from the `cl_factor_##` rows when
+  that row is absent, and still honours it when present.
+
 # nwsrfsr 1.0.3
 
 * Fix a segfault (`memory not mapped`) reached by the `rsnwelev()` example on
