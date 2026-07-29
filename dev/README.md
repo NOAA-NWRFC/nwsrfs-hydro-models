@@ -42,12 +42,34 @@ of July 2026. Revisit once it reaches 1.0.
 
 - `dev/test-cross-package.R` holds the R vs Python comparisons that used to
   live in the R package test suite (two strict simulation baselines, two
-  adjustq baselines). Run with `pixi run test-cross` (installs both
-  packages first). These only make sense in the monorepo, so they are not
-  part of the CRAN package tests.
+  adjustq baselines), plus the argument matrix described below. Run with
+  `pixi run test-cross` (installs both packages first). These only make sense
+  in the monorepo, so they are not part of the CRAN package tests.
 - `dev/regenerate-adjustq-baselines.py` regenerates
   `nwsrfs_py/nwsrfs_py/data/Adjustq_check/*.csv` from the current Python
   build (`pixi run 'python dev/regenerate-adjustq-baselines.py'`).
+- `dev/python-sim-matrix.py` generates the Python side of the argument matrix
+  into a temporary directory. `test-cross-package.R` invokes it; there is no
+  need to run it by hand.
+
+### The argument matrix
+
+The strict baselines only ever called `load_example()` with default arguments.
+That is how the R package came to accept `forcing_adj` and ignore it: every
+default-argument comparison still passed, while `forcing_adj = FALSE` returned
+the adjusted simulation and differed from Python by 6 percent.
+
+The matrix varies each non-default argument on its own, plus one case with all
+of them at once, for both sites: twelve cases, and the two parameter tables. It
+compares against live Python rather than committed CSVs, since twelve full 43
+year runs would be about 12 MB of baselines. `dev/python-sim-matrix.py` owns the
+case list and emits `cases.csv`, which the R side reads and drives from, so the
+two languages cannot disagree about what is covered.
+
+The comparison is normalized (total absolute difference over total flow) so one
+threshold covers both sites and every case. Cases currently land near 1e-8
+against a 1e-6 threshold. For scale, the `forcing_adj` defect the matrix was
+written to catch scores 6.8e-2.
 
 ## `check-local.sh` — CRAN-style instrumented checks in Docker
 
@@ -110,7 +132,7 @@ x86-64 and arm64 to within the libm residual, and the baseline CSVs
 (regenerated once from the non-contracting build) match on every platform.
 
 The R-vs-Python agreement carries a fixed residual worth knowing about. The
-strict baseline tests in `test-nwsrfs-run.R` compare the R simulation against
+strict baseline tests in `dev/test-cross-package.R` compare the R simulation against
 CSVs produced by the Python package, with total absolute tolerances of 2 cfs
 (NRKW1) and 0.25 cfs (SFLN2) over the full 43 year runs. They currently sit
 at about 1.9 and 0.235 cfs, identically on every platform. That 94-96% margin

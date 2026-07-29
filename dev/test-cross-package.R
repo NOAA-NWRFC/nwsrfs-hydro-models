@@ -123,4 +123,101 @@ test_that("adjustq without sim matches Python baseline", {
   expect_lt(total_diff, 50)
 })
 
+
+# %%
+# Argument matrix: R vs live Python across non-default load_example() arguments
+#
+# The strict baselines above only exercise default arguments, which is how
+# `forcing_adj` being ignored by the R package went unnoticed. dev/python-sim-matrix.py
+# owns the case list and generates the Python side into a temporary directory,
+# so the two languages cannot drift apart on which cases are covered.
+
+parse_forcing_adj = function(x) {
+  if (x == "TRUE") {
+    TRUE
+  } else if (x == "FALSE") {
+    FALSE
+  } else {
+    strsplit(x, "|", fixed = TRUE)[[1]]
+  }
+}
+
+generate_python_matrix = function() {
+  outdir = file.path(tempdir(), "py-sim-matrix")
+  script = file.path(repo_root, "dev", "python-sim-matrix.py")
+
+  cat("Generating Python simulations for the argument matrix ...\n")
+  status = system2("python", c(shQuote(script), shQuote(outdir)), stdout = FALSE)
+  if (!identical(status, 0L)) {
+    stop(
+      "dev/python-sim-matrix.py failed (exit ", status, "). ",
+      "Run this script inside the pixi environment, e.g. `pixi run test-cross`."
+    )
+  }
+
+  outdir
+}
+
+matrix_dir = generate_python_matrix()
+cases = read.csv(file.path(matrix_dir, "cases.csv"), stringsAsFactors = FALSE)
+
+for (i in seq_len(nrow(cases))) {
+  case = cases[i, ]
+
+  test_that(paste("simulation matches Python for case", case$case_id), {
+    forcing_adj = parse_forcing_adj(case$forcing_adj)
+    run = load_example(
+      case$lid,
+      forcing_adj = forcing_adj,
+      shift_sf = as.logical(case$shift_sf),
+      return_inst = as.logical(case$return_inst)
+    )
+
+    py = read_py_baseline(file.path(matrix_dir, paste0("sim_", case$case_id, ".csv")))$sim
+    expect_equal(length(run$sim), length(py))
+
+    abs_diff = abs(run$sim - py)
+    # Normalized so one threshold covers both sites and every case. The two
+    # wrappers differ only in floating point noise, which lands near 1e-8 here;
+    # the forcing_adj defect this matrix was written to catch was 6e-2.
+    rel_total = sum(abs_diff) / sum(abs(py))
+    max_rel = max(abs_diff / pmax(abs(py), 1e-9))
+    cat(sprintf(
+      "%-24s total abs diff %8.4f cfs, normalized %.2e, max relative %.2e\n",
+      case$case_id,
+      sum(abs_diff),
+      rel_total,
+      max_rel
+    ))
+
+    expect_lt(rel_total, 1e-6)
+    expect_lt(max_rel, 1e-4)
+  })
+}
+
+
+# %%
+# Parameter table parity
+
+for (lid in c("NRKW1", "SFLN2")) {
+  test_that(paste("pars matches the Python parameter table for", lid), {
+    r_pars = load_example(lid)$pars
+    py_pars = read_py_baseline(file.path(matrix_dir, paste0("pars_", lid, ".csv")))
+
+    # Same parameters, same order, same values. The "name" and "zone" columns
+    # are deliberately not compared: Python rewrites chanloss rows to
+    # name "cl_factor" / zone "<LID>_CL01" where R keeps name "cl_factor_01" /
+    # zone "<LID>", and the R chanloss() implementation looks parameters up by
+    # the latter convention.
+    expect_equal(nrow(r_pars), nrow(py_pars))
+    expect_setequal(r_pars$p_name, py_pars$p_name)
+
+    merged = merge(r_pars, py_pars, by = "p_name", suffixes = c("_r", "_py"))
+    expect_equal(nrow(merged), nrow(py_pars))
+    expect_equal(merged$value_r, merged$value_py)
+
+    cat(sprintf("%s pars: %d rows, values identical\n", lid, nrow(merged)))
+  })
+}
+
 cat("All cross-package comparisons passed.\n")
