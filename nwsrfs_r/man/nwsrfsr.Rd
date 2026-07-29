@@ -43,6 +43,7 @@ Useful links:
 
 Authors:
 \itemize{
+  \item Cameron Bracken \email{cameron.bracken@pnnl.gov} (\href{https://orcid.org/0000-0003-1917-402X}{ORCID})
   \item Geoffrey Walters \email{geoffrey.walters@noaa.gov} (\href{https://orcid.org/0009-0009-3804-8898}{ORCID})
 }
 
