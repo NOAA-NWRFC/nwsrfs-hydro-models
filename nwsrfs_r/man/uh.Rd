@@ -10,7 +10,8 @@ uh(
   pars,
   sum_zones = TRUE,
   start_of_timestep = TRUE,
-  backfill = TRUE
+  backfill = TRUE,
+  return_inst = TRUE
 )
 }
 \arguments{
@@ -27,6 +28,11 @@ kept separate and returned as a matrix}
 forcing data that uses beginning of timestep labeling}
 
 \item{backfill}{when start_of_timestep is TRUE, should the first value be duplicated}
+
+\item{return_inst}{should instantaneous flow be returned rather than period average.
+Period average is the mean of a timestep and the one after it, with
+the final value carried forward. Applied before the
+start_of_timestep shift.}
 }
 \value{
 Vector of routed flow in cfs

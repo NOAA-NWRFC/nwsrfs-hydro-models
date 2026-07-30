@@ -4,7 +4,13 @@
 \alias{nwsrfs_run}
 \title{Run the full NWSRFS model chain}
 \usage{
-nwsrfs_run(autocalb_dir, run_dir = NULL, forcing_adj = TRUE, shift_sf = TRUE)
+nwsrfs_run(
+  autocalb_dir,
+  run_dir = NULL,
+  forcing_adj = TRUE,
+  shift_sf = TRUE,
+  return_inst = TRUE
+)
 }
 \arguments{
 \item{autocalb_dir}{Path to an NWRFC autocalibration directory}
@@ -12,11 +18,15 @@ nwsrfs_run(autocalb_dir, run_dir = NULL, forcing_adj = TRUE, shift_sf = TRUE)
 \item{run_dir}{Name of results subdirectory (e.g. "results_por_02"). If NULL,
 uses the first results_* directory found.}
 
-\item{forcing_adj}{Logical; apply monthly climatological forcing adjustments.
-Default TRUE.}
+\item{forcing_adj}{Apply monthly climatological forcing adjustments. TRUE
+adjusts all forcings, FALSE adjusts none, and a character vector naming a
+subset of "map", "mat", "ptps" and "pet" adjusts only those. Default TRUE.}
 
 \item{shift_sf}{Logical; shift UH-derived streamflow forward one timestep
 (required for NWRFC calibrations). Default TRUE.}
+
+\item{return_inst}{Logical; return instantaneous streamflow rather than
+period average. Default TRUE.}
 }
 \value{
 A list with class "nwsrfs_run" containing model results and metadata.

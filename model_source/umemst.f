@@ -5,7 +5,12 @@ C
 C
 C  INITIALIZE VARIABLE WITH SPECIFIED VALUE
 C
-      DIMENSION IARRAY(1)
+CCB  IARRAY is a dummy argument whose real length is passed in NUM; the
+CCB  legacy DIMENSION IARRAY(1) declaration makes gfortran -fcheck=all abort
+CCB  with a spurious "above upper bound of 1" on the first real write. The
+CCB  assumed-size form (*) is the portable idiom for such dummies and does
+CCB  not change behaviour (see Writing R Extensions, Fortran array bounds).
+      DIMENSION IARRAY(*)
 C
 C    ================================= RCS keyword statements ==========
       CHARACTER(len=68)     RCSKW1,RCSKW2

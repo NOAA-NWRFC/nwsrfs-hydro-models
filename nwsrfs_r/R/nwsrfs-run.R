@@ -11,10 +11,13 @@
 #' @param autocalb_dir Path to an NWRFC autocalibration directory
 #' @param run_dir Name of results subdirectory (e.g. "results_por_02"). If NULL,
 #'   uses the first results_* directory found.
-#' @param forcing_adj Logical; apply monthly climatological forcing adjustments.
-#'   Default TRUE.
+#' @param forcing_adj Apply monthly climatological forcing adjustments. TRUE
+#'   adjusts all forcings, FALSE adjusts none, and a character vector naming a
+#'   subset of "map", "mat", "ptps" and "pet" adjusts only those. Default TRUE.
 #' @param shift_sf Logical; shift UH-derived streamflow forward one timestep
 #'   (required for NWRFC calibrations). Default TRUE.
+#' @param return_inst Logical; return instantaneous streamflow rather than
+#'   period average. Default TRUE.
 #'
 #' @return A list with class "nwsrfs_run" containing model results and metadata.
 #'   See Details.
@@ -42,7 +45,13 @@
 #'
 #' @importFrom utils read.csv
 #' @export
-nwsrfs_run = function(autocalb_dir, run_dir = NULL, forcing_adj = TRUE, shift_sf = TRUE) {
+nwsrfs_run = function(
+  autocalb_dir,
+  run_dir = NULL,
+  forcing_adj = TRUE,
+  shift_sf = TRUE,
+  return_inst = TRUE
+) {
   # Validate directory
   if (!dir.exists(autocalb_dir)) {
     stop(autocalb_dir, " is not a directory.")
@@ -122,7 +131,8 @@ nwsrfs_run = function(autocalb_dir, run_dir = NULL, forcing_adj = TRUE, shift_sf
     daily_flow = daily_flow,
     inst_flow = inst_flow,
     forcing_adj = forcing_adj,
-    shift_sf = shift_sf
+    shift_sf = shift_sf,
+    return_inst = return_inst
   )
 }
 
@@ -132,8 +142,12 @@ nwsrfs_run = function(autocalb_dir, run_dir = NULL, forcing_adj = TRUE, shift_sf
 #' Loads NRKW1 or SFLN2 bundled example data and runs the full NWSRFS model chain.
 #'
 #' @param lid Station identifier: "NRKW1" or "SFLN2"
-#' @param forcing_adj Logical; apply forcing adjustments. Default TRUE.
+#' @param forcing_adj Apply forcing adjustments. TRUE adjusts all forcings,
+#'   FALSE adjusts none, and a character vector naming a subset of "map", "mat",
+#'   "ptps" and "pet" adjusts only those. Default TRUE.
 #' @param shift_sf Logical; shift UH flow forward one timestep. Default TRUE.
+#' @param return_inst Logical; return instantaneous streamflow rather than
+#'   period average. Default TRUE.
 #'
 #' @return A list with class "nwsrfs_run" (see [nwsrfs_run()])
 #' @export
@@ -141,7 +155,12 @@ nwsrfs_run = function(autocalb_dir, run_dir = NULL, forcing_adj = TRUE, shift_sf
 #' @examples
 #' run = load_example("NRKW1")
 #' plot(run$sim, type = "l")
-load_example = function(lid = "NRKW1", forcing_adj = TRUE, shift_sf = TRUE) {
+load_example = function(
+  lid = "NRKW1",
+  forcing_adj = TRUE,
+  shift_sf = TRUE,
+  return_inst = TRUE
+) {
   lid = toupper(lid)
 
   if (lid == "NRKW1") {
@@ -168,7 +187,8 @@ load_example = function(lid = "NRKW1", forcing_adj = TRUE, shift_sf = TRUE) {
     daily_flow = daily_flow,
     inst_flow = inst_flow,
     forcing_adj = forcing_adj,
-    shift_sf = shift_sf
+    shift_sf = shift_sf,
+    return_inst = return_inst
   )
 }
 
@@ -206,7 +226,8 @@ update_pars = function(run, new_pars) {
     daily_flow = run$daily_flow,
     inst_flow = run$inst_flow,
     forcing_adj = run$.forcing_adj,
-    shift_sf = run$.shift_sf
+    shift_sf = run$.shift_sf,
+    return_inst = run$.return_inst
   )
 }
 
@@ -221,7 +242,8 @@ update_pars = function(run, new_pars) {
   daily_flow,
   inst_flow,
   forcing_adj = TRUE,
-  shift_sf = TRUE
+  shift_sf = TRUE,
+  return_inst = TRUE
 ) {
   dt_hours = 6L
 
@@ -243,9 +265,12 @@ update_pars = function(run, new_pars) {
     NULL
   }
 
-  # Chanloss logic: present only if n_clmods > 0
-  n_clmods_row = pars[pars$name == "n_clmods", ]
-  chanloss_logic = nrow(n_clmods_row) > 0 && n_clmods_row$value[1] > 0
+  # Chanloss logic: present only if there is at least one chanloss module.
+  # The n_clmods row is bookkeeping that the model chain does not need, so drop
+  # it once the count is known. Python drops it in _cl_parfile_edits().
+  chanloss_logic = .n_clmods(pars) > 0
+  pars = pars[pars$name != "n_clmods", ]
+  rownames(pars) = NULL
 
   # Consuse logic: zones ending in "-CU"
   cu_zones = sort(all_zones[grepl("-CU$", all_zones)])
@@ -275,8 +300,10 @@ update_pars = function(run, new_pars) {
   forcings_adj = NULL
 
   if (localflow_logic) {
-    # Run forcing adjustments (all zones including CU)
-    forcings_adj = fa_nwrfc(dt_hours, forcing_local, pars)
+    # Run forcing adjustments (all zones including CU). Forcings excluded by
+    # forcing_adj still pass through fa_nwrfc, which computes pet and etd, but
+    # with neutral adjustment parameters.
+    forcings_adj = fa_nwrfc(dt_hours, forcing_local, pars, adjust = forcing_adj)
 
     # Run SAC-SMA / SNOW17
     sacsnow_tci = sac_snow(dt_hours, forcings_adj, pars)
@@ -288,7 +315,8 @@ update_pars = function(run, new_pars) {
       pars,
       sum_zones = TRUE,
       start_of_timestep = shift_sf,
-      backfill = TRUE
+      backfill = TRUE,
+      return_inst = return_inst
     )
 
     sim_flow = sim_flow + sacsnow_sf
@@ -409,7 +437,8 @@ update_pars = function(run, new_pars) {
     chanloss_logic = chanloss_logic,
     consuse_logic = consuse_logic,
     .forcing_adj = forcing_adj,
-    .shift_sf = shift_sf
+    .shift_sf = shift_sf,
+    .return_inst = return_inst
   )
   class(result) = "nwsrfs_run"
   result

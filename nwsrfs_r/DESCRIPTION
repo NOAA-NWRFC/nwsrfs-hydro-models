@@ -1,6 +1,6 @@
 Package: nwsrfsr
 Title: NWS Hydrology Models: SAC-SMA, SNOW17, UH, CONSUSE, CHANLOSS
-Version: 1.0.0
+Version: 1.0.4
 Authors@R: c(
           person(given = "Cameron",
              family = "Bracken",
@@ -32,10 +32,10 @@ Authors@R: c(
              family = "Certik",
              role = "ctb",
              comment = "MIT-licensed fortran-utils sorting and types modules; see inst/COPYRIGHTS"),
-          person(given = "Jacob",
-             family = "Williams",
-             role = c("ctb", "cph"),
-             comment = "BSD-3-clause roots-fortran library (src/root_module.f90); see inst/LICENSE_roots_fortran.md and inst/COPYRIGHTS"),
+         person(given = "John",
+             family = "Burkardt",
+             role = "ctb",
+             comment = "MIT-licensed implementation of Brent's zero finder; see inst/COPYRIGHTS"),
           person("National Oceanic and Atmospheric Administration",
              role = "cph",
              comment = "International-rights holder for U.S. Government-authored components, including legacy NWSRFS Fortran and contributions by NOAA employees (C. Bracken through 2022-06-30, G. Walters); see inst/COPYRIGHTS"),
@@ -55,7 +55,6 @@ Encoding: UTF-8
 LazyData: true
 LazyDataCompression: xz
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.3
 Suggests:
     testthat
 URL: https://github.com/NOAA-NWRFC/nwsrfs-hydro-models, https://noaa-nwrfc.github.io/nwsrfs-hydro-models/
@@ -63,3 +62,4 @@ BugReports: https://github.com/NOAA-NWRFC/nwsrfs-hydro-models/issues
 Config/testthat/edition: 3
 Depends:
     R (>= 4.1.0)
+Config/roxygen2/version: 8.0.0

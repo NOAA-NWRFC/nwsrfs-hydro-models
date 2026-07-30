@@ -4,14 +4,24 @@
 \alias{load_example}
 \title{Load and run a bundled example dataset}
 \usage{
-load_example(lid = "NRKW1", forcing_adj = TRUE, shift_sf = TRUE)
+load_example(
+  lid = "NRKW1",
+  forcing_adj = TRUE,
+  shift_sf = TRUE,
+  return_inst = TRUE
+)
 }
 \arguments{
 \item{lid}{Station identifier: "NRKW1" or "SFLN2"}
 
-\item{forcing_adj}{Logical; apply forcing adjustments. Default TRUE.}
+\item{forcing_adj}{Apply forcing adjustments. TRUE adjusts all forcings,
+FALSE adjusts none, and a character vector naming a subset of "map", "mat",
+"ptps" and "pet" adjusts only those. Default TRUE.}
 
 \item{shift_sf}{Logical; shift UH flow forward one timestep. Default TRUE.}
+
+\item{return_inst}{Logical; return instantaneous streamflow rather than
+period average. Default TRUE.}
 }
 \value{
 A list with class "nwsrfs_run" (see \code{\link[=nwsrfs_run]{nwsrfs_run()}})

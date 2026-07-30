@@ -1,0 +1,2 @@
+# Makefiles must use LF (CRAN requirement)
+model_source/Makevars* text eol=lf

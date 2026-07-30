@@ -7,15 +7,21 @@
 rsnwelev(forcing, pars, ae_tbl)
 }
 \arguments{
-\item{forcing}{data frame with columns for forcing inputs}
+\item{forcing}{named list of per-zone forcing data frames (each with a
+\code{mat_degc} column). The list names are matched against the parameter
+\code{zone} column.}
 
-\item{pars}{rsnwelev and snow17 parameters}
+\item{pars}{parameter data frame that supplies one value per forcing zone for
+each of \code{elev} (reference elevation, m), \code{talr} (temperature
+lapse rate, degC per 100 m) and \code{pxtemp} (rain/snow threshold
+temperature, degC). A \code{zone} column is used to align values with
+\code{forcing} when present.}
 
-\item{ae_tbl}{data.table with col1 containing quantile info and subsequent col with elev for each zone}
+\item{ae_tbl}{data.frame with col1 containing quantile info and subsequent col with elev for each zone}
 }
 \value{
-Matrix (1 column per zone) of the forcing input argument with ptps replaced
-with that derived from rsnwelev model
+The \code{forcing} list with each zone's \code{ptps} column replaced
+by the value derived from the rsnwelev model.
 }
 \description{
 Replace ptps column with ptps derived using rain snow line code (lapse rate + MAT)
@@ -28,5 +34,19 @@ data(area_elev_curve)
 # rsnwelev only needs the zones that match the area-elevation table,
 # so drop the SFLN2-CU consumptive-use zone before calling.
 forcing_zones <- sfln2_forcing[c("SFLN2-1", "SFLN2-2")]
-forcing_adj <- rsnwelev(forcing_zones, sfln2_pars, area_elev_curve)
+# rsnwelev needs elev plus a temperature lapse rate (talr, degC/100m) and a
+# rain/snow threshold (pxtemp, degC) per zone. The bundled calibration only
+# carries elev, so add representative talr/pxtemp rows for the two zones.
+zones <- c("SFLN2-1", "SFLN2-2")
+rs_pars <- rbind(
+  sfln2_pars[sfln2_pars$name == "elev" & sfln2_pars$zone \%in\% zones, ],
+  data.frame(
+    p_name = paste0(rep(c("talr_", "pxtemp_"), each = 2), zones),
+    name = rep(c("talr", "pxtemp"), each = 2),
+    type = "rsnwelev",
+    zone = rep(zones, 2),
+    value = c(0.5, 0.5, 1.0, 1.0)
+  )
+)
+forcing_adj <- rsnwelev(forcing_zones, rs_pars, area_elev_curve)
 }

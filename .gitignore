@@ -1,3 +1,6 @@
+# pixi lock file 
+pixi.lock
+
 # Compiled Object files
 *.slo
 *.lo
@@ -60,6 +63,11 @@ setup_*.sh
 # Vendored license file for the roots-fortran library must be shipped
 # with the R package (required by its BSD-3-clause license).
 !nwsrfs_r/inst/LICENSE_roots_fortran.md
+# Developer tooling docs are tracked (the *.md rule above would hide them).
+!dev/README.md
+# Design specs and implementation plans are project records.
+!docs/superpowers/specs/*.md
+!docs/superpowers/plans/*.md
 # The CRAN response note is a top-level project record.
 # just in case it is needed to commit to the repo later
 # !cran_authors_review_response.md
@@ -80,3 +88,6 @@ setup_*.sh
 
 #pypi distribution
 /nwsrfs_py/dist/*
+
+# src/Makevars is generated from Makevars.in by nwsrfs_r/configure
+model_source/Makevars

@@ -1,0 +1,122 @@
+name: Valgrind (CRAN memtest)
+
+# Emulates the CRAN valgrind "additional issue" check that produces
+# nwsrfsr-Ex.Rout. It runs inside r-hub's valgrind container, which is Fedora
+# with a valgrind-instrumented R-devel built the same way as CRAN's memtest
+# host, so a "Conditional jump ... uninitialised value" or an out-of-bounds
+# read in the compiled Fortran shows up here the same way it does on CRAN.
+#
+# The container ships /usr/local/bin/r-check, which runs
+#   R CMD check --use-valgrind --extra-arch --no-stop-on-test-error
+# on every tarball in /check, then greps <pkg>-Ex.Rout (and the test .Rout.fail
+# files) for valgrind error frames ("==NNN== at ...") and fails if any appear.
+# VALGRIND_OPTS (--track-origins=yes --leak-check=full) and CHECK_ARGS are baked
+# into the image, so we only have to stage the tarball and call the script.
+
+# Slow (r-hub valgrind container), so it does NOT run on the working branch or
+# on PRs. It runs on push to main (pre-CRAN gate) and on demand from the
+# Actions tab -> "Valgrind (CRAN memtest)" -> "Run workflow".
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  valgrind:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/r-hub/containers/valgrind:latest
+
+    env:
+      # nwsrfs_r/.Rprofile sources renv/activate.R, which would hijack the
+      # library inside the container. renv files are .Rbuildignore'd, so this
+      # does not change what is checked. Mirrors the other R workflows.
+      RENV_CONFIG_AUTOLOADER_ENABLED: "FALSE"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The package lives in nwsrfs_r/ and reaches the shared Fortran source
+      # through committed symlinks (src -> ../model_source, NOTICE -> ../NOTICE).
+      # Assemble a clean, self-contained package tree with the symlinks turned
+      # into real copies and any stale compiled artifacts removed, so the source
+      # tarball built below is exactly what CRAN would build.
+      - name: Materialize symlinked sources
+        shell: bash
+        run: |
+          set -euxo pipefail
+          rm -rf nwsrfs_r/src
+          cp -R model_source nwsrfs_r/src
+          rm -f nwsrfs_r/NOTICE
+          cp NOTICE nwsrfs_r/NOTICE
+          find nwsrfs_r/src -type f \
+            \( -name '*.o' -o -name '*.so' -o -name '*.dylib' -o -name '*.a' \
+            -o -name '*.mod' -o -name '*.smod' -o -name '*.obj' -o -name '*.dll' \
+            -o -name '*.lib' \) -delete
+
+      # Build the source tarball into a workspace-relative check dir so the
+      # resulting .Rcheck tree lands where upload-artifact can reach it. R-devel
+      # is on PATH at /opt/R/devel-valgrind.
+      - name: Build source tarball
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/check"
+          R CMD build nwsrfs_r
+          cp nwsrfsr_*.tar.gz "$GITHUB_WORKSPACE/check/"
+
+      # Run the valgrind check and scan the output the way CRAN's memtest does.
+      # We deliberately do NOT call the container's /usr/local/bin/r-check: that
+      # script runs `testfiles=$(ls tests | grep .Rout.fail$)` under `set -e`, so
+      # when the test check is clean (no .Rout.fail) grep exits 1 and aborts the
+      # whole script with a false failure. Instead we reproduce its behaviour:
+      # install deps, run R CMD check with the image's baked-in CHECK_ARGS /
+      # VALGRIND_OPTS, then fail only if a real valgrind error frame
+      # ("==NNN== at ...") appears in the example or test output.
+      - name: R CMD check --use-valgrind
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cd "$GITHUB_WORKSPACE/check"
+          pkg=$(ls nwsrfsr_*.tar.gz)
+          R -q -e "pak::pkg_install('deps::./${pkg}', dependencies = TRUE)"
+          # CHECK_ARGS is set in the image (--use-valgrind --extra-arch
+          # --no-stop-on-test-error); pass it unquoted so it word-splits.
+          R CMD check ${CHECK_ARGS} "${pkg}"
+
+      # Scan for valgrind error frames exactly like CRAN's memtest: any line of
+      # the form "==NNN== at " in the example or test transcripts is a real
+      # finding. A clean run has "ERROR SUMMARY: 0 errors from 0 contexts".
+      - name: Fail on valgrind findings
+        shell: bash
+        run: |
+          set -uo pipefail
+          rout="$GITHUB_WORKSPACE/check/nwsrfsr.Rcheck/nwsrfsr-Ex.Rout"
+          testout=$(find "$GITHUB_WORKSPACE/check/nwsrfsr.Rcheck/tests" \
+            -name '*.Rout' -o -name '*.Rout.fail' 2>/dev/null || true)
+          found=0
+          for f in "$rout" $testout; do
+            [ -f "$f" ] || continue
+            if grep -qE '==[0-9]+==[[:space:]]+at' "$f"; then
+              echo "::error::valgrind error frames found in $(basename "$f")"
+              grep -nE '==[0-9]+==' "$f" | tail -40
+              found=1
+            else
+              echo "OK: no valgrind frames in $(basename "$f")"
+              grep -E 'ERROR SUMMARY|definitely lost' "$f" || true
+            fi
+          done
+          exit $found
+
+      # Preserve the check directory (including nwsrfsr-Ex.Rout) so the full
+      # valgrind report is available even when the job passes.
+      - name: Upload check results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: valgrind-check-results
+          path: check/nwsrfsr.Rcheck/**
+          if-no-files-found: warn
+          retention-days: 14

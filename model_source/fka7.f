@@ -91,6 +91,11 @@ CCB  Added initilizations to prevent compiler warnings
       XK2=0
       XK14=0
       XK1=0
+CCB  INDIMS holds the inflow dimension. Its setup call (FDCODE/
+CCB  getDimensionAndUnitInFortran, line ~132) is commented out, leaving it
+CCB  read uninitialised at the MEANQ test below (valgrind flag). This
+CCB  wrapper always passes instantaneous flow, so default to 'L3/T'.
+      INDIMS='L3/T'
 C
 C700   IBOS=P(16)+1
       IBOS=int(P(16)+1)

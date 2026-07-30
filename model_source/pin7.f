@@ -113,6 +113,11 @@ CGW  Static Inputs
       DTB="XXXX"
       TLRC=0
       QBNTL=0
+CCB  IDIMI holds the inflow time series dimension. The call that used to
+CCB  set it (CHEKTS/getDimensionAndUnitInFortran, line ~225) is commented
+CCB  out, leaving it read uninitialised at the IF below (valgrind flag).
+CCB  This wrapper always passes instantaneous flow, so default to 'L3/T'.
+      IDIMI='L3/T'
 
 CGW  Assigned Varibles.....................
 C

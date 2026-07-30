@@ -157,71 +157,24 @@ substantial portions of the software:
     CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 
-2b. BSD 3-Clause License (roots-fortran)
+2b. MIT License (Brent's method, zero_brent)
 
-  root_module.f90
-      Bracketed-interval root solver library from the roots-fortran
-      project by Jacob Williams
-      (https://github.com/jacobwilliams/roots-fortran). The `zero_uh2p`
-      function in uh_optim.f90 invokes the `brent` solver from this
-      module `root_scalar(method, fun, ax, bx, ...)`. Copyright (c) 
-      2021-2025 Jacob Williams.
+  zero_brent.f90
+      Brent's method for finding a zero of a scalar function on a
+      sign-changing interval, without derivatives. The original Fortran 77
+      was written by Richard Brent (see reference below); this Fortran 90
+      version is by John Burkardt and is distributed under the MIT license.
+      Retrieved from
+      https://people.sc.fsu.edu/~jburkardt/f_src/zero_brent/zero_brent.f90
+      and vendored verbatim (unmodified); the MIT licensing statement,
+      author, and reference are recorded in the file's own header comment.
+      Called as an external function by zero_uh2p in uh_optim.f90.
 
-      Local modifications vs upstream:
-        (1) File renamed from root_module.F90 (capital F = preprocessed)
-            to root_module.f90 and the C-preprocessor conditionals that
-            select the real kind (REAL32/REAL64/REAL128) were resolved
-            to the default real64 branch, so the file compiles with R's
-            standard Makeconf suffix rules.
-        (2) The nested helper `isign` inside the toms748 solver was
-            renamed to `rf_isign` to avoid shadowing the Fortran
-            intrinsic `isign` (CRAN -Wintrinsic-shadow warning).
-        (3) The BSD-3-clause notice below was copied verbatim from the
-            upstream LICENSE.md into the file header of
-            src/root_module.f90 itself, so the notice travels with the
-            source redistribution (clause 1 requirement).
-      No other changes were made. The same upstream license text is
-      also reproduced verbatim in inst/LICENSE_roots_fortran.md for
-      user access via system.file(), and below in this file.
+      Reference:
+        R. P. Brent, "Algorithms for Minimization Without Derivatives",
+        Prentice-Hall, 1973 (reprinted Dover, 2002, ISBN 0-486-41998-3).
 
-The 3-clause BSD license notice, required to be reproduced when
-distributing source code:
-
-    Roots-Fortran: Root solvers for modern Fortran
-    <https://github.com/jacobwilliams/roots-fortran>
-
-    Copyright (c) 2021-2025, Jacob Williams
-    All rights reserved.
-
-    Redistribution and use in source and binary forms, with or without
-    modification, are permitted provided that the following conditions
-    are met:
-
-    * Redistributions of source code must retain the above copyright
-      notice, this list of conditions and the following disclaimer.
-
-    * Redistributions in binary form must reproduce the above copyright
-      notice, this list of conditions and the following disclaimer in
-      the documentation and/or other materials provided with the
-      distribution.
-
-    * The names of its contributors may not be used to endorse or
-      promote products derived from this software without specific
-      prior written permission.
-
-    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-    "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-    LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-    FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
-    COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-    INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-    BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-    LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-    CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-    LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
-    ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-    POSSIBILITY OF SUCH DAMAGE.
-
+  The MIT License terms in Section 2a above apply equally to this file.
 
 3. PNNL/Battelle-authored components (Apache License >= 2)
 ----------------------------------------------------------
@@ -234,13 +187,12 @@ The following contributions were made by C. Bracken during his PNNL
 tenure (2022-07-01 onward):
 
   uh_optim.f90 (function zero_uh2p and module state/callback glue)
-      Thin wrapper that invokes the `brent` solver from the BSD-3-clause
-      roots-fortran library (Section 2b above). Authored in 2026.
-      Replaces an earlier LGPL-licensed implementation ported from
-      J. Burkardt's Fortran libraries; no code from those libraries
-      remains in the package. The wrapper itself (one-argument objective
-      callback, module-scope parameter-passing state, fallback handling)
-      is original to this package.
+      Thin wrapper that invokes the MIT-licensed zero_brent solver
+      (Section 2b) as an external function. Authored in 2026. Replaces an
+      earlier LGPL-licensed root-finder ported from J. Burkardt's Fortran
+      libraries; that code has been removed. The wrapper itself (one-argument
+      objective callback, module-scope parameter-passing state, and the
+      degenerate-bracket fallback) is original to this package.
 
   Packaging and build infrastructure
       CRAN packaging work including DESCRIPTION, CITATION, LICENSE,

@@ -10,7 +10,8 @@ fa_adj_nwrfc(
   pars,
   climo = NULL,
   dry_run = FALSE,
-  return_climo = FALSE
+  return_climo = FALSE,
+  adjust = TRUE
 )
 }
 \arguments{
@@ -22,9 +23,13 @@ fa_adj_nwrfc(
 
 \item{climo}{climotology matrix}
 
-\item{dry_run}{Do a run without any forcing adjustments, only compute pet and etd}
+\item{dry_run}{Do a run without any forcing adjustments, only compute pet and etd.
+Shorthand for \code{adjust = FALSE}; when TRUE it overrides \code{adjust}.}
 
 \item{return_climo}{Return the computed climo, instead of adjustments}
+
+\item{adjust}{Which forcings to adjust: TRUE for all of them, FALSE for none,
+or a character vector naming a subset of "map", "mat", "ptps" and "pet".}
 }
 \value{
 Matrix (1 column per zone) of unrouted channel inflow

@@ -1,0 +1,125 @@
+name: Test R Package
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  R-CMD-check:
+    runs-on: ${{ matrix.config.os }}
+
+    name: ${{ matrix.config.os }} (R ${{ matrix.config.r }})
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - { os: macos-latest, r: "release" }
+          - { os: windows-latest, r: "release" }
+          - { os: ubuntu-latest, r: "devel", http-user-agent: "release" }
+          - { os: ubuntu-latest, r: "release" }
+          - { os: ubuntu-latest, r: "oldrel-1" }
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+      # nwsrfs_r/.Rprofile sources renv/activate.R, which would hijack the
+      # library and break setup-r-dependencies (pak not found in the renv lib).
+      # renv keeps these files out of the built package via .Rbuildignore, so
+      # disabling the autoloader here does not affect what CRAN checks. This
+      # mirrors the RENV_CONFIG_AUTOLOADER_ENABLED=FALSE used in the pixi tasks.
+      RENV_CONFIG_AUTOLOADER_ENABLED: "FALSE"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The R package lives in nwsrfs_r/ and reaches the shared Fortran source
+      # through committed symlinks (src -> ../model_source, NOTICE -> ../NOTICE).
+      # Git symlinks are not restored as real directories on Windows runners, so
+      # replace them with copies before the check. Safe on all platforms.
+      - name: Materialize symlinked sources
+        shell: bash
+        run: |
+          set -euxo pipefail
+          rm -rf nwsrfs_r/src
+          cp -R model_source nwsrfs_r/src
+          rm -f nwsrfs_r/NOTICE
+          cp NOTICE nwsrfs_r/NOTICE
+          # Drop any stale compiled Fortran artifacts so the check builds clean.
+          find nwsrfs_r/src -type f \
+            \( -name '*.o' -o -name '*.so' -o -name '*.dylib' -o -name '*.a' \
+            -o -name '*.mod' -o -name '*.smod' -o -name '*.obj' -o -name '*.dll' \
+            -o -name '*.lib' \) -delete
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ matrix.config.r }}
+          http-user-agent: ${{ matrix.config.http-user-agent }}
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::rcmdcheck
+          needs: check
+          working-directory: nwsrfs_r
+
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          working-directory: nwsrfs_r
+          upload-snapshots: true
+          build_args: 'c("--no-manual")'
+          error-on: '"warning"'
+
+      # Regression guard for the CRAN Debian load failure. Passing an internal
+      # (nested) procedure as a callback makes gfortran emit a stack trampoline,
+      # which marks the shared object's stack executable; modern loaders then
+      # refuse to load it ("cannot enable executable stack"). The current code
+      # avoids this by using only module-level procedures as callbacks. The
+      # load-time rejection only surfaces on newer gfortran (CRAN uses 16;
+      # ubuntu-latest ships 13), so we inspect the built .so's GNU_STACK segment
+      # directly, which catches a regression on any gfortran version.
+      - name: Check shared object does not require executable stack
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/lib"
+          R CMD INSTALL --no-docs --library="$RUNNER_TEMP/lib" nwsrfs_r
+          so=$(find "$RUNNER_TEMP/lib/nwsrfsr" -name '*.so' | head -n1)
+          echo "Inspecting $so"
+          readelf -lW "$so" | grep -E 'GNU_STACK' || { echo "No GNU_STACK segment (OK)"; exit 0; }
+          flags=$(readelf -lW "$so" | awk '/GNU_STACK/ {print $7}')
+          echo "GNU_STACK flags: $flags"
+          if echo "$flags" | grep -q 'E'; then
+            echo "::error::Shared object requires an executable stack (GNU_STACK=$flags). This is the CRAN Debian load failure."
+            exit 1
+          fi
+          echo "GNU_STACK is not executable — OK"
+
+      # Regression guard for the CRAN parallel-make install failure. Fortran 90
+      # modules must be compiled before any file that `use`s them; make cannot
+      # infer this, so src/Makevars declares the edges explicitly. CRAN builds
+      # with make -j, but check-r-package builds serially and never exercises
+      # ordering. Install cold under a high -j (with --shuffle=reverse on GNU
+      # make >= 4.4 for deterministic worst-case ordering) so a missing module
+      # dependency fails here instead of only on CRAN.
+      - name: Check parallel build ordering (Fortran module deps)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          find nwsrfs_r/src -type f \( -name '*.o' -o -name '*.mod' -o -name '*.so' \) -delete
+          if make --version | head -1 | grep -qE '4\.(4|[5-9])|[5-9]\.'; then
+            export MAKEFLAGS="-j$(nproc) --shuffle=reverse"
+          else
+            export MAKEFLAGS="-j$(nproc)"
+          fi
+          echo "Building with MAKEFLAGS=$MAKEFLAGS"
+          mkdir -p "$RUNNER_TEMP/plib"
+          R CMD INSTALL --no-docs --library="$RUNNER_TEMP/plib" nwsrfs_r

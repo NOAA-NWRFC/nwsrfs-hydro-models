@@ -1,6 +1,14 @@
 # nwsrfsr
 
 
+<!-- badges: start -->
+
+[![CRAN
+status](https://www.r-pkg.org/badges/version/nwsrfsr)](https://cran.r-project.org/package=nwsrfsr)
+[![Test R
+Package](https://github.com/NOAA-NWRFC/nwsrfs-hydro-models/actions/workflows/test-r.yml/badge.svg)](https://github.com/NOAA-NWRFC/nwsrfs-hydro-models/actions/workflows/test-r.yml)
+<!-- badges: end -->
+
 R package interface to the NWSRFS (National Weather Service River
 Forecast System) Fortran hydrologic models: SAC-SMA, SNOW-17, Unit
 Hydrograph, Lag-K, Chanloss, and Consuse.
@@ -17,18 +25,24 @@ documentation](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/)
 
 ## Installation
 
-Using [pixi](https://pixi.prefix.dev/) (recommended for development —
-provides R, gfortran, and test dependencies):
+From [CRAN](https://cran.r-project.org/package=nwsrfsr):
+
+``` r
+install.packages("nwsrfsr")
+```
+
+For development, using [pixi](https://pixi.prefix.dev/) to run the repo
+tasks:
 
 ``` bash
 pixi run install-r
 ```
 
-See the [top-level
-README](https://github.com/NOAA-NWRFC/nwsrfs-hydro-models#development-environment-pixi)
-for pixi setup details.
+R itself is a system install, not managed by pixi. See the [top-level
+README](https://github.com/NOAA-NWRFC/nwsrfs-hydro-models#development-environment-for-compiling-from-source)
+and `dev/README.md` for one time setup.
 
-Or from R:
+Or the development version from R:
 
 ``` r
 # install.packages("devtools")
@@ -41,7 +55,8 @@ Or from a local clone:
 R CMD INSTALL nwsrfs_r
 ```
 
-Requires `gfortran` for compiling the Fortran source.
+Installing from source requires `gfortran` for compiling the Fortran
+code.
 
 ## Quick Start
 
@@ -311,7 +326,7 @@ upstream flow.
 citation("nwsrfsr")
 ```
 
-This includes the software citation and the accepted 2026 JAWRA paper
+This includes the software citation and the published 2026 JAWRA paper
 reference. Repository-level citation metadata is in `/CITATION.cff`
 (repo root).
 
