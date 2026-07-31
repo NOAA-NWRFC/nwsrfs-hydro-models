@@ -26,10 +26,13 @@ quarto = ">=1.8.27,<2"
 tidy-html5 = ">=5.9.14,<6"
 twine = ">=6.2.0,<7"
 python-build = ">=1.4.0,<2"
+notebook = ">=7.6.1,<8"
+matplotlib = ">=3.10.9,<4"
 
 [tasks]
 clean-py-src-artifacts = { cmd = "python -c \"import os; exts={'.mod','.smod','.o','.so','.dylib','.a','.obj','.dll','.lib'}; root='model_source'; [os.remove(os.path.join(dp,f)) for dp,_,fs in os.walk(root) for f in fs if os.path.splitext(f)[1].lower() in exts]\"", description = "Remove stale compiled Fortran artifacts from model_source" }
 install-py = { cmd = "pip install --no-build-isolation -e nwsrfs_py", cwd = ".", depends-on = ["clean-py-src-artifacts"], description = "Install Python package (editable)" }
+install-py-hard = { cmd = "pip install --no-build-isolation --force-reinstall --no-cache-dir ./nwsrfs_py", cwd = ".", depends-on = ["clean-py-src-artifacts"], description = "Hard Install Pyton Package to test meson.build (no cache and noneditable)" }
 install-r = { cmd = "Rscript -e 'Sys.setenv(R_LIBS = paste(.libPaths(), collapse = .Platform[[\"path.sep\"]])); status <- system2(\"R\", c(\"CMD\", \"INSTALL\", \".\")); if (!identical(status, 0L)) quit(status = status)'", cwd = "nwsrfs_r", description = "Install R package into the renv library" }
 test-py = { cmd = "pytest nwsrfs_py/tests/ -v -s", cwd = ".", depends-on = ["install-py"], description = "Run Python tests" }
 test-r = { cmd = "Rscript -e 'setwd(\"tests\"); testthat::test_check(\"nwsrfsr\")'", cwd = "nwsrfs_r", depends-on = ["install-r"], description = "Run R tests" }

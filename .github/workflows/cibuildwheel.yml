@@ -17,52 +17,43 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python
         # Keep this pinned for reproducibility; update intentionally when moving toolchain baselines.
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
-      - name: Install Linux Fortran compiler
-        if: runner.os == 'Linux'
-        run: |
-          # Manylinux images used by cibuildwheel do not guarantee gfortran availability for meson metadata/build.
-          # If Linux runner images change, this may need revisiting.
-          sudo apt-get update
-          sudo apt-get install -y gfortran
-          gfortran --version
+      # --- Fortran Compiler Setup per OS ---
 
+      # Note: Linux gfortran is installed inside the Docker container via 
+      # CIBW_BEFORE_ALL_LINUX in the "Build wheels" step below, so no host step is needed here.
+
+      # macOS compiler setup
       - name: Install macOS Fortran compiler
         if: runner.os == 'macOS'
-        run: |
-          # Homebrew gcc/gfortran version can change over time; delocate will bundle those runtime dylibs.
-          # If this starts failing, re-check Homebrew package names/paths and deployment target compatibility.
-          brew install gcc
-          if ! command -v gfortran >/dev/null 2>&1; then
-            GF="$(ls "$(brew --prefix)/bin"/gfortran-* | head -n1)"
-            ln -sf "$GF" "$(brew --prefix)/bin/gfortran"
-          fi
-          echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
-          gfortran --version
+        uses: fortran-lang/setup-fortran@v1
+        with:
+          compiler: gcc
+          version: '13'
 
+      # Windows compiler setup
       - name: Install Windows Fortran compiler
         if: runner.os == 'Windows'
         uses: msys2/setup-msys2@v2
         with:
           update: true
-          # MinGW runtime DLL names/locations may change; keep aligned with delvewheel repair path below.
-          install: >-
-            mingw-w64-x86_64-gcc-fortran
+          install: mingw-w64-x86_64-gcc-fortran
 
       - name: Add Windows MinGW to PATH
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          # If MSYS2 path layout changes on GitHub runners, update this path and delvewheel --add-path.
           echo "C:/msys64/mingw64/bin" >> "$GITHUB_PATH"
           gfortran --version
+
+      # --- Package Preparation ---
 
       - name: Materialize package links for build
         shell: bash
@@ -84,8 +75,10 @@ jobs:
           # Revisit periodically (or when CI starts failing) and bump intentionally after validating all OS jobs.
           python -m pip install --upgrade "cibuildwheel==3.1.4"
 
+      # --- Build Wheels ---
+
       - name: Build wheels (retry on transient network/rate-limit failures)
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         env:
           # Update python tags intentionally when support policy changes (e.g., add cp313, drop cp310).
           CIBW_BUILD: "cp310-* cp311-* cp312-*"
@@ -94,13 +87,15 @@ jobs:
           # Internal cibuildwheel test env can trigger heavy source builds (e.g., scipy/openblas). We run explicit
           # smoke tests later instead.
           CIBW_TEST_SKIP: "*"
+          # Linux: Install gfortran inside the manylinux Docker container
+          CIBW_BEFORE_ALL_LINUX: "yum install -y gcc-gfortran || dnf install -y gcc-gfortran || (apt-get update && apt-get install -y gfortran)"
           CIBW_BEFORE_BUILD: "python -m pip install --upgrade pip"
           # Keep delvewheel pinned via pip resolver behavior in this environment; if Windows import fails again,
           # re-check bundled DLLs and this repair command.
           CIBW_BEFORE_BUILD_WINDOWS: "python -m pip install --upgrade pip delvewheel"
           CIBW_REPAIR_WHEEL_COMMAND_WINDOWS: "delvewheel repair --add-path C:/msys64/mingw64/bin -w {dest_dir} {wheel}"
-          # Homebrew gcc runtime currently requires macOS 15+; lowering this target without changing toolchain will fail.
-          CIBW_ENVIRONMENT_MACOS: "MACOSX_DEPLOYMENT_TARGET=15.0"
+          # macOS: Set base deployment target for Apple Silicon compatibility (macOS 11.0+)
+          CIBW_ENVIRONMENT_MACOS: "MACOSX_DEPLOYMENT_TARGET=11.0"
         with:
           # GitHub can occasionally return 429 while cibuildwheel fetches virtualenv.pyz.
           # Retry the whole build to avoid failing on transient infrastructure errors.
@@ -118,10 +113,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install --only-binary=:all: numpy pandas scipy
-          python -c "import glob,sys,subprocess; tag=f'cp{sys.version_info.major}{sys.version_info.minor}'; wheels=[w for w in glob.glob('wheelhouse/*.whl') if tag in w]; assert wheels, f'No wheel found for {tag} in wheelhouse'; wheel=sorted(wheels)[0]; print(f'Installing {wheel}'); subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--force-reinstall', '--no-deps', wheel]); import nwsrfs_py; from nwsrfs_py import simulation, adjustq; print('artifact install smoke test ok')"
+          # Change working directory and sys.path[0] to tempdir to avoid source-tree import shadowing
+          python -c "import glob, os, sys, subprocess, tempfile; tag = f'cp{sys.version_info.major}{sys.version_info.minor}'; wheels = [w for w in glob.glob('wheelhouse/*.whl') if tag in w]; assert wheels, f'No wheel found for {tag} in wheelhouse'; wheel = sorted(wheels)[0]; print(f'Installing {wheel}'); subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--force-reinstall', '--no-deps', wheel]); os.chdir(tempfile.mkdtemp()); sys.path[0] = os.getcwd(); import nwsrfs_py; from nwsrfs_py import simulation, adjustq; print('artifact install smoke test ok')"
 
       - name: Upload wheel artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: wheels-${{ matrix.os }}
           path: wheelhouse/*.whl

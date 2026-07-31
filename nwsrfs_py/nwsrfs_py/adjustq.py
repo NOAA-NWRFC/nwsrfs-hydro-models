@@ -365,7 +365,7 @@ class AdjustQ(_AdjustQPrep):
         sim = sim.interpolate(limit_direction='both')
 
         #Working DataFrame
-        working=pd.concat([obs_6h,sim],axis=1)
+        working=pd.concat([obs_6h,sim],axis=1,sort=True)
 
         working['Inst_Ratio']=working['observed']/working['simulated']
         working['Inst_Difference']=working['observed']-working['simulated']

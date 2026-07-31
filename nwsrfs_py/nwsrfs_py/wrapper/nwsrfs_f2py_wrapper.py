@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 from . import nwsrfs_src as nwsrfs_source
 from .. import utils
-#import pdb; pdb.set_trace()
+#Debug: import pdb; pdb.set_trace() | breakpoint()
 
 #create a new type for sacsnow_tci output
 SACSnowTCI = NewType('SACSnowTCI',pd.DataFrame)
@@ -116,12 +116,12 @@ class SacSnowPars:
     def __post_init__(self):
 
         #Convert dt_seconds, year, month, day, hour to integer dtype
-        self.dt_seconds = int(utils._define_timestep_sec(self.year, self.month, self.day, self.hour))
+        self.dt_seconds = np.int32(utils._define_timestep_sec(self.year, self.month, self.day, self.hour))
         time_list = ['year','month','day','hour'] 
-        utils._dtype_conversion_batch(self,  int, time_list)
+        utils._dtype_conversion_batch(self, np.int32, time_list)
 
         #convert SAC-SMA and Snow17 pars to double dtype
-        pars_list = ['sac_pars','snow_pars','init_swe','peadj','pxadj'] 
+        pars_list = ['alat', 'elev','sac_pars','snow_pars','init_swe','peadj','pxadj']
         utils._dtype_conversion_batch(self,  np.float64, pars_list)
 
         #convert forcings to double dtype
@@ -221,7 +221,7 @@ class SacSnow():
         '''
         #Create a copy to prevent any changes to the par dataclass when running the nwrfs soure code
         pars = copy.deepcopy(self.sacsnow_pars)
-
+       
         self.__raw_output = nwsrfs_source.sacsnow(
             pars.dt_seconds, pars.year, pars.month, pars.day, pars.hour, 
             # general pars
@@ -237,7 +237,7 @@ class SacSnow():
             # forcings
             pars.forcings_map, pars.forcings_ptps, pars.forcings_mat,pars.forcings_etd,
             #Pass states option
-            int(0))
+            np.int32(0))
 
     def __run_wrapper_states(self):
         '''
@@ -262,7 +262,7 @@ class SacSnow():
             # forcings
             pars.forcings_map, pars.forcings_ptps, pars.forcings_mat,pars.forcings_etd,
             #Pass states option
-            int(1))
+            np.int32(1))
 
     @property
     def sacsnow_tci(self) -> 'SACSnowTCI':
@@ -401,7 +401,9 @@ class LagkPars:
     def __post_init__(self):
 
         #Convert time steps to integers
-        self.dt_hours = int(utils._define_timestep_sec(self.year, self.month, self.day, self.hour)/3600)
+        self.dt_hours = np.int32(utils._define_timestep_sec(self.year, self.month, self.day, self.hour)/3600)
+        time_list = ['year', 'month', 'day', 'hour']
+        utils._dtype_conversion_batch(self, np.int32, time_list)
 
         #Convert all table parameters to double
         tbl_list = ['tbl_lageq_a','tbl_lageq_b','tbl_lageq_c','tbl_lageq_d',
@@ -515,7 +517,7 @@ class Lagk():
         #     self.__datetime  = utils._datetime_conversion(pars.year, pars.month, pars.day, pars.hour)
         # elif isinstance(output_timestep, numbers.Number):
         #     self._ita  = pars.dt_hours
-        #     self._itb = int(output_timestep)
+        #     self._itb = np.int32(output_timestep)
         #     #here, need to resample
         #     dt_in = utils._datetime_conversion(pars.year, pars.month, pars.day, pars.hour)
         #     self.__datetime = pd.date_range(start=dt_in.iloc[0],end=dt_in.iloc[-1],freq=f'{str(itb)}H')
@@ -547,7 +549,7 @@ class Lagk():
             #upstream flow
             pars.qin,
             #Pass states option
-            int(0))
+            np.int32(0))
 
     def __run_wrapper_states(self):
         '''
@@ -573,7 +575,7 @@ class Lagk():
             #upstream flow
             pars.qin,
             #Pass states option
-            int(1))
+            np.int32(1))
 
     @property
     def lagk_route(self) -> pd.DataFrame:
@@ -663,7 +665,7 @@ class ConsusePars:
 
         #Convert dt_seconds, year, month, day, hour to integer dtype
         time_list = ['year','month','day'] 
-        utils._dtype_conversion_batch(self,  int, time_list)
+        utils._dtype_conversion_batch(self,  np.int32, time_list)
 
         #Convert all CONS_USE parameters to double
         param_list = ['area','irr_eff','min_flow','rf_accum_rate',
@@ -843,9 +845,9 @@ class ChanlossPars:
     def __post_init__(self):
 
         #Convert time steps to integers
-        self.dt_seconds = int(utils._define_timestep_sec(self.year, self.month, self.day, self.hour))
+        self.dt_seconds = np.int32(utils._define_timestep_sec(self.year, self.month, self.day, self.hour))
         time_list = ['year','month','day','hour'] 
-        utils._dtype_conversion_batch(self,  int, time_list)
+        utils._dtype_conversion_batch(self,  np.int32, time_list)
 
         #Convert factors, min_flow, and qin to double dtypes
         dbl_list = ['factors','min_flow','qin']
@@ -853,7 +855,7 @@ class ChanlossPars:
 
         #Convert periods to integer
         int_list = ['periods','cl_type']
-        utils._dtype_conversion_batch(self,  int, int_list)
+        utils._dtype_conversion_batch(self,  np.int32, int_list)
 
         #Convert all arrays to a fortran friendly format
         utils._arrayasfortran(self)
@@ -1011,9 +1013,9 @@ class FAPars:
     def __post_init__(self):
 
         #Convert time steps to integers
-        self.dt_seconds = int(utils._define_timestep_sec(self.year, self.month, self.day,self.hour))
+        self.dt_seconds = np.int32(utils._define_timestep_sec(self.year, self.month, self.day,self.hour))
         time_list = ['year','month','day','hour'] 
-        utils._dtype_conversion_batch(self,  int, time_list)
+        utils._dtype_conversion_batch(self,  np.int32, time_list)
 
         #Convert pars,area, alat, limits, forcings to double
         fa_inputs = ['pars', 'area', 'alat', 'limits']
@@ -1419,7 +1421,7 @@ class GammaUh():
         pars = copy.deepcopy(self.gammauh_pars)
 
         #convert tstep to integer
-        tstep = int(tstep)
+        tstep = np.int32(tstep)
 
         #Calculate the uh for each zone
         uh_df=pd.DataFrame()
@@ -1434,7 +1436,7 @@ class GammaUh():
             total_uh_vol = area*0.386102*5280**2*1/12
 
             #dimensionless uh
-            uh_dl = nwsrfs_source.uh2p_call(shape,scale,tstep,int(1000))
+            uh_dl = nwsrfs_source.uh2p_call(shape,scale,tstep,np.int32(1000))
             first0 = next(x for x, val in enumerate(uh_dl) if val == 0)
             uh_dl = uh_dl[:first0]
             
@@ -1485,8 +1487,8 @@ class GammaUh():
         tci_array = utils._dtype_conversion(tci.to_numpy(),np.float64)
         tci_array = np.asfortranarray(tci_array)
 
-        m_uh = int(1000)  # max UH length
-        n_uh = len(tci_array) + m_uh
+        m_uh = np.int32(1000)  # max UH length
+        n_uh = np.int32(len(tci_array) + m_uh)
 
         #Calculate the streamflow for each zone
         sf = pd.DataFrame(index=tci.index)
@@ -1499,7 +1501,7 @@ class GammaUh():
             col_name = f'sf_{i}'
 
             flow_routed = nwsrfs_source.duamel(tci_array[:, i], shape, scale,
-                pars.dt_hours/24, n_uh, m_uh, int(1), int(0))
+                pars.dt_hours/24, n_uh, m_uh, np.int32(1), np.int32(0))
 
             # flow_routed units:  mm, zone_area units:  km2,  1000 is a combined conversion of km2->m2 and mm->m
             # flow routed is depth of runoff over a basin for a time step. that with area converts it to a volume

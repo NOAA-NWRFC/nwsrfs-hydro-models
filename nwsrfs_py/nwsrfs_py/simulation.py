@@ -744,7 +744,7 @@ class NwsrfsRun(_NwrfcAcPrep,
 
     def return_sf(self,tci:SACSnowTCI):
         '''
-        Generates a timeseries of streamflow as a Series using :class:`~nwsrfs_py.nwsrfs.GammaUh` and input ``tci``.
+        Generates a timeseries of streamflow as a DataFrame using :class:`~nwsrfs_py.nwsrfs.GammaUh` and input ``tci``.
 
         Args:
             tci (SACSnowTCI): Custom type alias for total channel inflow from :class:`~nwsrfs_py.nwsrfs.SacSnow`  (units:  mm).
