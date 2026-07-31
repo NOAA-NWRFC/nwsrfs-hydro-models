@@ -15,6 +15,13 @@ jobs:
       matrix:
         os: ["ubuntu-latest", "macos-latest", "windows-latest"]
 
+    env:
+      # Oldest macOS the published wheels support. Read by the toolchain guard in the macOS
+      # Fortran step and passed through to cibuildwheel, so the two cannot drift apart.
+      # The /opt/gfortran runtime targets macOS 11, so this floor can be lowered without
+      # changing the toolchain. Ignored on Linux and Windows.
+      WHEEL_MACOS_TARGET: "15.0"
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -37,15 +44,37 @@ jobs:
       - name: Install macOS Fortran compiler
         if: runner.os == 'macOS'
         run: |
-          # Homebrew gcc/gfortran version can change over time; delocate will bundle those runtime dylibs.
-          # If this starts failing, re-check Homebrew package names/paths and deployment target compatibility.
-          brew install gcc
-          if ! command -v gfortran >/dev/null 2>&1; then
-            GF="$(ls "$(brew --prefix)/bin"/gfortran-* | head -n1)"
-            ln -sf "$GF" "$(brew --prefix)/bin/gfortran"
-          fi
-          echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
-          gfortran --version
+          # CRAN's universal gfortran, the same toolchain dev/README.md prescribes for the R
+          # package. Its libgfortran/libquadmath/libgcc_s target macOS 11, so delocate can
+          # bundle them into a wheel built for an older macOS than the runner.
+          #
+          # Homebrew's gcc does not work here. Its bottles are built for the runner's own
+          # macOS, so when macos-latest moved from macOS 15 to macOS 26 the runtime picked up
+          # a 26.0 minimum and delocate refused to repair the 15.0-tagged wheel.
+          set -euo pipefail
+          curl -fLO https://mac.r-project.org/tools/gfortran-14.2-universal.pkg
+          sudo installer -pkg gfortran-14.2-universal.pkg -target /
+          rm -f gfortran-14.2-universal.pkg
+          echo "/opt/gfortran/bin" >> "$GITHUB_PATH"
+          /opt/gfortran/bin/gfortran --version
+
+          # Assert the property this toolchain was chosen for. If a future gfortran build
+          # raises its runtime target above the wheel floor, fail here with a clear message
+          # rather than deep inside cibuildwheel's delocate step.
+          target_major="${WHEEL_MACOS_TARGET%%.*}"
+          for lib in libgfortran.5 libquadmath.0 libgcc_s.1.1; do
+            path="$(find /opt/gfortran/lib/gcc -name "$lib.dylib" -path '*aarch64*' | head -n1)"
+            if [ -z "$path" ]; then
+              echo "::error::$lib.dylib not found under /opt/gfortran; toolchain layout changed"
+              exit 1
+            fi
+            minos="$(otool -l "$path" | awk '/LC_BUILD_VERSION/{f=1} f && /minos/{print $2; exit}')"
+            echo "$lib minos=$minos (wheel floor ${WHEEL_MACOS_TARGET})"
+            if [ "${minos%%.*}" -gt "$target_major" ]; then
+              echo "::error::$lib targets macOS $minos, above the ${WHEEL_MACOS_TARGET} wheel floor"
+              exit 1
+            fi
+          done
 
       - name: Install Windows Fortran compiler
         if: runner.os == 'Windows'
@@ -99,8 +128,11 @@ jobs:
           # re-check bundled DLLs and this repair command.
           CIBW_BEFORE_BUILD_WINDOWS: "python -m pip install --upgrade pip delvewheel"
           CIBW_REPAIR_WHEEL_COMMAND_WINDOWS: "delvewheel repair --add-path C:/msys64/mingw64/bin -w {dest_dir} {wheel}"
-          # Homebrew gcc runtime currently requires macOS 15+; lowering this target without changing toolchain will fail.
-          CIBW_ENVIRONMENT_MACOS: "MACOSX_DEPLOYMENT_TARGET=15.0"
+          # delocate reads MACOSX_DEPLOYMENT_TARGET to decide whether the bundled dylibs are
+          # old enough for the wheel tag, so it has to be set for the repair step too, not just
+          # the compile. Without it delocate silently renames the wheel up to the runner's macOS.
+          # FC is pinned so meson cannot pick up some other gfortran that lands on PATH.
+          CIBW_ENVIRONMENT_MACOS: "MACOSX_DEPLOYMENT_TARGET=${{ env.WHEEL_MACOS_TARGET }} FC=/opt/gfortran/bin/gfortran"
         with:
           # GitHub can occasionally return 429 while cibuildwheel fetches virtualenv.pyz.
           # Retry the whole build to avoid failing on transient infrastructure errors.
