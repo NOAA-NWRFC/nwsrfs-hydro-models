@@ -79,11 +79,21 @@ py_dep = py.dependency()
 
 
 ext_link_args = []
+ext_deps = [py_dep]
+
 if host_machine.system() == 'darwin'
   ext_link_args += [
     '-Wl,-undefined,dynamic_lookup',
     '-static-libgfortran',
   ]
+  # Statically link libquadmath so _quadmath_snprintf is baked into the binary
+  quadmath_dep = fc.find_library('quadmath', required : false, static : true)
+  if not quadmath_dep.found()
+    quadmath_dep = fc.find_library('quadmath', required : false)
+  endif
+  if quadmath_dep.found()
+    ext_deps += quadmath_dep
+  endif
 endif
 
 py.extension_module(

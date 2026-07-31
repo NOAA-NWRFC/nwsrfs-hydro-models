@@ -39,7 +39,7 @@ jobs:
 
       # 3. Set up Pixi for Python/docs dependencies
       - name: Set up pixi
-        uses: prefix-dev/setup-pixi@v0.8.8
+        uses: prefix-dev/setup-pixi@v0.10.8
 
       # 4. Use Pixi to build Python and R Docs
       - name: Build Sphinx docs (Python package)
@@ -63,8 +63,10 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: _site
-
+  
+  #Note that deploy only runs on main
   deploy:
+    if: github.ref == 'refs/heads/main'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
