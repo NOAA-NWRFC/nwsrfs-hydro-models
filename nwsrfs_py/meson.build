@@ -77,22 +77,27 @@ fortranobject_c = incdir_f2py / 'fortranobject.c'
 # -----------------------------------------
 py_dep = py.dependency()
 
-
 ext_link_args = []
-ext_deps = [py_dep]
 
 if host_machine.system() == 'darwin'
   ext_link_args += [
     '-Wl,-undefined,dynamic_lookup',
     '-static-libgfortran',
   ]
-  # Statically link libquadmath so _quadmath_snprintf is baked into the binary
-  quadmath_dep = fc.find_library('quadmath', required : false, static : true)
-  if not quadmath_dep.found()
-    quadmath_dep = fc.find_library('quadmath', required : false)
-  endif
-  if quadmath_dep.found()
-    ext_deps += quadmath_dep
+  
+  # Query gfortran for static libquadmath
+  qm_res = run_command(
+    fc.cmd_array(), ['-print-file-name=libquadmath.a'],
+    check : false
+  )
+  qm_path = qm_res.stdout().strip()
+
+  # gfortran returns an absolute path if found, or just 'libquadmath.a' if not found.
+  if qm_path.startswith('/')
+    ext_link_args += [qm_path]
+  else
+    # Fallback for environments (like Conda/Pixi) where static quadmath isn't present
+    ext_link_args += fc.get_supported_link_arguments('-lquadmath')
   endif
 endif
 

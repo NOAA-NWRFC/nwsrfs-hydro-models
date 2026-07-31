@@ -39,7 +39,7 @@ jobs:
 
       # 3. Set up Pixi for Python/docs dependencies
       - name: Set up pixi
-        uses: prefix-dev/setup-pixi@v0.10.8
+        uses: prefix-dev/setup-pixi@v0.10.0
 
       # 4. Use Pixi to build Python and R Docs
       - name: Build Sphinx docs (Python package)
