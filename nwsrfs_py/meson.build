@@ -80,24 +80,39 @@ py_dep = py.dependency()
 ext_link_args = []
 
 if host_machine.system() == 'darwin'
-  ext_link_args += [
-    '-Wl,-undefined,dynamic_lookup',
-    '-static-libgfortran',
-  ]
-  
-  # Query gfortran for static libquadmath
-  qm_res = run_command(
-    fc.cmd_array(), ['-print-file-name=libquadmath.a'],
-    check : false
-  )
-  qm_path = qm_res.stdout().strip()
+  ext_link_args += ['-Wl,-undefined,dynamic_lookup']
 
-  # gfortran returns an absolute path if found, or just 'libquadmath.a' if not found.
-  if qm_path.startswith('/')
-    ext_link_args += [qm_path]
-  else
-    # Fallback for environments (like Conda/Pixi) where static quadmath isn't present
-    ext_link_args += fc.get_supported_link_arguments('-lquadmath')
+  # Link the gfortran runtime statically so the wheel carries no external dylib
+  # dependency and delocate has nothing to bundle. That sidesteps delocate's check
+  # that every bundled dylib is old enough for MACOSX_DEPLOYMENT_TARGET, which is
+  # what broke when the runner image moved to macOS 26.
+  #
+  # The archives are linked by absolute path rather than via -static-libgfortran.
+  # That flag is understood only by the gcc driver, so it silently does nothing when
+  # the extension is linked by Apple clang. Absolute paths work with either linker
+  # and keep clang as the C compiler.
+  #
+  # gfortran prints an absolute path when the archive exists and echoes the bare
+  # name when it does not, so a leading slash is the "found" test. Conda and pixi
+  # ship no static archives; those builds fall through to dynamic linking.
+  foreach lib : ['libgfortran.a', 'libquadmath.a']
+    res = run_command(fc.cmd_array(), ['-print-file-name=' + lib], check : false)
+    path = res.stdout().strip()
+    if path.startswith('/')
+      ext_link_args += [path]
+    elif lib == 'libquadmath.a'
+      ext_link_args += fc.get_supported_link_arguments('-lquadmath')
+    endif
+  endforeach
+
+  # libgcc must come last: it resolves the soft-float helpers (__divtf3 and friends)
+  # pulled in by the two archives above. Without it the link still succeeds, because
+  # -undefined,dynamic_lookup defers the symbols, and the failure only appears as an
+  # ImportError at load time.
+  gcc_res = run_command(fc.cmd_array(), ['-print-file-name=libgcc.a'], check : false)
+  gcc_path = gcc_res.stdout().strip()
+  if gcc_path.startswith('/')
+    ext_link_args += [gcc_path]
   endif
 endif
 
