@@ -17,6 +17,12 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    env:
+      # nwsrfs_r/.Rprofile sources renv/activate.R, which would hijack the library and break
+      # setup-r-dependencies (pak not found in the renv lib). Same reason as test-r.yml.
+      RENV_CONFIG_AUTOLOADER_ENABLED: "FALSE"
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -27,9 +33,29 @@ jobs:
       - name: Build Sphinx docs (Python package)
         run: pixi run sphinx-build -b html nwsrfs_py/docs/source _site/python
 
+      # R is not managed by pixi (see dev/README.md), so the docs job installs it the same way
+      # the other R workflows do. pkgdown runs outside pixi on purpose: R's Makeconf on Linux
+      # resolves FC=gfortran through PATH, and inside `pixi run` that would compile the package
+      # with conda-forge's gfortran against the system R.
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          # local::. installs nwsrfsr itself, which build_site(install = FALSE) needs loadable.
+          # pkgdown is a maintainer-only dependency, so it is not declared in DESCRIPTION.
+          extra-packages: any::pkgdown, local::.
+          working-directory: nwsrfs_r
+
       - name: Build pkgdown site (R package)
+        working-directory: nwsrfs_r
+        run: Rscript -e 'pkgdown::build_site(install = FALSE, preview = FALSE)'
+
+      - name: Stage pkgdown site
         run: |
-          pixi run build-docs-r
           mkdir -p _site/r
           cp -R nwsrfs_r/docs/. _site/r/
 
