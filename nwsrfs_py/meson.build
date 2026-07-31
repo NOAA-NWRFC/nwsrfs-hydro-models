@@ -80,7 +80,10 @@ py_dep = py.dependency()
 
 ext_link_args = []
 if host_machine.system() == 'darwin'
-  ext_link_args += ['-Wl,-undefined,dynamic_lookup']
+  ext_link_args += [
+    '-Wl,-undefined,dynamic_lookup',
+    '-static-libgfortran',
+  ]
 endif
 
 py.extension_module(

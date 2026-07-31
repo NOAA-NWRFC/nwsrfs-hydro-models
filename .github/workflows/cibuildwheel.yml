@@ -109,13 +109,13 @@ jobs:
           python -m pip install --upgrade twine
           python -m twine check wheelhouse/*.whl
 
-      - name: Smoke test install from built wheel artifact
+     - name: Smoke test install from built wheel artifact
         run: |
           python -m pip install --upgrade pip
           python -m pip install --only-binary=:all: numpy pandas scipy
-          # Run import test outside repo root directory to avoid source-tree import shadowing
-          python -c "import glob,sys,subprocess,tempfile; tag=f'cp{sys.version_info.major}{sys.version_info.minor}'; wheels=[w for w in glob.glob('wheelhouse/*.whl') if tag in w]; assert wheels, f'No wheel found for {tag} in wheelhouse'; wheel=sorted(wheels)[0]; print(f'Installing {wheel}'); subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--force-reinstall', '--no-deps', wheel]); tmp_dir = tempfile.mkdtemp(); subprocess.check_call([sys.executable, '-c', 'import nwsrfs_py; from nwsrfs_py import simulation, adjustq; print(\"artifact install smoke test ok\")'], cwd=tmp_dir)"
-
+          # Change working directory and sys.path[0] to tempdir to avoid source-tree import shadowing
+          python -c "import glob, os, sys, subprocess, tempfile; tag = f'cp{sys.version_info.major}{sys.version_info.minor}'; wheels = [w for w in glob.glob('wheelhouse/*.whl') if tag in w]; assert wheels, f'No wheel found for {tag} in wheelhouse'; wheel = sorted(wheels)[0]; print(f'Installing {wheel}'); subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--force-reinstall', '--no-deps', wheel]); os.chdir(tempfile.mkdtemp()); sys.path[0] = os.getcwd(); import nwsrfs_py; from nwsrfs_py import simulation, adjustq; print('artifact install smoke test ok')"
+      
       - name: Upload wheel artifacts
         uses: actions/upload-artifact@v5
         with:

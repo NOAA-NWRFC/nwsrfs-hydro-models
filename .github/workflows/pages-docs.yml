@@ -31,6 +31,12 @@ jobs:
         with:
           working-directory: nwsrfs_r
 
+      # 1b. Install system C/C++ libraries required by R packages (gert, curl, xml2, etc.)
+      - name: Install system dependencies for R packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgit2-dev libcurl4-openssl-dev libssl-dev libxml2-dev libharfbuzz-dev libfribidi-dev
+
       # 3. Set up Pixi for Python/docs dependencies
       - name: Set up pixi
         uses: prefix-dev/setup-pixi@v0.8.8
