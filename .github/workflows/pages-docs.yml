@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04 #Try to revert to ubuntu-latest in the future
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
