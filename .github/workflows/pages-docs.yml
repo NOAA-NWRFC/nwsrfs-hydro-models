@@ -2,7 +2,7 @@ name: Publish Documentation
 
 on:
   push:
-    branches: ["main","py_compile_updates"]
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
