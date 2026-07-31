@@ -64,21 +64,18 @@ def test_nrkw1_sim(nrkw1_model,nrkw1_sim_baseline):
     pd.testing.assert_frame_equal(
         nrkw1_model.sim.to_frame(), 
         nrkw1_sim_baseline.rename('sqin').to_frame(), 
-        rtol=0.06, 
-        atol=160,
         check_names=False
     )
-
+ 
 def test_sfln2_sim(sfln2_model,sfln2_sim_baseline):
 
     #Check for compiler drift
     pd.testing.assert_frame_equal(
         sfln2_model.sim.to_frame(), 
         sfln2_sim_baseline.rename('sqin').to_frame(), 
-        rtol=0.30, 
-        atol=40,
         check_names=False
     )
+
 def test_peravg(nrkw1_model,nrkw1_peravg_model):
 
     peravg_compare = nrkw1_model.sacsnow_sf.sum(axis=1).rolling(window=2).mean().shift(-1).loc['2000'].to_frame()

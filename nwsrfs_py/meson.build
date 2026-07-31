@@ -35,9 +35,9 @@ incdir_f2py = run_command(py,
 # 1. Fortran sources
 # -------------------------
 
-f2py_sources = files(
+fortran_sources = files(
   'src/types.f90', 'src/sorting.f90', 'src/stats.f90', 'src/utilities.f90',
-  'src/uh_optim.f90', 'src/uh2p_get_scale.f90', 'src/FA.f90',
+  'src/zero_brent.f90', 'src/uh_optim.f90', 'src/uh2p_get_scale.f90', 'src/FA.f90',
   'src/lagk_run.f90', 'src/sac_snow.f90', 'src/consuse_run.f90', 'src/chanloss.f90',
   'src/rsnwelev_run.f90','src/initCommonBlocksPin.f', 'src/fintp7.f', 'src/fka7.f',
   'src/flag7.f', 'src/fop7.f', 'src/fserc7.f', 'src/fslag7.f', 'src/pin7.f',
@@ -45,12 +45,6 @@ f2py_sources = files(
   'src/aesc19.f', 'src/rout19.f', 'src/zero19.f', 'src/duamel.f', 'src/sac1.f',
   'src/ex_sac1.f', 'src/melt19.f', 'src/ex57.f', 'src/ex42.f', 'src/blockdata_fatlgk.f'
 )
-
-# zero_brent.f90 (Brent's method, Burkardt's MIT-licensed version) is compiled
-# and linked but kept out of the f2py parse set: uh_optim calls zero_brent as an
-# external function, and a bare Fortran function with a procedure argument is not
-# something f2py needs to wrap for Python.
-fortran_sources = files('src/zero_brent.f90') + f2py_sources
 
 generated_f2py_sources = [
   module_name + 'module.c',
@@ -64,7 +58,7 @@ generated_f2py_sources = [
 
 f2py_wrapper = custom_target(
   module_name + '_f2py',
-  input: f2py_sources,
+  input: fortran_sources,
   output: generated_f2py_sources,
   command: [
     py, '-m', 'numpy.f2py',
