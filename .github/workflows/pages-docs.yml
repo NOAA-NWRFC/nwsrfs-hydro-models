@@ -16,38 +16,61 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04 #Try to revert to ubuntu-latest in the future
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 1. Install System R on the runner
+      # --- R toolchain (not managed by pixi, see dev/README.md) ---
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
       - name: Set up R
         uses: r-lib/actions/setup-r@v2
-
-      # 2. Restore R packages from renv.lock (including pkgdown)
-      - name: Set up renv
-        uses: r-lib/actions/setup-renv@v2
         with:
-          working-directory: nwsrfs_r
+          use-public-rspm: true
 
-      # 1b. Install system C/C++ libraries required by R packages (gert, curl, xml2, etc.)
-      - name: Install system dependencies for R packages
+      - name: Cache renv library
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/R/renv
+          key: renv-${{ runner.os }}-${{ hashFiles('nwsrfs_r/renv.lock') }}
+          restore-keys: renv-${{ runner.os }}-
+
+      - name: Restore pkgdown from renv.lock
+        working-directory: nwsrfs_r
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libgit2-dev libcurl4-openssl-dev libssl-dev libxml2-dev libharfbuzz-dev libfribidi-dev
+          # Restore only pkgdown and its recursive dependencies (55 of the 95 packages in
+          # the lockfile) rather than the whole thing. A full restore also installs the
+          # maintainer tools, and one of them, gert, links libgit2, whose soname differs
+          # between Ubuntu releases. That coupling is what previously pinned this job to
+          # ubuntu-22.04. The docs build uses none of those packages.
+          Rscript -e 'renv::restore(packages = "pkgdown", prompt = FALSE)'
 
-      # 3. Set up Pixi for Python/docs dependencies
+      - name: Install R package into the renv library
+        working-directory: nwsrfs_r
+        run: |
+          # Compile with the system R toolchain. Doing this through `pixi run install-r`
+          # instead builds the package with conda-forge's gfortran against the system R,
+          # because R's Makeconf on Linux resolves FC=gfortran through PATH and pixi puts
+          # its own compilers first. That does not happen on macOS, where CRAN's Makeconf
+          # hardcodes /opt/gfortran, so it only ever showed up here.
+          Rscript -e 'Sys.setenv(R_LIBS = paste(.libPaths(), collapse = .Platform[["path.sep"]])); status <- system2("R", c("CMD", "INSTALL", ".")); if (!identical(status, 0L)) quit(status = status)'
+
+      # --- Python/docs toolchain ---
+
       - name: Set up pixi
         uses: prefix-dev/setup-pixi@v0.10.0
 
-      # 4. Use Pixi to build Python and R Docs
       - name: Build Sphinx docs (Python package)
         run: pixi run sphinx-build -b html nwsrfs_py/docs/source _site/python
 
       - name: Build pkgdown site (R package)
+        working-directory: nwsrfs_r
+        run: Rscript -e 'pkgdown::build_site(install = FALSE, preview = FALSE)'
+
+      - name: Stage pkgdown site
         run: |
-          pixi run build-docs-r
           mkdir -p _site/r
           cp -R nwsrfs_r/docs/. _site/r/
 
@@ -63,7 +86,7 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: _site
-  
+
   #Note that deploy only runs on main
   deploy:
     if: github.ref == 'refs/heads/main'
