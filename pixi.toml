@@ -28,6 +28,8 @@ twine = ">=6.2.0,<7"
 python-build = ">=1.4.0,<2"
 notebook = ">=7.6.1,<8"
 matplotlib = ">=3.10.9,<4"
+# ... other dependencies ...
+git = "*"
 
 [tasks]
 clean-py-src-artifacts = { cmd = "python -c \"import os; exts={'.mod','.smod','.o','.so','.dylib','.a','.obj','.dll','.lib'}; root='model_source'; [os.remove(os.path.join(dp,f)) for dp,_,fs in os.walk(root) for f in fs if os.path.splitext(f)[1].lower() in exts]\"", description = "Remove stale compiled Fortran artifacts from model_source" }
@@ -51,6 +53,10 @@ build-docs-py = { cmd = "python -m sphinx -M html nwsrfs_py/docs/source nwsrfs_p
 build-docs-r = { cmd = "Rscript -e 'pkgdown::build_site(install = FALSE, preview = FALSE)'", cwd = "nwsrfs_r", depends-on = ["install-r"], description = "Build R pkgdown docs" }
 build-docs-r-readme = { cmd = "quarto render README.qmd --to html -M embed-resources:true -o README.html", cwd = "nwsrfs_r", depends-on = ["install-r"], description = "Build R README.html" }
 build-docs = { depends-on = ["build-docs-py", "build-docs-r", "build-docs-r-readme"], description = "Build all docs" }
+stage-py-release = { cmd = "bash nwsrfs_py/scripts/release_stage.sh", cwd = ".", description = "Stage Python source distribution (.tar.gz) and materialize symlinks" }
+publish-py-testpypi = { cmd = "bash nwsrfs_py/scripts/publish_pypi.sh testpypi", cwd = ".", description = "Upload staged Python artifacts to TestPyPI" }
+verify-py-testpypi = { cmd = "bash nwsrfs_py/scripts/verify_testpypi.sh", description = "Verify TestPyPI installation of nwsrfspy" }
+publish-py-pypi = { cmd = "bash nwsrfs_py/scripts/publish_pypi.sh pypi", cwd = ".", description = "Upload staged Python artifacts to production PyPI (requires typing 'PUBLISH')" }
 
 [environments]
 default = { features = []} 
