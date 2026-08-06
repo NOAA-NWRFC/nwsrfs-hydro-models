@@ -4,7 +4,7 @@ build-backend = "mesonpy"  # The tool that runs the build process (here, setupto
 
 [project]
 name = "nwsrfspy"                                              # The name of the installable package (used by pip)
-version = "1.0.2"                                              # Semantic version (major.minor.patch)
+version = "1.0.3"                                              # Semantic version (major.minor.patch)
 description = "Python tools for NWS RFC NWSRFS modeling with FORTRAN source code integration" # Short description for metadata         
 authors = [
     { name = "Geoffrey Walters PE", email = "geoffrey.walters@noaa.gov" },
