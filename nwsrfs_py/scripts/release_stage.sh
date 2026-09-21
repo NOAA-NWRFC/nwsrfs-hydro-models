@@ -136,7 +136,7 @@ echo "Committing staged materialization for meson dist"
 echo "Building distribution artifacts via Pixi"
 (
   cd "${RELEASE_DIR}"
-  pixi run -e "${PIXI_ENV}" --manifest-path "${STAGE_DIR}/pixi.toml" python -m build
+  pixi run -e "${PIXI_ENV}" --manifest-path "${STAGE_DIR}/pixi.toml" python -m build --sdist
   pixi run -e "${PIXI_ENV}" --manifest-path "${STAGE_DIR}/pixi.toml" python -m twine check dist/*
 )
 
