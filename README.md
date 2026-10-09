@@ -31,6 +31,8 @@ install.packages('nwsrfsr')
 ```
 ### Python (nwsrfspy)
 
+Requires Python 3.11 or newer; CI and wheel builds cover Python 3.11–3.14.
+
 Install from [PyPI](https://pypi.org/project/nwsrfspy/):
 
 ```bash

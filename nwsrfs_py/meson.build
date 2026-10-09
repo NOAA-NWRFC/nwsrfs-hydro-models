@@ -19,6 +19,9 @@ fc = meson.get_compiler('fortran')
 add_project_arguments(fc.get_supported_arguments('-ffp-contract=off'), language: 'fortran')
 
 py = import('python').find_installation(pure: false)
+if not py.language_version().version_compare('>=3.11')
+  error('nwsrfspy requires Python 3.11 or newer')
+endif
 module_name = 'nwsrfs_src'
 
 incdir_numpy = run_command(py,

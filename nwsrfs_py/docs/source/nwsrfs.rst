@@ -4,9 +4,13 @@ NWSRFS Wrapper Module
 .. automodule:: nwsrfs_py.nwsrfs
    :members:
    :show-inheritance:
-   :exclude-members: ChanlossPars, ConsusePars, FAPars, GammaUhPars, LagkPars, SacSnowPars,GammaUh, SacSnow, Lagk, Chanloss, FA, Consuse, SACSnowTCI
+   :exclude-members: ChanlossPars, ConsusePars, FAPars, GammaUhPars, LagkPars, SacSnowPars,GammaUh, SacSnow, Lagk, Chanloss, FA, Consuse, RSnwElev, SACSnowTCI
 
 ..
+
+.. autoclass:: nwsrfs_py.nwsrfs.RSnwElevPars
+   :members:
+   :exclude-members: year, month, day, hour, taelev, talr, pxtemp, aetbl_index, aetbl_values, forcings_mat
 
 .. autoclass:: nwsrfs_py.nwsrfs.ChanlossPars
    :members:
@@ -48,4 +52,7 @@ NWSRFS Wrapper Module
    :members:
 
 .. autoclass:: nwsrfs_py.nwsrfs.Consuse
+   :members:
+
+.. autoclass:: nwsrfs_py.nwsrfs.RSnwElev
    :members:

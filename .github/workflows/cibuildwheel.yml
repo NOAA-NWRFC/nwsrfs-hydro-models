@@ -80,8 +80,8 @@ jobs:
       - name: Build wheels (retry on transient network/rate-limit failures)
         uses: nick-fields/retry@v4
         env:
-          # Update python tags intentionally when support policy changes (e.g., add cp313, drop cp310).
-          CIBW_BUILD: "cp310-* cp311-* cp312-*"
+          # Build wheels for the Python versions covered by test-python.yml.
+          CIBW_BUILD: "cp311-* cp312-* cp313-* cp314-*"
           CIBW_SKIP: "*-manylinux_i686 *-musllinux_* *-win32"
           CIBW_BUILD_VERBOSITY: "1"
           # Internal cibuildwheel test env can trigger heavy source builds (e.g., scipy/openblas). We run explicit

@@ -21,9 +21,13 @@ Key Features
     * **Lag-K:** Lag and K routing for upstream reaches.
     * **CONS_USE** Irrigation diversion adjustments.
     * **CHANLOSS** Channel loss, natural or anthropogenic, adjustments.
+    * **RSNWELEV** Rain-snow elevation determination.
 
 Installation
 ------------
+
+Requires Python 3.11 or newer. CI and wheel builds cover Python 3.11–3.14
+on Linux, macOS, and Windows. Newer Python versions are not yet validated.
 
 .. code-block:: bash
 

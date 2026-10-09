@@ -3,6 +3,23 @@
 Helpers for maintaining the R package. Not part of the package or the CRAN
 build.
 
+## Python support
+
+The package requires Python 3.11 or newer. CI and wheel builds cover Python
+3.11–3.14 on Linux, macOS, and Windows. Pixi provides matching environments:
+
+```bash
+pixi run -e py311 test-py
+pixi run -e py312 test-py
+pixi run -e py313 test-py
+pixi run -e py314 test-py
+```
+
+When changing support, keep `nwsrfs_py/pyproject.toml`, `nwsrfs_py/meson.build`,
+`pixi.toml`, the Python test and wheel workflows, and installation docs aligned.
+The package metadata has no Python upper bound; add newer versions to CI and
+wheel builds after validating dependency and compiler compatibility.
+
 ## R development environment
 
 R is not managed by pixi. Install and switch R versions with
