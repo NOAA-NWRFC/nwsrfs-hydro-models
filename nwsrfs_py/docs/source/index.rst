@@ -21,6 +21,7 @@ Key Features
     * **Lag-K:** Lag and K routing for upstream reaches.
     * **CONS_USE** Irrigation diversion adjustments.
     * **CHANLOSS** Channel loss, natural or anthropogenic, adjustments.
+    * **RSNWELEV** Rain-snow elevation determination.
 
 Installation
 ------------
