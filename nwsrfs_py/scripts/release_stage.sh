@@ -60,7 +60,7 @@ Complete Release Workflow:
        pixi run publish-py-pypi
 
 Arguments:
-  PIXI_ENV    Optional pixi environment name (default, py310, py311, py312).
+  PIXI_ENV    Optional pixi environment name (default, py311, py312, py313, py314).
               Default: default
   STAGE_DIR   Optional destination directory.
               Default: $HOME/tmp/nwsrfs_py_release

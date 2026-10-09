@@ -5,7 +5,8 @@ platforms = ["osx-arm64", "linux-64", "win-64"]
 
 [dependencies]
 # Python
-python = ">=3.10,<3.13"
+# CI and wheel builds cover Python 3.11 through 3.14.
+python = ">=3.11,<3.15"
 numpy = "*"
 pandas = "*"
 scipy = "*"
@@ -19,7 +20,7 @@ fortran-compiler = "*"
 c-compiler = "*"
 # Testing
 pytest = "*"
-sphinx = ">=5,<6"
+sphinx = ">=8"
 sphinx-autodoc-typehints = "*"
 sphinx_rtd_theme = "*"
 quarto = ">=1.8.27,<2"
@@ -60,15 +61,19 @@ publish-py-pypi = { cmd = "bash nwsrfs_py/scripts/publish_pypi.sh pypi", cwd = "
 
 [environments]
 default = { features = []} 
-py310 = { features = ["py310"] }
 py311 = { features = ["py311"]}
 py312 = { features = ["py312"]}
-
-[feature.py310.dependencies]
-python = "3.10.*"
+py313 = { features = ["py313"]}
+py314 = { features = ["py314"]}
 
 [feature.py311.dependencies]
 python = "3.11.*"
 
 [feature.py312.dependencies]
 python = "3.12.*"
+
+[feature.py313.dependencies]
+python = "3.13.*"
+
+[feature.py314.dependencies]
+python = "3.14.*"

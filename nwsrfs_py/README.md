@@ -6,6 +6,9 @@ It is designed to support [NWRFC autocalibration](https://github.com/NOAA-NWRFC/
 
 ## Install (PyPI)
 
+Requires Python 3.11 or newer. CI and wheel builds cover Python 3.11–3.14
+on Linux, macOS, and Windows. Newer Python versions are not yet validated.
+
 ```bash
 pip install nwsrfspy
 ```
@@ -50,7 +53,7 @@ Source builds require a Fortran toolchain plus build tools.
 
 Requirements:
 
-* Python 3.10+
+* Python 3.11+
 * `numpy`, `pandas`, `scipy`
 * `gfortran`
 * `meson`, `meson-python`, `ninja`
@@ -66,7 +69,7 @@ pixi run install-py
 ### Using conda
 
 ```bash
-conda create -n nwsrfs_env python=3.10
+conda create -n nwsrfs_env python=3.11
 conda activate nwsrfs_env
 conda install -c conda-forge fortran-compiler meson meson-python ninja
 ```

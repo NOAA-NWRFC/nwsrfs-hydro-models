@@ -16,7 +16,7 @@ maintainers = [
 ] # Current package maintainers
 readme = "README.md"                                           # File to use for long description on PyP
 license = { file = "LICENSE" }                                 # file with license information
-requires-python = ">=3.10"                                      # Minimum required Python version
+requires-python = ">=3.11"                                      # Minimum required Python version
 dependencies = [                                               # Runtime dependencies installed with the package
     "numpy",
     "pandas",
@@ -41,9 +41,10 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Hydrology",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Programming Language :: Fortran",
     "License :: OSI Approved :: Apache Software License",         
     "Operating System :: POSIX :: Linux",
