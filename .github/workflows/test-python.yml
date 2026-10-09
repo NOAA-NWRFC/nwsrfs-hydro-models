@@ -3,7 +3,7 @@ name: Test Python Models
 on:
   push:
     # Runs on your current branch and will continue to work when merged to main
-    branches: ["main"]
+    branches: ["main","rsnw_py_update"]
   pull_request:
   workflow_dispatch:
 
@@ -17,7 +17,7 @@ jobs:
       fail-fast: false 
       matrix:
         os: ["macos-latest","ubuntu-latest", "windows-latest"]
-        pixi_env: ["py310", "py311", "py312"]
+        pixi_env: ["py311", "py312", "py313", "py314"]
 
     steps:
       - name: Checkout repository
