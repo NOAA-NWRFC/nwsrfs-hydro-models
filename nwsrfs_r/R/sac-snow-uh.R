@@ -537,6 +537,7 @@ uh <- function(
     routed <- .Fortran(
       "duamel",
       tci = as.single(tci[, i]),
+      u1 = as.single(numeric(m)), # unused when K = 1
       as.single(shape),
       as.single(scale),
       as.single(dt_days),

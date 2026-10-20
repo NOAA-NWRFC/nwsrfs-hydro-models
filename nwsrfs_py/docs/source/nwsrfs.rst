@@ -8,51 +8,58 @@ NWSRFS Wrapper Module
 
 ..
 
-.. autoclass:: nwsrfs_py.nwsrfs.RSnwElevPars
+.. autoclass:: nwsrfs_py.nwsrfs.SacSnowPars
    :members:
-   :exclude-members: year, month, day, hour, taelev, talr, pxtemp, aetbl_index, aetbl_values, forcings_mat
+   :exclude-members: year, month, day, hour, alat, elev, sac_pars, snow_pars, init_swe, pxadj, peadj, forcings_map, forcings_mat, forcings_ptps, forcings_etd
 
-.. autoclass:: nwsrfs_py.nwsrfs.ChanlossPars
+.. autoclass:: nwsrfs_py.nwsrfs.SacSnow
    :members:
-   :exclude-members: cl_type, day, factors, hour, min_flow, month, periods, qin, year
 
-.. autoclass:: nwsrfs_py.nwsrfs.ConsusePars
+.. autoclass:: nwsrfs_py.nwsrfs.OrdinatesUhPars
    :members:
-   :exclude-members: area, day, irr_eff, min_flow, month, peadj_m, pet, pet_adj, qin, rf_accum_rate, rf_decay_rate, year
+   :exclude-members: dt_hours, area, ordinates
 
-.. autoclass:: nwsrfs_py.nwsrfs.FAPars
+.. autoclass:: nwsrfs_py.nwsrfs.OrdinatesUh
    :members:
-   :exclude-members: year, month, day, hour, pars, area, alat, limits, forcings, peadj_m, climo
 
 .. autoclass:: nwsrfs_py.nwsrfs.GammaUhPars
    :members:
    :exclude-members: dt_hours, area, shape, scale, toc
 
+.. autoclass:: nwsrfs_py.nwsrfs.GammaUh
+   :members:
+
 .. autoclass:: nwsrfs_py.nwsrfs.LagkPars
    :members:
    :exclude-members: year, month, day, hour, tbl_lageq_a, tbl_lageq_b, tbl_lageq_c, tbl_lageq_d, tbl_keq_a, tbl_keq_b, tbl_keq_c, tbl_keq_d, tbl_lagmax, tbl_lagmin, tbl_kmax, tbl_kmin, tbl_qmax, tbl_qmin, init_co, init_qin, init_qout, init_stor, qin
 
-.. autoclass:: nwsrfs_py.nwsrfs.SacSnowPars
-   :members:
-   :exclude-members: year, month, day, hour, alat, elev, sac_pars, snow_pars, init_swe, pxadj, peadj, forcings_map, forcings_mat, forcings_ptps, forcings_etd
-
-.. autoclass:: nwsrfs_py.nwsrfs.GammaUh
-   :members:
-
-.. autoclass:: nwsrfs_py.nwsrfs.SacSnow
-   :members:
-
 .. autoclass:: nwsrfs_py.nwsrfs.Lagk
    :members:
+
+.. autoclass:: nwsrfs_py.nwsrfs.ConsusePars
+   :members:
+   :exclude-members: area, day, irr_eff, min_flow, month, peadj_m, pet, pet_adj, qin, rf_accum_rate, rf_decay_rate, year
+
+.. autoclass:: nwsrfs_py.nwsrfs.Consuse
+   :members:
+
+.. autoclass:: nwsrfs_py.nwsrfs.ChanlossPars
+   :members:
+   :exclude-members: cl_type, day, factors, hour, min_flow, month, periods, qin, year
 
 .. autoclass:: nwsrfs_py.nwsrfs.Chanloss
    :members:
 
+.. autoclass:: nwsrfs_py.nwsrfs.FAPars
+   :members:
+   :exclude-members: year, month, day, hour, pars, area, alat, limits, forcings, peadj_m, climo
+
 .. autoclass:: nwsrfs_py.nwsrfs.FA
    :members:
 
-.. autoclass:: nwsrfs_py.nwsrfs.Consuse
+.. autoclass:: nwsrfs_py.nwsrfs.RSnwElevPars
    :members:
+   :exclude-members: year, month, day, hour, taelev, talr, pxtemp, aetbl_index, aetbl_values, forcings_mat
 
 .. autoclass:: nwsrfs_py.nwsrfs.RSnwElev
    :members:
