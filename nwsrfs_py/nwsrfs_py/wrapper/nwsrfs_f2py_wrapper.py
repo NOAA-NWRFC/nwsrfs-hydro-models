@@ -9,6 +9,8 @@ from .. import utils
 
 #create a new type for sacsnow_tci output
 SACSnowTCI = NewType('SACSnowTCI',pd.DataFrame)
+
+
 """
 Custom type alias for total channel inflow (tci) output.
 
@@ -44,7 +46,7 @@ class SacSnowPars:
 
     swe/ai = a * AESC**b+(1-a)*AESC**c
 
-    Recommended model time steps are 1, 3, 6, 12, or 24 hours.
+    Supported model time steps are 1, 2, 3, 4, 6, 8, 12, or 24 hours.
 
     Args:
         year (np.ndarray): Array of years for each timestep (units: time).
@@ -121,23 +123,7 @@ class SacSnowPars:
         #check that all inputs contain finite values
         utils._validate_finite_fields(self)
 
-        #Start validate time arrays
-        time_arrays = (self.year, self.month, self.day, self.hour)
-
-        if not utils._validate_nd_array(*time_arrays):
-            raise ValueError("Time arrays must be 1D numpy arrays")
-
-        if not utils._validate_array_length(*time_arrays):
-            raise ValueError("Time arrays must have equal lengths")
-
-        if len(self.year) < 2:
-            raise ValueError("FAPars requires at least two timestamps to infer the timestep")
-
-        for name in ("year", "month", "day", "hour"):
-            values = getattr(self, name)
-            if not np.all(values == np.floor(values)):
-                raise ValueError(f"{name} must contain integer values")
-        #End validate time arrays 
+        utils._validate_time_arrays(self)
 
         self.dt_seconds = np.int32(utils._define_timestep_sec(self.year, self.month, self.day, self.hour))
         time_list = ['year','month','day','hour'] 
@@ -163,14 +149,12 @@ class SacSnowPars:
     def validate(self):
         """Checks that all inputs meet shape, type, and value constraints."""
 
-        #check to make sure that dates are not reversed, are positive, no longer than a day, and a factor of 24hrs
-        if (
-            self.dt_seconds <= 0
-            or self.dt_seconds > 86400
-            or 86400 % self.dt_seconds != 0
-        ):
+        # Supported timesteps are whole-hour divisors of one day.
+        supported_seconds = (3600, 7200, 10800, 14400, 21600, 28800, 43200, 86400)
+        if self.dt_seconds not in supported_seconds:
             raise ValueError(
-                "Timestep must be positive, no longer than one day, and a factor of 24 hrs "
+                f"Unsupported dt_seconds: {self.dt_seconds} ({self.dt_seconds/3600} hours). "
+                "Supported timesteps are 1, 2, 3, 4, 6, 8, 12, or 24 hours."
             )
 
         #check to make there are no gaps in the timeseries
@@ -396,10 +380,10 @@ class OrdinatesUhPars:
     * **Parameters** (e.g., ``area``): Shape (Z,)
     * **ORDINATES**: Shape (UH,Z)
 
-    Recommended model time steps are 1, 3, 6, 12, or 24 hours.
+    Supported model time steps are 1, 2, 3, 4, 6, 8, 12, or 24 hours.
 
     Args:
-        dt_hours (np.ndarray): Specifies the unit hydrograph ordinate timestep. Ordinate timestep must match the timestep of the paired SAC-SMA model. (units: hours)
+        dt_hours (int): Unit hydrograph ordinate timestep (units: hours). Must divide 24 and match the paired SAC-SMA model timestep.
         area (np.ndarray): Array of each zone's area. (units:  km**2)
         ordinates (np.ndarray): Unit hydrograph ordinates values. (units: cfs/in)
     '''
@@ -410,22 +394,13 @@ class OrdinatesUhPars:
 
     def __post_init__(self):
 
-        #check that all inputs contain finite values
-        for field in ['dt_hours','area']:
-            value = getattr(self,field)
+        self.dt_hours = utils._integer_hours(self.dt_hours, 'dt_hours')
         try:
-            finite = np.isfinite(value)
+            finite = np.isfinite(self.area)
         except TypeError as exc:
-            raise TypeError(
-                f"{field} must contain numeric values"
-            ) from exc
+            raise TypeError('area must contain numeric values') from exc
         if not np.all(finite):
-            raise ValueError(
-                f"{field} must contain only finite values"
-            )
-
-        #Convert dt_hours to integer dtype
-        self.dt_hours = np.int32(self.dt_hours)
+            raise ValueError('area must contain only finite values')
 
         #Convert area and ordinates to double dtype
         pars_list = ['area','ordinates']
@@ -445,6 +420,10 @@ class OrdinatesUhPars:
         if self.dt_hours <= 0:
             raise ValueError("dt_hours must be greater than zero")
 
+        #check area length
+        if len(self.area) == 0:
+            raise ValueError('At least one zone must be provided')
+
         #check that the area parameter is 1d array
         if not utils._validate_nd_array(self.area):
             raise ValueError(f"area must be 1D arrays")
@@ -457,6 +436,10 @@ class OrdinatesUhPars:
         if not utils._validate_nd_array(self.ordinates, ndim=2):
             raise ValueError("Ordinate array must have a 2d shape")
 
+        #check ordinate length   
+        if len(self.ordinates) == 0:
+            raise ValueError('At least one ordinate must be provided')
+
         #check that there a ordinate set for each zone
         if not utils._validate_array_length(self.area,self.ordinates[0]):
             raise ValueError("Each nested ordinate list length must correspond to number of zones which is specified by the length of the area array")
@@ -464,11 +447,10 @@ class OrdinatesUhPars:
         #check each ordinate column is valid 
         for i in range(len(self.area)):
             uh = self.ordinates[:,i]
-            valid_indices= np.flatnonzero(~np.isnan(uh))
-            trimmed = uh[: valid_indices[-1] + 1] if valid_indices.size > 0 else col[:0]
-
-            if len(trimmed) < 1:
+            valid_indices = np.flatnonzero(~np.isnan(uh))
+            if valid_indices.size == 0:
                 raise ValueError(f"ordinates[:,{i}] must contain at least a single value")
+            trimmed = uh[:valid_indices[-1] + 1]
 
             try:
                 finite = np.isfinite(trimmed)
@@ -480,10 +462,10 @@ class OrdinatesUhPars:
                 raise ValueError(
                     f"ordinates[:,{i}] must contain only finite values, except for trailing np.nan values"
                 )
-
-        #check that the ordinate parameters has positive values
-        if not utils._validate_positive_values(self.ordinates[~np.isnan(self.ordinates)]):
-            raise ValueError(f"Ordinate values must be positive")
+            if np.any(trimmed < 0):
+                raise ValueError(f"ordinates[:,{i}] must be nonnegative")
+            if not np.any(trimmed > 0):
+                raise ValueError(f"ordinates[:,{i}] must contain a positive value")
 
 class OrdinatesUh():
 
@@ -496,9 +478,6 @@ class OrdinatesUh():
     Attributes:
         ordinatesuh_pars (OrdinatesUhPars): Dataclass which contains all inputs needed for UNIT-HG calculations. 
     
-    .. warning::
-
-        Unit hydrographs are limited to 1,000 ordinates. Hydrographs that extend beyond this limit are truncated and normalized over the retained ordinates, which can alter their timing and shape.
     '''
 
     def __init__(self, pars_dataclass: OrdinatesUhPars, validate: bool = True):
@@ -513,7 +492,7 @@ class OrdinatesUh():
         Performs S Hydrograph conversion to return a unit hydrograph with a ordinate timestep specified by the ``tstep`` argument.
 
         Args:
-            tstep (int):  Specifies timestep of unit hydrograph (units: hours). Fractional hours are not supported and will be rounded.
+            tstep (int): Unit hydrograph timestep in hours. Must divide 24.
 
         Returns:
             pd.DataFrame: A DataFrame containing unit hydrograph (uh) with a column for each zone (units: cfs/in). Shorter zone hydrographs are padded with NaN.
@@ -522,17 +501,7 @@ class OrdinatesUh():
         #Create a copy of the parameters
         pars = self.ordinatesuh_pars
 
-        #convert tstep to integer
-        tstep = np.int32(tstep)
- 
-        #Start validation of tstep
-        if np.ndim(tstep) != 0:
-            raise ValueError("tstep must be a scalar")
-
-        if not np.isfinite(tstep) or tstep <= 0 or tstep > 24:
-            raise ValueError("tstep must be finite, greater than zero, and equal to/less than 24 hrs")
-        
-        #End validation of tstep
+        tstep = utils._integer_hours(tstep, 'tstep')
 
         #Get original ordinates tstep and ordinates
         tstep_old = pars.dt_hours
@@ -546,7 +515,7 @@ class OrdinatesUh():
         uh_dic = {}
         for i in range(self.__n_zones): 
             uh = uh_old.iloc[:,i].rename('uh_old')
-            uh = uh.iloc[~np.isnan(uh)]
+            uh = uh.dropna()
             uh = uh.to_frame()
 
             #create s hydrograph
@@ -689,10 +658,10 @@ class GammaUhPars:
 
     * **Parameters** (e.g., ``shape``): Shape (Z,)
 
-    Recommended model time steps are 1, 3, 6, 12, or 24 hours.
+    Supported model time steps are 1, 2, 3, 4, 6, 8, 12, or 24 hours.
 
     Args:
-        dt_hours (np.ndarray): Specifies the unit hydrograph ordinate timestep. Ordinate timestep must match the timestep of the paired SAC-SMA model. (units: hours)
+        dt_hours (int): Unit hydrograph ordinate timestep (units: hours). Must divide 24 and match the paired SAC-SMA model timestep.
         area (np.ndarray): Array of each zone's area. (units:  km**2)
         shape (np.ndarray): Dimensionless gamma shape parameter for each zone. (units: NA)
         scale (np.ndarray | None): Gamma scale parameter for each zone.  If ``scale`` is None, ``toc`` parameter must be provided. (units: NA)
@@ -707,11 +676,10 @@ class GammaUhPars:
 
     def __post_init__(self):
 
+        self.dt_hours = utils._integer_hours(self.dt_hours, 'dt_hours')
+
         #check that all inputs contain finite values
         utils._validate_finite_fields(self)
-
-        #Convert dt_hours to integer dtype
-        self.dt_hours = np.int32(self.dt_hours)
 
         #Convert area and shape to double dtype
         pars_list = ['area','shape']
@@ -823,7 +791,7 @@ class GammaUh():
         Return unit hydrograph ordinates for each zone (units: cfs/in).
 
         Args:
-            tstep (int): Specifies timestep of unit hydrograph (units: hours). Fractional hours are not supported and will be rounded.
+            tstep (int): Unit hydrograph timestep (units: hours). Must divide 24.
         Returns:
              pd.DataFrame: A DataFrame containing unit hydrograph (uh) with a column for each zone (units: cfs/in). Shorter zone hydrographs are padded with NaN.
         '''
@@ -831,16 +799,7 @@ class GammaUh():
         #Create a copy of the parameters
         pars = copy.deepcopy(self.gammauh_pars)
 
-        #convert tstep to integer
-        tstep = np.int32(tstep)
- 
-        #Start validation of tstep
-        if np.ndim(tstep) != 0:
-            raise ValueError("tstep must be a scalar")
-
-        if not np.isfinite(tstep) or tstep <= 0 or tstep > 24:
-            raise ValueError("tstep must be finite, greater than zero, and equal to/less than 24 hrs")
-        #End validation of tstep
+        tstep = utils._integer_hours(tstep, 'tstep')
 
         #Calculate the uh for each zone
         uh_dic = {}
@@ -1013,7 +972,7 @@ class LagkPars:
 
     Lag/K_table=a*(Q-d)**2+b*Q+c
 
-    Recommended model time steps are 1, 3, 6, 12, or 24 hours.
+    Supported model time steps are 1, 2, 3, 4, 6, 8, 12, or 24 hours.
 
     Args:
         year (np.ndarray): Array of years for each timestep (units: time).
@@ -1073,23 +1032,7 @@ class LagkPars:
         #check that all inputs contain finite values
         utils._validate_finite_fields(self)
 
-        #Start validate time arrays
-        time_arrays = (self.year, self.month, self.day, self.hour)
-
-        if not utils._validate_nd_array(*time_arrays):
-            raise ValueError("Time arrays must be 1D numpy arrays")
-
-        if not utils._validate_array_length(*time_arrays):
-            raise ValueError("Time arrays must have equal lengths")
-
-        if len(self.year) < 2:
-            raise ValueError("FAPars requires at least two timestamps to infer the timestep")
-
-        for name in ("year", "month", "day", "hour"):
-            values = getattr(self, name)
-            if not np.all(values == np.floor(values)):
-                raise ValueError(f"{name} must contain integer values")
-        #End validate time arrays 
+        utils._validate_time_arrays(self)
 
         self.dt_hours = np.int32(utils._define_timestep_sec(self.year, self.month, self.day, self.hour)/3600)
         time_list = ['year', 'month', 'day', 'hour']
@@ -1119,20 +1062,18 @@ class LagkPars:
     def validate(self):
         """Checks that all inputs meet shape, type, and value constraints."""
 
-        #check to make sure that dates are not reversed, are positive, no longer than a day, and a factor of 24hrs
-        if (
-            self.dt_hours <= 0
-            or self.dt_hours > 24
-            or 24 % self.dt_hours != 0
-        ):
+        # Supported timesteps are whole-hour divisors of one day.
+        supported_hours = (1, 2, 3, 4, 6, 8, 12, 24)
+        if self.dt_hours not in supported_hours:
             raise ValueError(
-                "Timestep must be positive, no longer than one day, and a factor of 24 hrs "
+                f"Unsupported dt_hours: {self.dt_hours}. "
+                "Supported timesteps are 1, 2, 3, 4, 6, 8, 12, or 24 hours."
             )
 
         #check to make there are no gaps in the timeseries
         dt_seconds = self.dt_hours*3600
         if not utils._validate_timestep(dt_seconds,self.year, self.month, self.day, self.hour):
-            raise Values("Time arrays (year, month, day, hour) cannot have gaps or duplicates")
+            raise ValueError("Time arrays (year, month, day, hour) cannot have gaps or duplicates")
 
         #check that the table limits are 1d arrays
         if not utils._validate_nd_array(self.tbl_lagmax, self.tbl_lagmin, self.tbl_kmax, self.tbl_kmin, self.tbl_qmax, self.tbl_qmin):
@@ -1380,23 +1321,7 @@ class ConsusePars:
         #check that all inputs contain finite values
         utils._validate_finite_fields(self)
 
-        #Start validate time arrays
-        time_arrays = (self.year, self.month, self.day)
-
-        if not utils._validate_nd_array(*time_arrays):
-            raise ValueError("Time arrays must be 1D numpy arrays")
-
-        if not utils._validate_array_length(*time_arrays):
-            raise ValueError("Time arrays must have equal lengths")
-
-        if len(self.year) < 2:
-            raise ValueError("FAPars requires at least two timestamps to infer the timestep")
-
-        for name in ("year", "month", "day"):
-            values = getattr(self, name)
-            if not np.all(values == np.floor(values)):
-                raise ValueError(f"{name} must contain integer values")
-        #End validate time arrays 
+        utils._validate_time_arrays(self, ("year", "month", "day"))
 
         #Convert dt_seconds, year, month, and day to integer dtype
         time_list = ['year','month','day'] 
@@ -1417,19 +1342,12 @@ class ConsusePars:
     def validate(self):
         """Checks that all inputs meet shape, type, and value constraints."""
    
-        dt_sec = utils._define_timestep_sec(self.year, self.month, self.day)
-        #check to make sure that dates are not reversed, are positive, no longer than a day, and a factor of 24hrs
-        if (
-            dt_sec  <= 0
-            or dt_sec != 86400
-        ):
+        # Every consecutive timestamp must be exactly one day apart.
+        if not utils._validate_timestep(86400, self.year, self.month, self.day):
             raise ValueError(
-                "Timestep must be daily"
+                "ConsusePars requires a daily timestep of exactly 86400 seconds "
+                "(24 hours), with no gaps, duplicates, or reversed timestamps."
             )
-
-        #check to make there are no gaps in the timeseries
-        if not utils._validate_timestep(dt_sec,self.year, self.month, self.day):
-            raise Values("Time arrays (year, month, day) cannot have gaps or duplicates")
 
         #check that peadj_m is a 1d array.  
         if not utils._validate_nd_array(self.peadj_m):
@@ -1573,7 +1491,7 @@ class ChanlossPars:
     * **CHANLOSS Factors** (e.g., ``factors``): Shape (C,)
     * **CHANLOSS Periods** (e.g., ``periods``): Shape (C,2)
 
-    Recommended model time steps are 1, 3, 6, 12, or 24 hours.
+    Supported model time steps are 1, 2, 3, 4, 6, 8, 12, or 24 hours.
 
     Args:
         year (np.ndarray): Array of years for each timestep (units: time).
@@ -1602,23 +1520,7 @@ class ChanlossPars:
         #check that all inputs contain finite values
         utils._validate_finite_fields(self)
 
-        #Start validate time arrays
-        time_arrays = (self.year, self.month, self.day, self.hour)
-
-        if not utils._validate_nd_array(*time_arrays):
-            raise ValueError("Time arrays must be 1D numpy arrays")
-
-        if not utils._validate_array_length(*time_arrays):
-            raise ValueError("Time arrays must have equal lengths")
-
-        if len(self.year) < 2:
-            raise ValueError("FAPars requires at least two timestamps to infer the timestep")
-
-        for name in ("year", "month", "day", "hour"):
-            values = getattr(self, name)
-            if not np.all(values == np.floor(values)):
-                raise ValueError(f"{name} must contain integer values")
-        #End validate time arrays 
+        utils._validate_time_arrays(self)
 
         self.dt_seconds = np.int32(utils._define_timestep_sec(self.year, self.month, self.day, self.hour))
         time_list = ['year','month','day','hour'] 
@@ -1638,27 +1540,21 @@ class ChanlossPars:
     def validate(self):
         """Checks that all inputs meet shape, type, and value constraints."""
 
-        #check to make sure that dates are not reversed, are positive, no longer than a day, and a factor of 24hrs
-        if (
-            self.dt_seconds <= 0
-            or self.dt_seconds > 86400
-            or 86400 % self.dt_seconds != 0
-        ):
+        # Supported timesteps are whole-hour divisors of one day.
+        supported_seconds = (3600, 7200, 10800, 14400, 21600, 28800, 43200, 86400)
+        if self.dt_seconds not in supported_seconds:
             raise ValueError(
-                "Timestep must be positive, no longer than one day, and a factor of 24 hrs "
+                f"Unsupported dt_seconds: {self.dt_seconds} ({self.dt_seconds/3600} hours). "
+                "Supported timesteps are 1, 2, 3, 4, 6, 8, 12, or 24 hours."
             )
 
-        #check to make there are no gaps in the timeseries
-        if not utils._validate_timestep(self.dt_seconds,self.year, self.month, self.day, self.hour):
-            raise Values("Time arrays (year, month, day, hour) cannot have gaps or duplicates")
+        # Every consecutive timestamp must match the supported timestep.
+        if not utils._validate_timestep(self.dt_seconds, self.year, self.month, self.day, self.hour):
+            raise ValueError("Time arrays (year, month, day, hour) cannot have gaps or duplicates")
 
         #check that factors are 1d arrays
         if not utils._validate_nd_array(self.factors):
             raise ValueError("factors must have a 1d shape")
-
-        #check to make there are no gaps in the timeseries
-        if not utils._validate_timestep(self.dt_seconds,self.year, self.month, self.day, self.hour):
-            raise Values("Time arrays (year, month, day, hour) cannot have gaps or duplicates")
 
         #check that periods is a 2d arrays
         if not utils._validate_nd_array(self.periods, ndim=2):
@@ -1782,7 +1678,11 @@ class FAPars:
     * **limits**: Shape (12, 2), with lower bounds in column 0 and upper bounds in column 1.
     * **peadj_m**: Shape (12, Z), with months January–December along axis 0.   
 
-    Recommended model time steps are 1, 3, 6, 12, or 24 hours.
+    Supported model time steps are 1, 2, 3, 4, 6, 8, or 12 hours.
+    A 24-hour timestep is not supported because the Hargreaves–Samani equation
+    requires daily minimum and maximum temperatures, which are estimated from
+    subdaily MAT samples. With only one sample per day, the estimated minimum
+    and maximum are equal, producing zero PET.
 
     Args:
         year (np.ndarray): Array of years for each timestep (units: time).
@@ -1823,23 +1723,7 @@ class FAPars:
         #check that all inputs contain finite values
         utils._validate_finite_fields(self)
 
-        #Start validate time arrays
-        time_arrays = (self.year, self.month, self.day, self.hour)
-
-        if not utils._validate_nd_array(*time_arrays):
-            raise ValueError("Time arrays must be 1D numpy arrays")
-
-        if not utils._validate_array_length(*time_arrays):
-            raise ValueError("Time arrays must have equal lengths")
-
-        if len(self.year) < 2:
-            raise ValueError("FAPars requires at least two timestamps to infer the timestep")
-
-        for name in ("year", "month", "day", "hour"):
-            values = getattr(self, name)
-            if not np.all(values == np.floor(values)):
-                raise ValueError(f"{name} must contain integer values")
-        #End validate time arrays 
+        utils._validate_time_arrays(self)
 
         #Convert time steps to integers
         self.dt_seconds = np.int32(utils._define_timestep_sec(self.year, self.month, self.day,self.hour))
@@ -1869,19 +1753,17 @@ class FAPars:
     def validate(self):
         """Checks that all inputs meet shape, type, and value constraints."""
 
-        #check to make sure that dates are not reversed, are positive, no longer than a day, and a factor of 24hrs
-        if (
-            self.dt_seconds <= 0
-            or self.dt_seconds > 86400
-            or 86400 % self.dt_seconds != 0
-        ):
+        # PET requires multiple temperature samples per day.
+        supported_seconds = (3600, 7200, 10800, 14400, 21600, 28800, 43200)
+        if self.dt_seconds not in supported_seconds:
             raise ValueError(
-                "FA timestep must be positive, no longer than one day, and a factor of 24 hrs "
+                f"Unsupported dt_seconds: {self.dt_seconds} ({self.dt_seconds/3600} hours). "
+                "Supported timesteps are 1, 2, 3, 4, 6, 8, or 12 hours."
             )
 
-        #check to make there are no gaps in the timeseries
-        if not utils._validate_timestep(self.dt_seconds,self.year, self.month, self.day, self.hour):
-            raise ValuesError("Time arrays (year, month, day, hour) cannot have gaps or duplicates")
+        # Every consecutive timestamp must match the supported timestep.
+        if not utils._validate_timestep(self.dt_seconds, self.year, self.month, self.day, self.hour):
+            raise ValueError("Time arrays (year, month, day, hour) cannot have gaps or duplicates")
 
         #Check that the run is longer than one year when climo is none
         if (self.climo is None) and (len(np.unique(self.month)) < 12):
@@ -2204,6 +2086,7 @@ class RSnwElevPars:
     * **Area-Elevation Table Index** (e.g., ``aetbl_index``): Shape (E,)
     * **Area-Elevation Table Values** (e.g., ``aetbl_values``): Shape (E,Z)
 
+    Supported model time steps are 1, 2, 3, 4, 6, 8, 12, or 24 hours.
 
     Args:
         year (np.ndarray): Array of years for each timestep (units: time).
@@ -2233,23 +2116,7 @@ class RSnwElevPars:
         #check that all inputs contain finite values
         utils._validate_finite_fields(self)
 
-        #Start validate time arrays
-        time_arrays = (self.year, self.month, self.day, self.hour)
-
-        if not utils._validate_nd_array(*time_arrays):
-            raise ValueError("Time arrays must be 1D numpy arrays")
-
-        if not utils._validate_array_length(*time_arrays):
-            raise ValueError("Time arrays must have equal lengths")
-
-        if len(self.year) < 2:
-            raise ValueError("FAPars requires at least two timestamps to infer the timestep")
-
-        for name in ("year", "month", "day", "hour"):
-            values = getattr(self, name)
-            if not np.all(values == np.floor(values)):
-                raise ValueError(f"{name} must contain integer values")
-        #End validate time arrays 
+        utils._validate_time_arrays(self)
 
         #Convert time inputs to integer dtypes
         time_list = ['year','month','day','hour'] 
@@ -2269,19 +2136,17 @@ class RSnwElevPars:
         """Checks that all inputs meet shape, type, and value constraints."""
 
         dt_sec = utils._define_timestep_sec(self.year, self.month, self.day, self.hour)
-        #check to make sure that dates are not reversed, are positive, no longer than a day, and a factor of 24hrs
-        if (
-            dt_sec  <= 0
-            or dt_sec  > 86400
-            or 86400 % dt_sec  != 0
-        ):
+        # Supported timesteps are whole-hour divisors of one day.
+        supported_seconds = (3600, 7200, 10800, 14400, 21600, 28800, 43200, 86400)
+        if dt_sec not in supported_seconds:
             raise ValueError(
-                "Timestep must be positive, no longer than one day, and a factor of 24 hrs "
+                f"Unsupported timestep: {dt_sec} seconds ({dt_sec/3600} hours). "
+                "Supported timesteps are 1, 2, 3, 4, 6, 8, 12, or 24 hours."
             )
 
-        #check to make there are no gaps in the timeseries
-        if not utils._validate_timestep(dt_sec,self.year, self.month, self.day, self.hour):
-            raise Values("Time arrays (year, month, day, hour) cannot have gaps or duplicates")
+        # Every consecutive timestamp must match the supported timestep.
+        if not utils._validate_timestep(dt_sec, self.year, self.month, self.day, self.hour):
+            raise ValueError("Time arrays (year, month, day, hour) cannot have gaps or duplicates")
 
         #check that taelev, talr, pxtemp, aetbl_index are 1d arrays
         if not utils._validate_nd_array(self.taelev, self.talr, self.pxtemp, self.aetbl_index):
