@@ -83,7 +83,8 @@ CFC     1  ', TOTAL CPU TIME = ',F13.2)
 C
 CGW  Added varible
       IB=0
-      COTIME=NDT*6      
+      ITA=int(P(5))
+      COTIME=NDT*REAL(ITA)   
 CCB  Added initilizations to prevent compiler warnings
       Y2=0
       FEWSDEBUG=0
@@ -304,6 +305,8 @@ C
       X2=X14+DXOVR4
 C
       VALUE=X14 + X2 + S2ODT - Y1
+CGW   Apply the full-step nonnegative guard to each quarter step too.
+      IF(VALUE.LT.1.0E-7)VALUE=0.0
 C
       Y2=FSERC7(LXXXX,VALUE,NPOS4,P(IBOS14))
 C
