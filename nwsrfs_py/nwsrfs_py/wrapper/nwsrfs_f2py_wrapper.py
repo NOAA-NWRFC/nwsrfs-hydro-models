@@ -385,7 +385,9 @@ class OrdinatesUhPars:
     Args:
         dt_hours (int): Unit hydrograph ordinate timestep (units: hours). Must divide 24 and match the paired SAC-SMA model timestep.
         area (np.ndarray): Array of each zone's area. (units:  km**2)
-        ordinates (np.ndarray): Unit hydrograph ordinates values. (units: cfs/in)
+        ordinates (np.ndarray): Unit hydrograph ordinates (cfs/in). For each zone,
+            their integrated volume must represent 1 inch of runoff over its area,
+            within 0.1 inch. Trailing NaN values may pad shorter hydrographs.
     '''
     
     dt_hours: numbers.Number
@@ -466,6 +468,15 @@ class OrdinatesUhPars:
                 raise ValueError(f"ordinates[:,{i}] must be nonnegative")
             if not np.any(trimmed > 0):
                 raise ValueError(f"ordinates[:,{i}] must contain a positive value")
+
+            # Convert the hydrograph volume (ft3) to runoff depth (inches).
+            one_inch_volume_ft3 = self.area[i] * 0.386102 * 5280**2 / 12
+            depth_inches = np.sum(trimmed) * self.dt_hours * 3600 / one_inch_volume_ft3
+            if abs(depth_inches - 1.0) > 0.1:
+                raise ValueError(
+                    f"ordinates[:,{i}] must represent 1 inch of runoff "
+                    f"within 0.1 inch (got {depth_inches:.3f} inches)"
+                )
 
 class OrdinatesUh():
 
@@ -1299,7 +1310,7 @@ class ConsusePars:
         rf_decay_rate (numbers.Number): Fraction of return flow storage released to the channel each day (units: NA).
         pet_adj (numbers.Number):  Potential evaporation (PET) adjustment factor (units: NA).
         peadj_m (np.ndarray):  Monthly pe adjust table (units: NA).
-        pet (np.ndarray):  Daily potential evapotranspiration depth for each timestep (units:  mm per day), before applying pet_adj and peadj_m.
+        pet (np.ndarray):  Daily potential evapotranspiration demand for each timestep (units:  mm per day), before applying pet_adj and peadj_m.
         qin (np.ndarray):  Input daily average streamflow to adjust for CONS_USE (units: cfs).
     '''
 
