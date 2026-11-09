@@ -47,6 +47,9 @@ class _NwrfcAcPrep:
     a separate ``taelev`` parameter is not required.
 
     Multiple ``area_elev*`` CSV files are ambiguous and raise :exc:`ValueError`.
+    Supplying both an ``area_elev*`` CSV and ``ptps`` in every forcing file
+    also raises :exc:`ValueError`. If only some forcing files contain ``ptps``,
+    supplied PTPS is ignored and the area-elevation input is required.
     A :exc:`ValueError` is also raised if ``ptps`` is missing from any forcing
     file and no area-elevation CSV is available.
 
@@ -221,7 +224,13 @@ class _NwrfcAcPrep:
         #PTPS is usable only when it is supplied for every forcing file.
         self.ptps_logic = all('ptps' in forcing.columns for forcing in forcings_import)
         self.area_elev = None
-        if not self.ptps_logic:
+        if self.ptps_logic and self.area_elev_logic:
+            raise ValueError(
+                'Ambiguous precipitation typing inputs: every forcing file contains '
+                'a ptps column, but an area_elev* CSV is also present. '
+                'Remove the area_elev* CSV to use supplied PTPS, or remove the '
+                'ptps columns from the forcing files to calculate PTPS with RSnwElev.')
+        elif not self.ptps_logic:
             if not self.area_elev_logic:
                 raise ValueError(
                     'Precipitation typing requires a ptps column in every forcing file '
@@ -424,6 +433,9 @@ class NwsrfsRun(_NwrfcAcPrep,
     a separate ``taelev`` parameter is not required.
 
     Multiple ``area_elev*`` CSV files are ambiguous and raise :exc:`ValueError`.
+    Supplying both an ``area_elev*`` CSV and ``ptps`` in every forcing file
+    also raises :exc:`ValueError`. If only some forcing files contain ``ptps``,
+    supplied PTPS is ignored and the area-elevation input is required.
     A :exc:`ValueError` is also raised if ``ptps`` is missing from any forcing
     file and no area-elevation CSV is available.
 

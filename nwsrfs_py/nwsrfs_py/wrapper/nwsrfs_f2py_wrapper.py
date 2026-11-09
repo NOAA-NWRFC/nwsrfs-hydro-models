@@ -1482,6 +1482,20 @@ class Consuse():
 
             return pd.DataFrame(state_dic, index=self.__datetime)
 
+        @property
+        def peadj_table(self) -> pd.DataFrame:
+            '''
+            A table indexed by months 1 through 12 (January–December),
+            with index name ``month`` and a single column, ``pe_adj``, containing
+            the dimensionless factors from ``consuse_pars.peadj_m``.
+            '''
+
+            return pd.DataFrame(
+                {'pe_adj':self.consuse_pars.peadj_m},
+                index=pd.Index(data=range(1,13),name='month'),
+                copy=True
+                )
+
 @dataclass
 class ChanlossPars:
 
@@ -1651,6 +1665,45 @@ class Chanloss:
         qin_adj = pd.Series(self.__raw_output, index=self.__datetime, name='qin_adj')
 
         return qin_adj
+
+    @property
+    def adj_table(self) -> pd.DataFrame:
+        """Return the monthly CHANLOSS factors used for time-step interpolation.
+
+        Rows are months 1 through 12 (index name ``month``), with a single
+        ``Chanloss_Adj`` column. 
+
+        Mode 1 (varp) uses dimensionless multipliers and mode 2 (varc) uses amounts 
+        in cfs.
+        With no periods, all months receive the mode's default factor.
+        These are monthly interpolation values, not adjusted streamflow.
+        """
+        def month_range(start, end):
+            return [
+                (start - 1 + offset) % 12 + 1
+                for offset in range((end - start) % 12 + 1)
+            ]
+
+        factors = self.chanloss_pars.factors
+        periods = self.chanloss_pars.periods
+        default_factor = 1.0 if self.chanloss_pars.cl_type == 1 else 0.0
+
+        monthly_factors = [
+            pd.Series(factor, index=month_range(start, end), dtype=float)
+            for (start, end), factor in zip(periods, factors, strict=True)
+        ]
+        if monthly_factors:
+            adjustments = pd.concat(monthly_factors).groupby(level=0).mean()
+        else:
+            adjustments = pd.Series(dtype=float)
+
+        return (
+            adjustments.reindex(range(1, 13), fill_value=default_factor)
+            .rename_axis('month')
+            .to_frame(name='Chanloss_Adj')
+        )
+
+
 
 @dataclass
 class FAPars:
@@ -2072,6 +2125,20 @@ class FA():
 
         return pd.DataFrame(self.__climo_array,index=pd.Index(range(1, 13), name="month"),columns=['map_climo','mat_climo','pet_climo','ptps_climo'])
 
+    @property
+    def peadj_table(self) -> pd.DataFrame:
+        '''
+        Rows represent January–December, indexed 1 through 12 with index
+        name ``month``. Columns are zero-based zone indices, matching the
+        zone order used by ``forcings``. Values are the dimensionless
+        factors from ``fa_pars['pet'].peadj_m``.
+        '''
+
+        return pd.DataFrame(
+            self.fa_pars['pet'].peadj_m,
+            index=pd.Index(data=range(1,13),name='month'),
+            copy=True
+            ).add_prefix('peadj_')
 
 
 @dataclass
@@ -2108,7 +2175,7 @@ class RSnwElevPars:
         talr (np.ndarray): Lapse rate during precipitation periods (units: degc/100m).
         pxtemp (np.ndarray): Rain/snow threshold temperature (units: degc).
         aetbl_index (np.ndarray): Area-elevation table index array (units: fraction 0-1).
-        aetbl_values (np.ndarray): Area-elevation table values array(units: m).
+        aetbl_values (np.ndarray): Area-elevation table values array (units: m).
         forcings_mat(np.ndarray): Air temperature array for each timestep (units: degc).
     '''
     year: np.ndarray
@@ -2270,4 +2337,20 @@ class RSnwElev:
         ptps= pd.DataFrame(self.__raw_output,index=self.__datetime).add_prefix('ptps_')
 
         return ptps
+
+    @property
+    def area_elev_table(self) -> pd.DataFrame:
+        '''
+        The index, named ``quantiles``, contains cumulative fractions of
+        zone area below each corresponding elevation. Columns are named
+        ``elev_0``, ``elev_1``, etc., in parameter zone order, and contain
+        elevations in meters. .
+        '''
+
+        return pd.DataFrame(
+            self.rsnwelev_pars.aetbl_values,
+            index=pd.Index(data=self.rsnwelev_pars.aetbl_index,name='quantiles'),
+            copy=True
+            ).add_prefix('elev_')
+
 
