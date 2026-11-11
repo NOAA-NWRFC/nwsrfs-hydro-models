@@ -38,12 +38,6 @@ on:
         description: "Unique ID. You can leave this empty now."
         type: string
 
-env:
-  # nwsrfs_r/.Rprofile sources renv/activate.R; disable the autoloader so it
-  # does not hijack the R library on the runner. renv files are .Rbuildignore'd,
-  # so this does not change what R-hub checks. Mirrors the pixi tasks.
-  RENV_CONFIG_AUTOLOADER_ENABLED: "FALSE"
-
 jobs:
   setup:
     runs-on: ubuntu-latest
@@ -86,6 +80,7 @@ jobs:
           cp -R nwsrfs_r/* "$pkg"/
           rm -rf "$pkg/src" && cp -R model_source "$pkg/src"
           rm -f "$pkg/NOTICE" && cp NOTICE "$pkg/NOTICE"
+          rm -rf "$pkg/rv" "$pkg/.Rprofile"
           find "$pkg/src" -type f \
             \( -name '*.o' -o -name '*.so' -o -name '*.dylib' -o -name '*.a' \
             -o -name '*.mod' -o -name '*.smod' -o -name '*.obj' -o -name '*.dll' \
@@ -131,6 +126,7 @@ jobs:
           cp -R nwsrfs_r/* "$pkg"/
           rm -rf "$pkg/src" && cp -R model_source "$pkg/src"
           rm -f "$pkg/NOTICE" && cp NOTICE "$pkg/NOTICE"
+          rm -rf "$pkg/rv" "$pkg/.Rprofile"
           find "$pkg/src" -type f \
             \( -name '*.o' -o -name '*.so' -o -name '*.dylib' -o -name '*.a' \
             -o -name '*.mod' -o -name '*.smod' -o -name '*.obj' -o -name '*.dll' \

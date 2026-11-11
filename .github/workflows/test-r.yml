@@ -27,12 +27,6 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
-      # nwsrfs_r/.Rprofile sources renv/activate.R, which would hijack the
-      # library and break setup-r-dependencies (pak not found in the renv lib).
-      # renv keeps these files out of the built package via .Rbuildignore, so
-      # disabling the autoloader here does not affect what CRAN checks. This
-      # mirrors the RENV_CONFIG_AUTOLOADER_ENABLED=FALSE used in the pixi tasks.
-      RENV_CONFIG_AUTOLOADER_ENABLED: "FALSE"
 
     steps:
       - uses: actions/checkout@v4
@@ -40,7 +34,9 @@ jobs:
       # The R package lives in nwsrfs_r/ and reaches the shared Fortran source
       # through committed symlinks (src -> ../model_source, NOTICE -> ../NOTICE).
       # Git symlinks are not restored as real directories on Windows runners, so
-      # replace them with copies before the check. Safe on all platforms.
+      # replace them with copies before the check. Also drop the local rv
+      # activation files (which are .Rbuildignore'd) so setup-r-dependencies uses
+      # the runner library cleanly without requiring rv to be installed.
       - name: Materialize symlinked sources
         shell: bash
         run: |
@@ -49,6 +45,7 @@ jobs:
           cp -R model_source nwsrfs_r/src
           rm -f nwsrfs_r/NOTICE
           cp NOTICE nwsrfs_r/NOTICE
+          rm -rf nwsrfs_r/rv nwsrfs_r/.Rprofile
           # Drop any stale compiled Fortran artifacts so the check builds clean.
           find nwsrfs_r/src -type f \
             \( -name '*.o' -o -name '*.so' -o -name '*.dylib' -o -name '*.a' \

@@ -71,7 +71,7 @@ fi
 
 # Assemble a clean, self-contained package tree in a temp dir: turn the
 # committed symlinks (src -> ../model_source, NOTICE -> ../NOTICE) into real
-# copies and drop renv files, stale build artifacts, and any src/Makevars
+# copies and drop rv files, stale build artifacts, and any src/Makevars
 # left behind by a local install (configure regenerates it; .Rbuildignore
 # would exclude it from the tarball anyway).
 WORK="$(mktemp -d)"
@@ -79,7 +79,7 @@ trap 'rm -rf "$WORK"' EXIT
 cp -R "$REPO_ROOT/nwsrfs_r" "$WORK/nwsrfs_r"
 rm -rf "$WORK/nwsrfs_r/src" && cp -R "$REPO_ROOT/model_source" "$WORK/nwsrfs_r/src"
 rm -f "$WORK/nwsrfs_r/NOTICE" && cp "$REPO_ROOT/NOTICE" "$WORK/nwsrfs_r/NOTICE"
-rm -rf "$WORK/nwsrfs_r/renv" "$WORK/nwsrfs_r/.Rprofile"
+rm -rf "$WORK/nwsrfs_r/rv" "$WORK/nwsrfs_r/.Rprofile"
 rm -f "$WORK/nwsrfs_r/src/Makevars"
 find "$WORK/nwsrfs_r" -type f \
   \( -name '*.o' -o -name '*.so' -o -name '*.dylib' -o -name '*.a' \

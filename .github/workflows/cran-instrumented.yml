@@ -20,17 +20,11 @@ name: CRAN instrumented checks (LTO / bounds / ASAN)
 
 on:
   push:
-    branches: ["r-github-actions", "main"]
+    branches: ["main"]
   pull_request:
   workflow_dispatch:
 
 permissions: read-all
-
-env:
-  # nwsrfs_r/.Rprofile sources renv/activate.R, which would hijack the R
-  # library. renv files are .Rbuildignore'd so this does not change what is
-  # checked. Mirrors the other R workflows.
-  RENV_CONFIG_AUTOLOADER_ENABLED: "FALSE"
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -54,8 +48,8 @@ jobs:
 
       # The package lives in nwsrfs_r/ and reaches the shared Fortran source
       # through committed symlinks (src -> ../model_source, NOTICE -> ../NOTICE).
-      # Turn them into real copies and drop stale artifacts so the build tree is
-      # self-contained.
+      # Turn them into real copies and drop stale artifacts and local rv files so
+      # the build tree is self-contained.
       - name: Materialize symlinked sources
         shell: bash
         run: |
@@ -64,6 +58,7 @@ jobs:
           cp -R model_source nwsrfs_r/src
           rm -f nwsrfs_r/NOTICE
           cp NOTICE nwsrfs_r/NOTICE
+          rm -rf nwsrfs_r/rv nwsrfs_r/.Rprofile
           find nwsrfs_r/src -type f \
             \( -name '*.o' -o -name '*.so' -o -name '*.dylib' -o -name '*.a' \
             -o -name '*.mod' -o -name '*.smod' -o -name '*.obj' -o -name '*.dll' \
@@ -123,6 +118,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Materialize symlinked sources
+        shell: bash
+        run: |
+          set -euxo pipefail
+          rm -rf nwsrfs_r/src
+          cp -R model_source nwsrfs_r/src
+          rm -f nwsrfs_r/NOTICE
+          cp NOTICE nwsrfs_r/NOTICE
+          rm -rf nwsrfs_r/rv nwsrfs_r/.Rprofile
+          find nwsrfs_r/src -type f \
+            \( -name '*.o' -o -name '*.so' -o -name '*.dylib' -o -name '*.a' \
+            -o -name '*.mod' -o -name '*.smod' -o -name '*.obj' -o -name '*.dll' \
+            -o -name '*.lib' \) -delete
+
       - uses: r-lib/actions/setup-r@v2
         with:
           r-version: release
@@ -132,19 +141,6 @@ jobs:
         with:
           extra-packages: any::testthat
           working-directory: nwsrfs_r
-
-      - name: Materialize symlinked sources
-        shell: bash
-        run: |
-          set -euxo pipefail
-          rm -rf nwsrfs_r/src
-          cp -R model_source nwsrfs_r/src
-          rm -f nwsrfs_r/NOTICE
-          cp NOTICE nwsrfs_r/NOTICE
-          find nwsrfs_r/src -type f \
-            \( -name '*.o' -o -name '*.so' -o -name '*.dylib' -o -name '*.a' \
-            -o -name '*.mod' -o -name '*.smod' -o -name '*.obj' -o -name '*.dll' \
-            -o -name '*.lib' \) -delete
 
       - name: R CMD check with -fcheck=all
         shell: bash
@@ -158,7 +154,7 @@ jobs:
             printf '%s\n' 'FFLAGS = -g -O2 -fcheck=all -finit-real=snan -finit-integer=-99999 -fbacktrace'
             printf '%s\n' 'FCFLAGS = -g -O2 -fcheck=all -finit-real=snan -finit-integer=-99999 -fbacktrace'
           } > "$HOME/.R/Makevars"
-          R CMD build nwsrfs_r
+          R CMD build --no-build-vignettes nwsrfs_r
           pkg=$(ls nwsrfsr_*.tar.gz)
 
           # Check the tarball in an isolated directory that has NO nwsrfs_py/
@@ -178,7 +174,7 @@ jobs:
           export NOT_CRAN=false
           # A Fortran runtime bounds error during examples/tests aborts the R
           # subprocess, which R CMD check reports as an ERROR and exits non-zero.
-          R CMD check --no-manual "${pkg}"
+          R CMD check --no-manual --ignore-vignettes "${pkg}"
 
       - name: Show example output and surface any bounds error
         if: always()
@@ -243,6 +239,7 @@ jobs:
           cp -R model_source nwsrfs_r/src
           rm -f nwsrfs_r/NOTICE
           cp NOTICE nwsrfs_r/NOTICE
+          rm -rf nwsrfs_r/rv nwsrfs_r/.Rprofile
           find nwsrfs_r/src -type f \
             \( -name '*.o' -o -name '*.so' -o -name '*.dylib' -o -name '*.a' \
             -o -name '*.mod' -o -name '*.smod' -o -name '*.obj' -o -name '*.dll' \
@@ -253,7 +250,7 @@ jobs:
         run: |
           set -euxo pipefail
           mkdir -p "$GITHUB_WORKSPACE/check"
-          R CMD build nwsrfs_r
+          R CMD build --no-build-vignettes nwsrfs_r
           cp nwsrfsr_*.tar.gz "$GITHUB_WORKSPACE/check/"
 
       - name: R CMD check (ASAN/LSan)

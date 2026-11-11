@@ -23,6 +23,9 @@ jobs:
 
       # --- R toolchain (not managed by pixi, see dev/README.md) ---
 
+      - name: Remove local rv activation files
+        run: rm -rf nwsrfs_r/rv nwsrfs_r/.Rprofile
+
       - uses: r-lib/actions/setup-pandoc@v2
 
       - name: Set up R
@@ -30,24 +33,14 @@ jobs:
         with:
           use-public-rspm: true
 
-      - name: Cache renv library
-        uses: actions/cache@v4
+      - name: Install R documentation dependencies
+        uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          path: ~/.cache/R/renv
-          key: renv-${{ runner.os }}-${{ hashFiles('nwsrfs_r/renv.lock') }}
-          restore-keys: renv-${{ runner.os }}-
+          extra-packages: any::pkgdown
+          needs: check
+          working-directory: nwsrfs_r
 
-      - name: Restore pkgdown from renv.lock
-        working-directory: nwsrfs_r
-        run: |
-          # Restore only pkgdown and its recursive dependencies (55 of the 95 packages in
-          # the lockfile) rather than the whole thing. A full restore also installs the
-          # maintainer tools, and one of them, gert, links libgit2, whose soname differs
-          # between Ubuntu releases. That coupling is what previously pinned this job to
-          # ubuntu-22.04. The docs build uses none of those packages.
-          Rscript -e 'renv::restore(packages = "pkgdown", prompt = FALSE)'
-
-      - name: Install R package into the renv library
+      - name: Install R package
         working-directory: nwsrfs_r
         run: |
           # Compile with the system R toolchain. Doing this through `pixi run install-r`

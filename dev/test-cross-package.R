@@ -7,7 +7,7 @@
 # data, and the simulation comparisons each run a full ~43-year simulation
 # that is too slow for routine `R CMD check`/CRAN runs.
 #
-# Run with cwd nwsrfs_r so .Rprofile activates renv:
+# Run with cwd nwsrfs_r so .Rprofile activates rv:
 #   Rscript ../dev/test-cross-package.R
 # or via:
 #   pixi run test-cross

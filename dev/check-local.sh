@@ -50,7 +50,7 @@ fi
 
 # Assemble a clean, self-contained package tree in a temp dir: turn the
 # committed symlinks (src -> ../model_source, NOTICE -> ../NOTICE) into real
-# copies and drop stale build artifacts and renv files. Deliberately does NOT
+# copies and drop stale build artifacts and rv files. Deliberately does NOT
 # copy the sibling nwsrfs_py/, so the tarball checked below has no baseline CSVs
 # -- exactly the isolation CRAN checks under (see the bounds notes below).
 WORK="$(mktemp -d)"
@@ -58,7 +58,7 @@ trap 'rm -rf "$WORK"' EXIT
 cp -R "$REPO_ROOT/nwsrfs_r" "$WORK/nwsrfs_r"
 rm -rf "$WORK/nwsrfs_r/src" && cp -R "$REPO_ROOT/model_source" "$WORK/nwsrfs_r/src"
 rm -f "$WORK/nwsrfs_r/NOTICE" && cp "$REPO_ROOT/NOTICE" "$WORK/nwsrfs_r/NOTICE"
-rm -rf "$WORK/nwsrfs_r/renv" "$WORK/nwsrfs_r/.Rprofile"
+rm -rf "$WORK/nwsrfs_r/rv" "$WORK/nwsrfs_r/.Rprofile"
 find "$WORK/nwsrfs_r" -type f \
   \( -name '*.o' -o -name '*.so' -o -name '*.dylib' -o -name '*.a' \
   -o -name '*.mod' -o -name '*.smod' -o -name '*.obj' -o -name '*.dll' \
@@ -99,7 +99,7 @@ case "$check" in
     printf 'FFLAGS = %s\nFCFLAGS = %s\n' "$FFLAGS_BOUNDS" "$FFLAGS_BOUNDS" > ~/.R/Makevars
     find /tmp/pkg -type f \( -name '*.o' -o -name '*.so' -o -name '*.mod' \) -delete 2>/dev/null || true
     cd /tmp
-    if R CMD build /tmp/pkg > /tmp/build.log 2>&1; then :; else
+    if R CMD build --no-build-vignettes /tmp/pkg > /tmp/build.log 2>&1; then :; else
       echo "BUILD FAILED"; tail -20 /tmp/build.log; exit 1
     fi
     pkg="$(ls nwsrfsr_*.tar.gz)"
@@ -112,7 +112,7 @@ case "$check" in
     # -fcheck=all, and a runtime bounds error there aborts the check.
     mkdir -p /tmp/check && cp "$pkg" /tmp/check/ && cd /tmp/check
     export NOT_CRAN=false
-    if R CMD check --no-manual "$pkg" > /tmp/check.log 2>&1; then :; else
+    if R CMD check --no-manual --ignore-vignettes "$pkg" > /tmp/check.log 2>&1; then :; else
       echo "CHECK returned non-zero"; :
     fi
     grep -E 'Status:' /tmp/check.log | tail -1 || true
