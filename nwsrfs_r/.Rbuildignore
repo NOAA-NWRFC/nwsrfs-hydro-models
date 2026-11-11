@@ -19,3 +19,5 @@
 ^win-builder-notes\.md$
 ^src/Makevars$
 ^vignettes/.*_files$
+^vignettes/\.quarto$
+^vignettes/\.gitignore$
