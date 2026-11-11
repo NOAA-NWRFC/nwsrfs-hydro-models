@@ -10,7 +10,7 @@ dependencies = [
     "devtools",
     "knitr",
     "pkgdown",
-    "rmarkdown",
+    "quarto",
     "roxygen2",
     "testthat",
 ]

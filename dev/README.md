@@ -36,7 +36,7 @@ Two one time prerequisites:
        curl -fLO https://mac.r-project.org/tools/gfortran-14.2-universal.pkg
        sudo installer -pkg gfortran-14.2-universal.pkg -target /
 
-2. The R development packages (`devtools`, `knitr`, `pkgdown`, `rmarkdown`,
+2. The R development packages (`devtools`, `knitr`, `pkgdown`, `quarto`,
    `roxygen2`, `testthat`), managed declaratively by
    [rv](https://github.com/A2-ai/rv) via `nwsrfs_r/rproject.toml` and locked in
    `nwsrfs_r/rv.lock`:

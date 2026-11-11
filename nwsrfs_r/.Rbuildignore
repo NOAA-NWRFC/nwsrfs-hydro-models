@@ -18,3 +18,4 @@
 ^LICENSE\.note$
 ^win-builder-notes\.md$
 ^src/Makevars$
+^vignettes/.*_files$

@@ -1,20 +1,19 @@
 ---
 title: "Getting Started with nwsrfsr"
-output: rmarkdown::html_vignette
+format:
+  html:
+    toc: true
 vignette: >
   %\VignetteIndexEntry{Getting Started with nwsrfsr}
-  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEngine{quarto::html}
   %\VignetteEncoding{UTF-8}
+knitr:
+  opts_chunk:
+    collapse: true
+    comment: "#>"
+    fig.width: 7
+    fig.height: 4
 ---
-
-```{r setup, include = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>",
-  fig.width = 7,
-  fig.height = 4
-)
-```
 
 `nwsrfsr` wraps the legacy Fortran hydrology models from the National Weather
 Service River Forecast System (NWSRFS) used operationally at the Northwest River
@@ -54,7 +53,8 @@ In an NWRFC basin setup, 6-hour zone forcings pass through up to six stages:
   runoff zones plus a consumptive-use zone (`SFLN2-CU`) and seasonal channel
   losses.
 
-```{r full-run}
+```{r}
+#| label: full-run
 library(nwsrfsr)
 
 run_nrkw1 = load_example("NRKW1")
@@ -79,7 +79,9 @@ The returned `nwsrfs_run` list carries total simulated flow (`$sim`, cfs),
 local runoff (`$sacsnow_sf`), routed upstream flow (`$lagk_route`), adjusted
 forcings (`$forcings`), and the parameter table (`$pars`).
 
-```{r plot-wy, fig.alt = "Simulated 6-hour streamflow at NRKW1 for water year 1996, decomposing total flow into local runoff and routed upstream tributaries."}
+```{r}
+#| label: plot-wy
+#| fig-alt: "Simulated 6-hour streamflow at NRKW1 for water year 1996, decomposing total flow into local runoff and routed upstream tributaries."
 f1 = run_nrkw1$forcings[[1]]
 dt = as.POSIXct(
   sprintf("%04d-%02d-%02d %02d:00:00", f1$year, f1$month, f1$day, f1$hour),
@@ -115,7 +117,8 @@ adjustments through `forcing_adj` (`TRUE`, `FALSE`, or a subset of `"map"`,
 `"mat"`, `"ptps"`, and `"pet"`) and select between instantaneous and
 period-average local runoff through `return_inst`:
 
-```{r options}
+```{r}
+#| label: options
 run_unadj = load_example("NRKW1", forcing_adj = FALSE)
 run_map_only = load_example("NRKW1", forcing_adj = "map", return_inst = FALSE)
 
@@ -132,7 +135,8 @@ c(
 the basin model while preserving the run options (`forcing_adj`, `shift_sf`, and
 `return_inst`).
 
-```{r update-pars}
+```{r}
+#| label: update-pars
 # Inspect current upper-zone tension water capacity (uztwm, mm)
 run_nrkw1$pars[run_nrkw1$pars$name == "uztwm", ]
 
@@ -150,7 +154,9 @@ states, call the component wrappers directly. Below we subset two water years of
 NRKW1 inputs (`1980-10-01` through `1982-09-30`), compute adjusted forcings,
 extract SNOW-17 and SAC-SMA states via `sac_snow_states()`, and route runoff:
 
-```{r low-level, fig.alt = "Simulated snow water equivalent (SWE) for the lower and upper elevation zones of NRKW1 across two water years."}
+```{r}
+#| label: low-level
+#| fig-alt: "Simulated snow water equivalent (SWE) for the lower and upper elevation zones of NRKW1 across two water years."
 dt_hours = 6L
 keep = seq_len(2L * 365L * 4L)
 forcing_sub = lapply(nrkw1_forcing, \(df) df[keep, ])
@@ -204,7 +210,8 @@ precomputed `ptps` column, `rsnwelev()` computes fractional snow area per
 timestep from zone reference elevation (`elev`), temperature lapse rate (`talr`,
 degC per 100 m), and rain/snow threshold temperature (`pxtemp`, degC):
 
-```{r rsnwelev}
+```{r}
+#| label: rsnwelev
 zones = c("SFLN2-1", "SFLN2-2")
 sfln2_sub = lapply(sfln2_forcing[zones], \(df) df[1:40, ])
 
@@ -230,7 +237,8 @@ instantaneous observations to a regular grid, fills short and long observation
 gaps using simulated discharge (when supplied), and iteratively scales 6-hour
 flows to match observed mean daily volumes.
 
-```{r adjustq}
+```{r}
+#| label: adjustq
 # Subset calendar year 2010 of NRKW1 daily, instantaneous, and simulated flow
 yr10_daily = nrkw1_daily_flow[nrkw1_daily_flow$year == 2010, ]
 yr10_inst = nrkw1_inst_flow[nrkw1_inst_flow$year == 2010, ]

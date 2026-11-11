@@ -57,9 +57,9 @@ LazyDataCompression: xz
 Roxygen: list(markdown = TRUE)
 Suggests:
     knitr,
-    rmarkdown,
+    quarto,
     testthat
-VignetteBuilder: knitr
+VignetteBuilder: quarto
 URL: https://github.com/NOAA-NWRFC/nwsrfs-hydro-models, https://noaa-nwrfc.github.io/nwsrfs-hydro-models/
 BugReports: https://github.com/NOAA-NWRFC/nwsrfs-hydro-models/issues
 Config/testthat/edition: 3

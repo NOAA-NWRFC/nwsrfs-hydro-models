@@ -6,3 +6,4 @@ docs
 
 /.quarto/
 **/*.quarto_ipynb
+vignettes/*_files

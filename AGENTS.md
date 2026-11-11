@@ -21,7 +21,7 @@ Guidance for coding agents working in `nwsrfs-hydro-models`.
 ## Environment Setup
 
 - **Pixi (`pixi.toml`)**: Orchestrates tasks across the monorepo and manages the Python, Fortran (conda-forge), Sphinx, and Quarto toolchains.
-- **R (`rig` + `rv`)**: R itself is not managed by `pixi`. Use system R (installed via `rig`) together with [`rv`](https://github.com/A2-ai/rv). `nwsrfs_r/rproject.toml` and `nwsrfs_r/rv.lock` manage R development dependencies (`devtools`, `knitr`, `pkgdown`, `rmarkdown`, `roxygen2`, `testthat`) from Posit Package Manager (`https://packagemanager.posit.co/cran/latest`).
+- **R (`rig` + `rv`)**: R itself is not managed by `pixi`. Use system R (installed via `rig`) together with [`rv`](https://github.com/A2-ai/rv). `nwsrfs_r/rproject.toml` and `nwsrfs_r/rv.lock` manage R development dependencies (`devtools`, `knitr`, `pkgdown`, `quarto`, `roxygen2`, `testthat`) from Posit Package Manager (`https://packagemanager.posit.co/cran/latest`).
   ```bash
   cd nwsrfs_r && rv sync
   ```
@@ -63,7 +63,7 @@ cd nwsrfs_r && Rscript -e 'roxygen2::roxygenize()'
 - `R/nwsrfs-run.R`: High-level `nwsrfs_run()`, `load_example()`, and `update_pars()` workflow.
 - `R/adjustq.R`: `adjustq()` and `adjustq_load_example()` for observed daily/instantaneous flow adjustment.
 - `R/data.R` and `data/*.rda`: Bundled `NRKW1` and `SFLN2` example datasets (prepared from `data-raw/prepare_example_data.R`).
-- `vignettes/nwsrfsr.Rmd`: Introductory package vignette.
+- `vignettes/nwsrfsr.qmd`: Introductory package vignette (Quarto).
 
 ### Python Package (`nwsrfs_py/`)
 - `nwsrfs_py/wrapper/nwsrfs_f2py_wrapper.py`: Low-level classes wrapping compiled `nwsrfs_src` `f2py` routines.
