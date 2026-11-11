@@ -16,7 +16,7 @@ Provides both [low-level Fortran wrappers](#running-individual-model-components)
 directories, auto-detects model components, and runs the full model chain. Also includes
 an [AdjustQ module](#adjustq-preprocessing) for preprocessing upstream flow.
 
-[Full documentation](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/)
+[Full documentation](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/) | `vignette("nwsrfsr")`
 
 Installation
 ------------
@@ -219,7 +219,6 @@ See the API reference for each function:
 [`consuse()`](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/consuse.html)
 
 
-<!-- TODO Add autocalb documentation
 Updating Parameters
 -------------------
 
@@ -243,7 +242,6 @@ run2 = update_pars(run, new_pars)
 mean(run$sim)   # 3590.3
 mean(run2$sim)  # 3572.0
 ```
--->
 
 
 AdjustQ Preprocessing
@@ -352,7 +350,7 @@ pixi run build-docs-r-readme   # render README.qmd to HTML
 pixi run build-docs            # build all docs (Python + R + R README)
 ```
 
-Or from R, in a session started in `nwsrfs_r/` (pkgdown comes from the renv library activated there):
+Or from R, in a session started in `nwsrfs_r/` (pkgdown comes from the `rv` library activated there):
 
 ```r
 pkgdown::build_site(pkg = "nwsrfs_r", install = FALSE, preview = FALSE)

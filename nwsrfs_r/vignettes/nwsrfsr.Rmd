@@ -1,0 +1,257 @@
+---
+title: "Getting Started with nwsrfsr"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting Started with nwsrfsr}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 4
+)
+```
+
+`nwsrfsr` wraps the legacy Fortran hydrology models from the National Weather
+Service River Forecast System (NWSRFS) used operationally at the Northwest River
+Forecast Center (NWRFC). You can run a complete basin configuration with one
+call (`nwsrfs_run()` or `load_example()`), or compose the low-level wrappers
+directly (`fa_nwrfc()`, `rsnwelev()`, `sac_snow()`, `uh()`, `lagk()`,
+`chanloss()`, and `consuse()`).
+
+## Model Chain Overview
+
+In an NWRFC basin setup, 6-hour zone forcings pass through up to six stages:
+
+1. **Forcing adjustments (`fa_nwrfc()`)**: Applies calibrated monthly
+   climatological adjustments to mean areal precipitation (`map`), temperature
+   (`mat`), rain/snow fraction (`ptps`), and potential evapotranspiration
+   (`pet`), and computes evapotranspiration demand (`etd_mm`). Optionally,
+   `rsnwelev()` derives `ptps` from a lapse rate and area-elevation curve.
+2. **Snow and soil moisture (`sac_snow()`)**: Runs SNOW-17 and SAC-SMA on each
+   elevation zone to produce total channel inflow (`tci`, mm per timestep).
+3. **Unit hydrograph (`uh()`)**: Convolves per-zone `tci` with a two-parameter
+   gamma unit hydrograph to produce local runoff in cubic feet per second (cfs).
+4. **Upstream routing (`lagk()`)**: Routes upstream tributary inflows through
+   variable Lag and K river reaches and adds them to local runoff.
+5. **Channel loss/gain (`chanloss()`)**: Applies seasonal channel loss or gain
+   factors above a minimum flow threshold.
+6. **Consumptive use (`consuse()`)**: Computes daily irrigation diversions and
+   return flows from a consumptive-use (`-CU`) zone and adjusts 6-hour flow.
+
+## Running a Full Basin Simulation
+
+`load_example()` runs the complete chain on either of the two bundled basins:
+
+- **NRKW1** (Nooksack River at North Cedarville, WA; USGS 12210700): two
+  SAC-SMA/SNOW-17 zones plus three upstream Lag-K tributaries (`MFNW1`,
+  `NFNW1`, `NSSW1`).
+- **SFLN2** (Salmon Falls Creek near San Jacinto, NV; USGS 13105000): two
+  runoff zones plus a consumptive-use zone (`SFLN2-CU`) and seasonal channel
+  losses.
+
+```{r full-run}
+library(nwsrfsr)
+
+run_nrkw1 = load_example("NRKW1")
+print(run_nrkw1)
+
+run_sfln2 = load_example("SFLN2")
+print(run_sfln2)
+```
+
+For external basins, point `nwsrfs_run()` at an NWRFC autocalibration directory
+containing `forcing_por_*.csv`, `flow_daily_*.csv`, optional `upflow_*.csv`, and
+a `results_*/pars_optimal.csv` parameter file (sample directories for five
+basins are archived at <https://doi.org/10.5281/zenodo.18829935>):
+
+```r
+run = nwsrfs_run("path/to/nwsrfs-ac-sample-runs/1zone/FSSO3")
+```
+
+### Plotting a Water Year Hydrograph
+
+The returned `nwsrfs_run` list carries total simulated flow (`$sim`, cfs),
+local runoff (`$sacsnow_sf`), routed upstream flow (`$lagk_route`), adjusted
+forcings (`$forcings`), and the parameter table (`$pars`).
+
+```{r plot-wy, fig.alt = "Simulated 6-hour streamflow at NRKW1 for water year 1996, decomposing total flow into local runoff and routed upstream tributaries."}
+f1 = run_nrkw1$forcings[[1]]
+dt = as.POSIXct(
+  sprintf("%04d-%02d-%02d %02d:00:00", f1$year, f1$month, f1$day, f1$hour),
+  tz = "UTC"
+)
+wy96 = dt >= as.POSIXct("1995-10-01", tz = "UTC") &
+  dt < as.POSIXct("1996-10-01", tz = "UTC")
+
+plot(
+  dt[wy96],
+  run_nrkw1$sim[wy96],
+  type = "l",
+  col = "#2b5c8f",
+  lwd = 1.4,
+  xlab = "Date (UTC)",
+  ylab = "Discharge (cfs)",
+  main = "NRKW1 Simulated Discharge (Water Year 1996)"
+)
+lines(dt[wy96], run_nrkw1$lagk_route[wy96], col = "#b35806", lwd = 1.1)
+legend(
+  "topright",
+  legend = c("Total flow (local + Lag-K)", "Routed upstream (Lag-K)"),
+  col = c("#2b5c8f", "#b35806"),
+  lwd = c(1.4, 1.1),
+  bty = "n"
+)
+```
+
+### Controlling Forcing Adjustments and Flow Averaging
+
+Both `nwsrfs_run()` and `load_example()` control climatological forcing
+adjustments through `forcing_adj` (`TRUE`, `FALSE`, or a subset of `"map"`,
+`"mat"`, `"ptps"`, and `"pet"`) and select between instantaneous and
+period-average local runoff through `return_inst`:
+
+```{r options}
+run_unadj = load_example("NRKW1", forcing_adj = FALSE)
+run_map_only = load_example("NRKW1", forcing_adj = "map", return_inst = FALSE)
+
+c(
+  adjusted_mean_cfs = mean(run_nrkw1$sim),
+  unadjusted_mean_cfs = mean(run_unadj$sim),
+  map_only_peravg_cfs = mean(run_map_only$sim)
+)
+```
+
+## Updating Parameters
+
+`update_pars()` replaces one or more parameter values by `p_name` and re-runs
+the basin model while preserving the run options (`forcing_adj`, `shift_sf`, and
+`return_inst`).
+
+```{r update-pars}
+# Inspect current upper-zone tension water capacity (uztwm, mm)
+run_nrkw1$pars[run_nrkw1$pars$name == "uztwm", ]
+
+# Increase zone 1 uztwm and re-run
+new_pars = data.frame(p_name = "uztwm_NRKW1-1", value = 100.0)
+run_updated = update_pars(run_nrkw1, new_pars)
+
+c(baseline = mean(run_nrkw1$sim), updated = mean(run_updated$sim))
+```
+
+## Running Individual Components and Inspecting States
+
+When building custom workflows or inspecting internal snow and soil moisture
+states, call the component wrappers directly. Below we subset two water years of
+NRKW1 inputs (`1980-10-01` through `1982-09-30`), compute adjusted forcings,
+extract SNOW-17 and SAC-SMA states via `sac_snow_states()`, and route runoff:
+
+```{r low-level, fig.alt = "Simulated snow water equivalent (SWE) for the lower and upper elevation zones of NRKW1 across two water years."}
+dt_hours = 6L
+keep = seq_len(2L * 365L * 4L)
+forcing_sub = lapply(nrkw1_forcing, \(df) df[keep, ])
+upflow_sub = lapply(nrkw1_upflow, \(df) df[keep, ])
+
+# 1. Forcing adjustments + PET / ETD
+forcing_adj = fa_nwrfc(dt_hours, forcing_sub, nrkw1_pars)
+
+# 2. SNOW-17 and SAC-SMA with full state output
+states = sac_snow_states(dt_hours, forcing_adj, nrkw1_pars)
+tci = cbind(states$tci_1, states$tci_2)
+
+# 3. Unit hydrograph + Lag-K routing
+local_cfs = uh(dt_hours, tci, nrkw1_pars, sum_zones = TRUE)
+routed_cfs = lagk(dt_hours, upflow_sub, nrkw1_pars, sum_routes = TRUE)
+total_cfs = local_cfs + routed_cfs
+head(total_cfs)
+
+# Plot snow water equivalent (mm) across elevation zones
+dt_sub = as.POSIXct(
+  sprintf(
+    "%04d-%02d-%02d %02d:00:00",
+    states$year, states$month, states$day, states$hour
+  ),
+  tz = "UTC"
+)
+plot(
+  dt_sub,
+  states$swe_2,
+  type = "l",
+  col = "#2b5c8f",
+  lwd = 1.4,
+  xlab = "Date (UTC)",
+  ylab = "SWE (mm)",
+  main = "Simulated Snow Water Equivalent by Zone"
+)
+lines(dt_sub, states$swe_1, col = "#35978f", lwd = 1.2)
+legend(
+  "topright",
+  legend = c("Zone 2 (upper)", "Zone 1 (lower)"),
+  col = c("#2b5c8f", "#35978f"),
+  lwd = c(1.4, 1.2),
+  bty = "n"
+)
+```
+
+### Rain-Snow Elevation (`rsnwelev()`)
+
+When rain/snow partitioning is driven by an area-elevation curve rather than a
+precomputed `ptps` column, `rsnwelev()` computes fractional snow area per
+timestep from zone reference elevation (`elev`), temperature lapse rate (`talr`,
+degC per 100 m), and rain/snow threshold temperature (`pxtemp`, degC):
+
+```{r rsnwelev}
+zones = c("SFLN2-1", "SFLN2-2")
+sfln2_sub = lapply(sfln2_forcing[zones], \(df) df[1:40, ])
+
+rs_pars = rbind(
+  sfln2_pars[sfln2_pars$name == "elev" & sfln2_pars$zone %in% zones, ],
+  data.frame(
+    p_name = paste0(rep(c("talr_", "pxtemp_"), each = 2), zones),
+    name = rep(c("talr", "pxtemp"), each = 2),
+    type = "rsnwelev",
+    zone = rep(zones, 2),
+    value = c(0.55, 0.55, 1.0, 1.0)
+  )
+)
+
+sfln2_ptps = rsnwelev(sfln2_sub, rs_pars, area_elev_curve)
+summary(sfln2_ptps[["SFLN2-2"]]$ptps)
+```
+
+## Preprocessing Upstream Flow with `adjustq()`
+
+`adjustq()` replicates the CHPS FEWS AdjustQ preprocessor: it snaps 6-hour
+instantaneous observations to a regular grid, fills short and long observation
+gaps using simulated discharge (when supplied), and iteratively scales 6-hour
+flows to match observed mean daily volumes.
+
+```{r adjustq}
+# Subset calendar year 2010 of NRKW1 daily, instantaneous, and simulated flow
+yr10_daily = nrkw1_daily_flow[nrkw1_daily_flow$year == 2010, ]
+yr10_inst = nrkw1_inst_flow[nrkw1_inst_flow$year == 2010, ]
+yr10_sim_idx = f1$year == 2010
+yr10_sim = data.frame(
+  f1[yr10_sim_idx, c("year", "month", "day", "hour")],
+  flow_cfs = run_nrkw1$sim[yr10_sim_idx]
+)
+
+aq = adjustq(
+  daily_flow = yr10_daily,
+  inst_flow = yr10_inst,
+  sim = yr10_sim
+)
+head(aq)
+```
+
+## References
+
+Walters, G., C. Bracken, B. Gillies, L. Pope, H. Pai, S. Chokshi, V.
+Stegemiller, S. King, J. Bracken, T. Dixon, and J. Intermill. 2026. "A
+Comprehensive Calibration Framework for the Northwest River Forecast Center."
+*JAWRA Journal of the American Water Resources Association* 62 (2): e70112.
+<https://doi.org/10.1111/1752-1688.70112>.

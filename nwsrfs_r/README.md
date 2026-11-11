@@ -4,7 +4,7 @@
 <!-- badges: start -->
 
 [![CRAN
-status](https://www.r-pkg.org/badges/version/nwsrfsr)](https://cran.r-project.org/package=nwsrfsr)
+status](https://www.r-pkg.org/badges/version/nwsrfsr.png)](https://cran.r-project.org/package=nwsrfsr)
 [![Test R
 Package](https://github.com/NOAA-NWRFC/nwsrfs-hydro-models/actions/workflows/test-r.yml/badge.svg)](https://github.com/NOAA-NWRFC/nwsrfs-hydro-models/actions/workflows/test-r.yml)
 <!-- badges: end -->
@@ -21,7 +21,8 @@ chain. Also includes an [AdjustQ module](#adjustq-preprocessing) for
 preprocessing upstream flow.
 
 [Full
-documentation](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/)
+documentation](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/) \|
+`vignette("nwsrfsr")`
 
 ## Installation
 
@@ -230,26 +231,28 @@ See the API reference for each function:
 [`chanloss()`](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/chanloss.html),
 [`consuse()`](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/consuse.html)
 
-<!-- TODO Add autocalb documentation
-Updating Parameters
--------------------
-&#10;[`update_pars()`](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/update_pars.html)
-modifies parameters in an existing run and re-runs the model chain. Pass a data.frame
-with `p_name` and `value` columns:
-&#10;```r
+## Updating Parameters
+
+[`update_pars()`](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/update_pars.html)
+modifies parameters in an existing run and re-runs the model chain. Pass
+a data.frame with `p_name` and `value` columns:
+
+``` r
 run = load_example("NRKW1")
-&#10;# See current uztwm (upper zone tension water max) values
+
+# See current uztwm (upper zone tension water max) values
 nrkw1_pars[nrkw1_pars$name == "uztwm", ]
 #>            p_name  name type    zone    value
 #> 199 uztwm_NRKW1-1 uztwm  sac NRKW1-1 25.12025
 #> 346 uztwm_NRKW1-2 uztwm  sac NRKW1-2 25.05820
-&#10;# Update zone 1 uztwm and re-run
+
+# Update zone 1 uztwm and re-run
 new_pars = data.frame(p_name = "uztwm_NRKW1-1", value = 120.0)
 run2 = update_pars(run, new_pars)
-&#10;mean(run$sim)   # 3590.3
+
+mean(run$sim)   # 3590.3
 mean(run2$sim)  # 3572.0
 ```
--->
 
 ## AdjustQ Preprocessing
 
@@ -358,7 +361,8 @@ pixi run build-docs-r-readme   # render README.qmd to HTML
 pixi run build-docs            # build all docs (Python + R + R README)
 ```
 
-Or from R:
+Or from R, in a session started in `nwsrfs_r/` (pkgdown comes from the
+`rv` library activated there):
 
 ``` r
 pkgdown::build_site(pkg = "nwsrfs_r", install = FALSE, preview = FALSE)

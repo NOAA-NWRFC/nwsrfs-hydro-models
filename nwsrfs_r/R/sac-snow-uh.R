@@ -1542,10 +1542,45 @@ rsnwelev <- function(forcing, pars, ae_tbl) {
   talr_in <- zone_param("talr")
   pxtemp_in <- zone_param("pxtemp")
 
-  fortran_tbl <- matrix(NA, nrow(ae_tbl) * 2, n_zones)
+  if (any(talr_in <= 0)) {
+    stop("rsnwelev(): parameter 'talr' (lapse rate) must be strictly positive (> 0).", call. = FALSE)
+  }
+
+  ae_tbl <- as.data.frame(ae_tbl)
+  if (nrow(ae_tbl) < 2L || ncol(ae_tbl) < n_zones + 1L) {
+    stop(
+      sprintf(
+        "rsnwelev(): 'ae_tbl' must have at least 2 rows and %d columns (quantile + %d zone elevations); got %d x %d.",
+        n_zones + 1L,
+        n_zones,
+        nrow(ae_tbl),
+        ncol(ae_tbl)
+      ),
+      call. = FALSE
+    )
+  }
+
+  quantiles <- as.numeric(ae_tbl[[1]])
+  if (anyNA(quantiles) || any(quantiles < 0 | quantiles > 1) || any(diff(quantiles) <= 0)) {
+    stop(
+      "rsnwelev(): first column of 'ae_tbl' must contain strictly ascending area fractions in [0, 1].",
+      call. = FALSE
+    )
+  }
+
+  fortran_tbl <- matrix(NA_real_, nrow(ae_tbl) * 2, n_zones)
   for (i in 1:n_zones) {
-    vec_a <- ae_tbl[[1]]
-    vec_b <- ae_tbl[[i + 1]]
+    vec_a <- quantiles
+    vec_b <- as.numeric(ae_tbl[[i + 1]])
+    if (anyNA(vec_b) || any(diff(vec_b) <= 0)) {
+      stop(
+        sprintf(
+          "rsnwelev(): elevation column %d of 'ae_tbl' must contain strictly ascending values.",
+          i + 1L
+        ),
+        call. = FALSE
+      )
+    }
     fortran_tbl[, i] <- c(rbind(vec_a, vec_b))
   }
 

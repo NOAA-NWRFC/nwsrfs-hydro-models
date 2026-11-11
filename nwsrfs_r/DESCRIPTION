@@ -1,6 +1,6 @@
 Package: nwsrfsr
 Title: NWS Hydrology Models: SAC-SMA, SNOW17, UH, CONSUSE, CHANLOSS
-Version: 1.0.4
+Version: 1.1.0
 Authors@R: c(
           person(given = "Cameron",
              family = "Bracken",
@@ -56,7 +56,10 @@ LazyData: true
 LazyDataCompression: xz
 Roxygen: list(markdown = TRUE)
 Suggests:
+    knitr,
+    rmarkdown,
     testthat
+VignetteBuilder: knitr
 URL: https://github.com/NOAA-NWRFC/nwsrfs-hydro-models, https://noaa-nwrfc.github.io/nwsrfs-hydro-models/
 BugReports: https://github.com/NOAA-NWRFC/nwsrfs-hydro-models/issues
 Config/testthat/edition: 3

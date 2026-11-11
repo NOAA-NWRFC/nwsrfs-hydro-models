@@ -35,6 +35,12 @@ adjustq = function(
   if (!interp_type %in% c("ratio", "difference")) {
     stop("interp_type must be 'ratio' or 'difference'")
   }
+  if (nrow(daily_flow) == 0L || nrow(inst_flow) == 0L) {
+    stop("adjustq(): 'daily_flow' and 'inst_flow' must contain at least one row.", call. = FALSE)
+  }
+  if (!is.null(sim) && nrow(sim) == 0L) {
+    stop("adjustq(): 'sim' must contain at least one row when supplied.", call. = FALSE)
+  }
 
   # --- Build datetime indexes ---
   obs_daily_dates = as.Date(paste(daily_flow$year, daily_flow$month, daily_flow$day, sep = "-"))
@@ -193,7 +199,13 @@ adjustq_load_example = function(sim = TRUE, ...) {
           ratio_check1 = abs(start_ratio - end_ratio) > 2
           ratio_check2 = max(start_ratio, end_ratio, na.rm = TRUE) > 5
 
-          if (interp_type == "difference" || isTRUE(ratio_check1) || isTRUE(ratio_check2)) {
+          if (
+            interp_type == "difference" ||
+              !is.finite(start_ratio) ||
+              !is.finite(end_ratio) ||
+              isTRUE(ratio_check1) ||
+              isTRUE(ratio_check2)
+          ) {
             # Difference interpolation
             diffs_interp = approx(
               x = c(1, length(interp_range)),
@@ -214,7 +226,7 @@ adjustq_load_example = function(sim = TRUE, ...) {
       }
 
       # Fill large gaps
-      if (length(large_gaps) > 0) {
+      if (length(large_gaps) > 0 && blend > 0L) {
         for (g in large_gaps) {
           end_i = gap_end_idx[g]
           period = gap_sizes[g]
@@ -225,7 +237,7 @@ adjustq_load_example = function(sim = TRUE, ...) {
           end_blend_range = end_blend_start:end_i
           end_diff = working$Inst_Difference[end_i]
           if (!is.na(end_diff)) {
-            blend_frac = seq(0, 1, length.out = length(end_blend_range))
+            blend_frac = 1 - (end_i - end_blend_range) / blend
             working$AdjustQ_Inst[end_blend_range] =
               working$simulated[end_blend_range] + blend_frac * end_diff
           }
@@ -235,7 +247,7 @@ adjustq_load_example = function(sim = TRUE, ...) {
           start_blend_range = start_i:start_blend_end
           start_diff = working$Inst_Difference[start_i]
           if (!is.na(start_diff)) {
-            blend_frac = seq(1, 0, length.out = length(start_blend_range))
+            blend_frac = 1 - (start_blend_range - start_i) / blend
             working$AdjustQ_Inst[start_blend_range] =
               working$simulated[start_blend_range] + blend_frac * start_diff
           }

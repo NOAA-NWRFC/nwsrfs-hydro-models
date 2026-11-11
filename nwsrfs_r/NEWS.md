@@ -1,3 +1,16 @@
+# nwsrfsr 1.1.0
+
+* Add introductory vignette (`vignette("nwsrfsr")`) covering the full basin
+  model chain, parameter updates, component-level wrappers and states,
+  `rsnwelev()`, and `adjustq()`.
+* Validate area-elevation curve dimensions, monotonic area/elevation values,
+  and positive temperature lapse rates (`talr > 0`) in `rsnwelev()`, matching
+  the Python `RSnwElevPars` checks.
+* Guard `adjustq()` against non-finite observation/simulation ratios in small
+  gap interpolation (falling back to difference interpolation when simulated
+  flow is zero) and preserve observed gap endpoints when `blend = 0` or a blend
+  window is clipped at the series boundary.
+
 # nwsrfsr 1.0.4
 
 * Fix `forcing_adj` being ignored by `load_example()` and `nwsrfs_run()`. The
