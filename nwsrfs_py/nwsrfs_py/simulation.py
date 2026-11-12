@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from . import nwsrfs
 from . import utils
-#import pdb; pdb.set_trace()
+#import pdb; pdb.set_trace() | breakpoint()
 
 #create a new type for sacsnow_tci output
 SACSnowTCI = NewType('SACSnowTCI',pd.DataFrame)
@@ -65,6 +65,25 @@ class _NwrfcAcPrep:
       Numbering must be consecutive from ``uh_0`` within each zone.
       Values are in cfs/in at the model timestep; shorter zone hydrographs
       are padded with trailing NaN values.
+
+    Supply either one gamma or ordinate UH parameter set for all SAC-Snow
+    zones, or one UH parameter set per SAC-Snow zone. A gamma set contains
+    ``unit_shape``, ``unit_toc``, and ``unit_toc_adj``; an ordinate set
+    contains the numbered ``uh_0``, ``uh_1``, ... parameters.
+
+    In both cases, provide exactly one ``zone_area`` parameter (in km2)
+    with ``type == 'uh'`` for every SAC-Snow zone, using that zone's name
+    in the ``zone`` column. These individual areas are required by forcing
+    adjustments even when the UH parameters are shared. For a shared UH,
+    the areas are summed before being passed to the UH dataclass, and
+    ``return_sf()`` area-weights TCI across zones before routing it through the UH.
+    Supplied ordinates for a shared UH must represent the combined area.
+
+    ``shared_uh_logic`` is ``True`` only when multiple SAC-Snow zones use
+    one UH parameter set. A single SAC-Snow zone is not considered shared;
+    its UH parameter set must use the same zone name. When multiple UH
+    parameter sets are supplied, their zone names must match the SAC-Snow
+    zone names.
 
     Providing both ``unit_shape`` and any numbered ``uh_<number>`` entry
     raises :exc:`ValueError` because the method is ambiguous. If neither
@@ -279,30 +298,50 @@ class _NwrfcAcPrep:
         '''
 
         #Get zone names and number , if present
-        self.zone_names = tuple(self.pars.loc[(self.pars.zone.str.contains('-'))].zone.sort_values().unique())
+        self.zone_names = tuple(self.pars.loc[(self.pars.zone.str.contains('-'))&
+                                (self.pars.type == 'sac')].zone.sort_values().unique())
         self.n_zones = len(self.zone_names)
         if self.n_zones > 0:
             self.localflow_logic = True
         else:
             self.localflow_logic = False
         
-        #Identify the unit hydrograph from parameter names in the UH rows.
-        uh_names = self.pars.loc[self.pars.type == 'uh', 'name']
-        has_shape = uh_names.eq('unit_shape').any()
-        has_ordinates = uh_names.str.fullmatch(r'uh_[0-9]+', na=False).any()
-        if has_shape and has_ordinates:
-            raise ValueError(
-                "UH parameters are ambiguous: unit_shape and uh_<number> entries "
-                "cannot both be provided in rows where type == 'uh'.")
-        if has_shape:
-            self.uh_type = 'gamma'
-        elif uh_names.eq('uh_0').any():
-            self.uh_type = 'ordinate'
+        if self.localflow_logic:
+            #Identify the unit hydrograph from parameter names in the UH rows.
+            uh_names = self.pars.loc[self.pars.type == 'uh', 'name']
+            has_shape = uh_names.eq('unit_shape').any()
+            has_ordinates = uh_names.str.fullmatch(r'uh_[0-9]+', na=False).any()
+            if has_shape and has_ordinates:
+                raise ValueError(
+                    "UH parameters are ambiguous: unit_shape and uh_<number> entries "
+                    "cannot both be provided in rows where type == 'uh'.")
+            if has_shape:
+                self.uh_type = 'gamma'
+            elif uh_names.eq('uh_0').any():
+                self.uh_type = 'ordinate'
+            else:
+                raise ValueError(
+                    "UH parameters (type == 'uh') must include unit_shape for a gamma "
+                    "unit hydrograph or uh_<number> entries starting with uh_0 "
+                    "for an ordinate unit hydrograph.")
+
+            #Get names of UH zone names
+            marker = 'unit_shape' if self.uh_type == 'gamma' else 'uh_0'
+            self.uh_zone_names = tuple(
+                self.pars.loc[
+                    (self.pars.type == 'uh') & (self.pars.name == marker),
+                    'zone',
+                ].sort_values().unique()
+            )
+            self.shared_uh_logic = (len(self.uh_zone_names) == 1) & (len(self.zone_names) != 1)
+            #Multiple hydrographs must match the SAC-Snow zones.
+            if not self.shared_uh_logic:
+                if set(self.uh_zone_names) != set(self.zone_names):
+                    raise ValueError(
+                        "Provide one shared UH parameter set or one set per SAC-Snow zone."
+                    )
         else:
-            raise ValueError(
-                "UH parameters (type == 'uh') must include unit_shape for a gamma "
-                "unit hydrograph or uh_<number> entries starting with uh_0 "
-                "for an ordinate unit hydrograph.")
+            self.uh_type = self.uh_zone_names = self.shared_uh_logic = None
 
         #Catalog routing, if present
         if self.upflow_logic:
@@ -452,6 +491,25 @@ class NwsrfsRun(_NwrfcAcPrep,
       Values are in cfs/in at the model timestep; shorter zone hydrographs
       are padded with trailing NaN values.
 
+    Supply either one gamma or ordinate UH parameter set for all SAC-Snow
+    zones, or one UH parameter set per SAC-Snow zone. A gamma set contains
+    ``unit_shape``, ``unit_toc``, and ``unit_toc_adj``; an ordinate set
+    contains the numbered ``uh_0``, ``uh_1``, ... parameters.
+
+    In both cases, provide exactly one ``zone_area`` parameter (in km2)
+    with ``type == 'uh'`` for every SAC-Snow zone, using that zone's name
+    in the ``zone`` column. These individual areas are required by forcing
+    adjustments even when the UH parameters are shared. For a shared UH,
+    the areas are summed before being passed to the UH dataclass, and
+    ``return_sf()`` area-weights TCI across zones before routing it through the UH.
+    Supplied ordinates for a shared UH must represent the combined area.
+
+    ``shared_uh_logic`` is ``True`` only when multiple SAC-Snow zones use
+    one UH parameter set. A single SAC-Snow zone is not considered shared;
+    its UH parameter set must use the same zone name. When multiple UH
+    parameter sets are supplied, their zone names must match the SAC-Snow
+    zone names.
+
     Providing both ``unit_shape`` and any numbered ``uh_<number>`` entry
     raises :exc:`ValueError` because the method is ambiguous. If neither
     ``unit_shape`` nor ``uh_0`` is present, :exc:`ValueError` is raised because
@@ -499,6 +557,10 @@ class NwsrfsRun(_NwrfcAcPrep,
             column; otherwise ``False`` and area-elevation data is required.
         area_elev_logic (bool): ``True`` when a single ``area_elev*`` CSV is
             present in the input file inventory, regardless of whether it is loaded.
+        shared_uh_logic (bool | None): ``True`` when multiple SAC-Snow zones
+            share one UH parameter set; their TCI is summed before routing.
+            ``False`` for a single SAC-Snow zone or one UH per zone.
+            ``None`` when there is no local SAC-Snow runoff.
         uh_type (str): Unit hydrograph method determined from parameter names
             in rows where ``type == 'uh'``: ``'gamma'`` for ``unit_shape`` or
             ``'ordinate'`` for numbered ``uh_<number>`` entries including ``uh_0``.
@@ -956,15 +1018,21 @@ class NwsrfsRun(_NwrfcAcPrep,
         if not self.localflow_logic:
             return None
 
-        names = ['zone_area', 'unit_shape', 'unit_toc', 'unit_toc_adj']
+        area = self._parameter_arrays(
+            'uh', ['zone_area'], self.zone_names, 'UH'
+            )['zone_area']
 
-        pars_dict = self._parameter_arrays('uh', names, self.zone_names, 'GammaUh')
+        if self.shared_uh_logic:
+            area = np.array([area.sum()])
+
+        names = ['unit_shape', 'unit_toc', 'unit_toc_adj']
+        pars_dict = self._parameter_arrays('uh', names, self.uh_zone_names, 'GammaUh')
 
         #Apply toc adjustment to toc parameter
         toc = pars_dict['unit_toc'] * pars_dict['unit_toc_adj'] 
 
         #Initate gammauh_pars data class
-        self.uh_pars = nwsrfs.GammaUhPars(dt_hours = self.dt_hours, area = pars_dict['zone_area'], 
+        self.uh_pars = nwsrfs.GammaUhPars(dt_hours = self.dt_hours, area = area,
                         shape = pars_dict['unit_shape'], toc = toc)
 
         #Initiate GammaUh wrapper class
@@ -973,8 +1041,9 @@ class NwsrfsRun(_NwrfcAcPrep,
     def _ordinatesuh_run(self, validate: bool = True):
         """Prepare and initialize the supplied-ordinate unit hydrograph.
 
-        Rows with ``type == 'uh'`` must contain ``zone_area`` and numbered
-        ``uh_0``, ``uh_1``, ... parameters for each modeled zone. Ordinate
+        Rows with ``type == 'uh'`` must contain ``zone_area`` for every
+        SAC-Snow zone and numbered ``uh_0``, ``uh_1``, ... parameters for
+        each UH zone. A shared UH uses the sum of the SAC-Snow zone areas. Ordinate
         numbers must be consecutive from zero and values are in cfs/in at
         ``dt_hours`` intervals. Shorter zone hydrographs are padded with NaN.
 
@@ -991,10 +1060,12 @@ class NwsrfsRun(_NwrfcAcPrep,
 
         area = self._parameter_arrays(
             'uh', ['zone_area'], self.zone_names, 'OrdinatesUh')['zone_area']
+        if self.shared_uh_logic:
+            area = np.array([area.sum()])
         rows = self.pars.loc[(self.pars.type == 'uh') &
                              self.pars.name.str.fullmatch(r'uh_[0-9]+', na=False)]
         zone_ordinates = []
-        for zone in self.zone_names:
+        for zone in self.uh_zone_names:
             names = sorted(rows.loc[rows.zone == zone, 'name'].unique(),
                            key=lambda name: int(name.split('_')[1]))
             if not names or names != [f'uh_{i}' for i in range(len(names))]:
@@ -1004,7 +1075,7 @@ class NwsrfsRun(_NwrfcAcPrep,
             ordin_dict = self._parameter_arrays('uh', names, zone, 'OrdinatesUh')
             zone_ordinates.append(np.array([ordin_dict[name].item() for name in names]))
 
-        ordinates = np.full((max(map(len, zone_ordinates)), len(self.zone_names)), np.nan)
+        ordinates = np.full((max(map(len, zone_ordinates)), len(self.uh_zone_names)), np.nan)
         for i, values in enumerate(zone_ordinates):
             ordinates[:len(values), i] = values
         self.uh_pars = nwsrfs.OrdinatesUhPars(
@@ -1018,7 +1089,7 @@ class NwsrfsRun(_NwrfcAcPrep,
         Args:
             tstep (int): Specifies timestep of unit hydrograph (units: hours).
         Returns:
-             pd.DataFrame: A DataFrame containing unit hydrograph (uh) with a column for each zone (units: cfs/in).
+             pd.DataFrame: A DataFrame containing unit hydrograph (uh) with a column for each UH parameter set (units: cfs/in).
         '''
 
         #If SAC-SMA and SNOW17 parameter don't exist return none
@@ -1028,7 +1099,7 @@ class NwsrfsRun(_NwrfcAcPrep,
         raw_output = self._uh.return_uh(tstep)
 
         #Rename column of Dataframe to correpond to zone names
-        return raw_output.set_axis(self.zone_names, axis=1)
+        return raw_output.set_axis(self.uh_zone_names, axis=1)
 
     @property
     def uh(self) -> pd.DataFrame:
@@ -1044,26 +1115,35 @@ class NwsrfsRun(_NwrfcAcPrep,
         raw_output = self._uh.uh
 
         #Rename column of Dataframe to correpond to zone names
-        return raw_output.set_axis(self.zone_names, axis=1)
+        return raw_output.set_axis(self.uh_zone_names, axis=1)
 
     def return_sf(self,tci:SACSnowTCI):
         '''
         Generates a timeseries of streamflow as a DataFrame using the selected UH model and input ``tci``.
+        A shared UH routes the area-weighted mean TCI across all SAC-Snow zones.
 
         Args:
             tci (SACSnowTCI): Custom type alias for total channel inflow from :class:`~nwsrfs_py.nwsrfs.SacSnow`  (units:  mm).
         Returns:
-            pd.DataFrame: A DataFrame containing streamflow with a column for each zone (units: cfs).
+            pd.DataFrame: A DataFrame containing streamflow with a column for each UH parameter set (units: cfs).
         '''
 
         #If SAC-SMA and SNOW17 parameter don't exist return none
         if not self.localflow_logic:
             return None
 
+        if self.shared_uh_logic:
+            if len(tci.columns) != self.n_zones or set(tci.columns) != set(self.zone_names):
+                raise ValueError("tci must contain exactly one column per SAC-Snow zone.")
+            areas = self._parameter_arrays(
+                'uh', ['zone_area'], self.zone_names, 'UH')['zone_area']
+            weights = pd.Series(areas / areas.sum(), index=self.zone_names)
+            tci = tci.mul(weights, axis=1).sum(axis=1).to_frame()
+
         #note:  call is the same whether using GammaUH or OrdinatesUH
         raw_output = self._uh.return_sf(tci, return_inst=self.return_inst)
         #Rename column of Dataframe to correpond to zone names
-        return raw_output.set_axis(self.zone_names, axis=1)
+        return raw_output.set_axis(self.uh_zone_names, axis=1)
 
     @property
     def sacsnow_sf(self)-> pd.DataFrame:
