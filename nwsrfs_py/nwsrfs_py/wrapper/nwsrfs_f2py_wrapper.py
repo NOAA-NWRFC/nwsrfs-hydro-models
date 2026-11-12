@@ -185,10 +185,9 @@ class SacSnowPars:
         if not utils._validate_array_length(self.alat,self.elev,self.init_swe,self.peadj,self.pxadj,*self.sac_pars,*self.snow_pars):
             raise ValueError("SAC-SMA and Snow17 parameter arrays must have the same length")
 
-        #check that sac-sma and snow17 parameters are equal or greater than zero
-        #if np.vstack([self.init_swe,self.peadj,self.pxadj,*self.sac_pars,*self.snow_pars]).min() < 0:
-        if not utils._validate_positive_values(self.init_swe,self.peadj,self.pxadj,*self.sac_pars,*self.snow_pars):
-            raise ValueError("SAC-SMA and Snow17 parameters (excluding elev and alat) must be equal or greater than zero")    
+        #check nonnegative SAC-SMA and SNOW-17 parameters
+        if not utils._validate_positive_values(self.init_swe,self.peadj,self.pxadj,*self.sac_pars[:14],*self.sac_pars[15:],*self.snow_pars):
+            raise ValueError("SAC-SMA and Snow17 parameters (excluding elev, alat, and SIDE) must be equal or greater than zero")
 
         #if elev and alat are below zero raise warning
         if not utils._validate_positive_values(self.elev,self.alat):
