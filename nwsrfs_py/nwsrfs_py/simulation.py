@@ -27,6 +27,8 @@ class _NwrfcAcPrep:
 
     If no ``run_dir`` is provided, the first ``'results_*'`` directory found within the ``autocalb_dir`` path will be used.
 
+    Supported model time steps are 1, 2, 3, 4, 6, 8, 12, or 24 hours.
+
     .. rubric:: PTPS input
 
     The ``ptps`` column supplies the fraction of precipitation falling as snow
@@ -451,6 +453,8 @@ class NwsrfsRun(_NwrfcAcPrep,
     Sample calibration data is available on `Zenodo <https://doi.org/10.5281/zenodo.18829935>`_.
 
     If no ``run_dir`` is provided, the first ``'results_*'`` directory found within the ``autocalb_dir`` path will be used.
+
+    Supported model time steps are 1, 2, 3, 4, 6, 8, 12, or 24 hours.
 
     .. rubric:: PTPS input
 
