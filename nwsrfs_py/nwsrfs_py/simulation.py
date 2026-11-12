@@ -671,39 +671,48 @@ class NwsrfsRun(_NwrfcAcPrep,
             self._consuse_run()
 
     def update_pars(self, new_pars: pd.DataFrame):
-        '''
-        Updates the ``pars`` file with new values.  
+        """Update existing parameter values and rebuild the models atomically.
 
-        **DataFrame Format**
+        ``new_pars`` must contain ``p_name`` and ``value`` columns. Parameter
+        names must be non-null, unique, and present in ``self.pars``. Additional
+        columns are ignored; existing parameter metadata is preserved, including
+        normalized CHANLOSS names and zones. Missing values retain the old value.
 
-        ``new_pars`` must have a ``'p_name'`` and ``'value'`` column. All values in the ``'p_name'`` columns must map to an row in the exiting ``pars`` DataFrame attribute.
+        This method updates values only, not model types or zone structure.
+        If validation or model setup fails, the existing model is unchanged.
 
         Args:
-            new_pars (pd.DataFrame): dataframe with parameters to update nwsrfs models
-        '''
+            new_pars (pd.DataFrame): Parameters to update.
 
-        new_pars = new_pars.sort_values('p_name')
-        #Make par file edits for CHANLOSS
-        new_pars = self._cl_parfile_edits(new_pars)
+        Raises:
+            TypeError: The input is not a DataFrame.
+            ValueError: Required columns are missing, parameter names are invalid,
+                or the updated model parameters fail validation.
+        """
+        if not isinstance(new_pars, pd.DataFrame):
+            raise TypeError('new_pars must be a pandas DataFrame.')
+        if not new_pars.columns.is_unique:
+            raise ValueError('new_pars must have unique column names.')
+        if not {'p_name', 'value'}.issubset(new_pars.columns):
+            raise ValueError('new_pars must contain p_name and value columns.')
+        if new_pars.p_name.isna().any() or new_pars.p_name.duplicated().any():
+            raise ValueError('new_pars p_name values must be non-null and unique.')
+        if self.pars.p_name.isna().any() or self.pars.p_name.duplicated().any():
+            raise ValueError('Existing pars p_name values must be non-null and unique.')
+        if not new_pars.p_name.isin(self.pars.p_name).all():
+            raise ValueError('All p_name values in new_pars must exist in pars.')
+        if new_pars.empty:
+            return
 
-        #If the p_name column can't be mapped to p_name values in the existing ``pars`` attribute, then throw a error
-        if not set(new_pars.p_name).issubset(self.pars.p_name):
-            msg = 'All values in the p_value column of "new_pars" argument must exist in the ``pars`` attribute.'
-            raise ValueError(msg)
+        #Build in isolation: setup can mutate nested forcing data before failing.
+        candidate = copy.deepcopy(self)
+        replacements = candidate.pars.p_name.map(new_pars.set_index('p_name').value)
+        candidate.pars['value'] = replacements.where(
+            replacements.notna(), candidate.pars.value)
+        candidate.nwsrfs_run()
 
-        #Get old parameter dataframe and rename values column
-        old_pars = self.pars.rename({'value':'old_value'},axis=1)
-
-        #Merge old parameter file with new parameter file
-        pars = old_pars.merge(new_pars.loc[:,['p_name','value']],on='p_name',how='left')
-
-        #For row with which no new value was provided use the old value
-        pars['value'] = pars.value.where(~pars.value.isna(),pars.old_value)
-        #Reassign parameter attribute
-        self.pars = pars.drop('old_value',axis=1)
-
-        #Rerun all the NWRFS models with new pars file
-        self.nwsrfs_run()
+        #Commit only after every model has been successfully initialized.
+        self.__dict__.update(candidate.__dict__)
 
     def _parameter_arrays(self, par_type, names, zones, model=None):
         """Read required parameters, checking for missing or duplicate rows.
