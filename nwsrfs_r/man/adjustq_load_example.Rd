@@ -7,12 +7,12 @@
 adjustq_load_example(sim = TRUE, ...)
 }
 \arguments{
-\item{sim}{Logical; include simulation in AdjustQ. Default TRUE.}
+\item{sim}{Logical; include simulation in AdjustQ. Default \code{TRUE}.}
 
-\item{...}{Additional arguments passed to \code{\link[=adjustq]{adjustq()}}}
+\item{...}{Additional arguments passed to \code{\link[=adjustq]{adjustq()}}.}
 }
 \value{
-A data.frame (see \code{\link[=adjustq]{adjustq()}})
+A \code{data.frame} (see \code{\link[=adjustq]{adjustq()}}).
 }
 \description{
 Runs AdjustQ using bundled NRKW1 data.
