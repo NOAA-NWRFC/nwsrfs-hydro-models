@@ -24,7 +24,7 @@ jobs:
       # --- R toolchain (not managed by pixi, see dev/README.md) ---
 
       - name: Remove local rv activation files
-        run: rm -rf nwsrfs_r/rv nwsrfs_r/.Rprofile
+        run: rm -rf nwsrfsr/rv nwsrfsr/.Rprofile
 
       - uses: r-lib/actions/setup-pandoc@v2
 
@@ -40,10 +40,10 @@ jobs:
         with:
           extra-packages: any::pkgdown
           needs: check
-          working-directory: nwsrfs_r
+          working-directory: nwsrfsr
 
       - name: Install R package
-        working-directory: nwsrfs_r
+        working-directory: nwsrfsr
         run: |
           # Compile with the system R toolchain. Doing this through `pixi run install-r`
           # instead builds the package with conda-forge's gfortran against the system R,
@@ -61,13 +61,13 @@ jobs:
         run: pixi run sphinx-build -b html nwsrfs_py/docs/source _site/python
 
       - name: Build pkgdown site (R package)
-        working-directory: nwsrfs_r
+        working-directory: nwsrfsr
         run: Rscript -e 'pkgdown::build_site(install = FALSE, preview = FALSE)'
 
       - name: Stage pkgdown site
         run: |
           mkdir -p _site/r
-          cp -R nwsrfs_r/docs/. _site/r/
+          cp -R nwsrfsr/docs/. _site/r/
 
       - name: Build top-level README.html
         run: pixi run pandoc README.md -s -o _site/README.html

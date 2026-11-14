@@ -3,11 +3,11 @@
 #
 # These compare live R model output against Python-generated baselines
 # bundled in nwsrfs_py. They live outside the package test suite (rather than
-# nwsrfs_r/tests/testthat/) because they depend on another package's example
+# nwsrfsr/tests/testthat/) because they depend on another package's example
 # data, and the simulation comparisons each run a full ~43-year simulation
 # that is too slow for routine `R CMD check`/CRAN runs.
 #
-# Run with cwd nwsrfs_r so .Rprofile activates rv:
+# Run with cwd nwsrfsr so .Rprofile activates rv:
 #   Rscript ../dev/test-cross-package.R
 # or via:
 #   pixi run test-cross
@@ -24,7 +24,7 @@ py_data_dir = file.path(repo_root, "nwsrfs_py", "nwsrfs_py", "data")
 if (!dir.exists(py_data_dir)) {
   stop(
     "Python package data directory not found at ", py_data_dir,
-    ". Run this script with cwd set to nwsrfs_r (e.g. `pixi run test-cross`)."
+    ". Run this script with cwd set to nwsrfsr (e.g. `pixi run test-cross`)."
   )
 }
 

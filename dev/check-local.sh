@@ -55,11 +55,11 @@ fi
 # -- exactly the isolation CRAN checks under (see the bounds notes below).
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
-cp -R "$REPO_ROOT/nwsrfs_r" "$WORK/nwsrfs_r"
-rm -rf "$WORK/nwsrfs_r/src" && cp -R "$REPO_ROOT/model_source" "$WORK/nwsrfs_r/src"
-rm -f "$WORK/nwsrfs_r/NOTICE" && cp "$REPO_ROOT/NOTICE" "$WORK/nwsrfs_r/NOTICE"
-rm -rf "$WORK/nwsrfs_r/rv" "$WORK/nwsrfs_r/.Rprofile"
-find "$WORK/nwsrfs_r" -type f \
+cp -R "$REPO_ROOT/nwsrfsr" "$WORK/nwsrfsr"
+rm -rf "$WORK/nwsrfsr/src" && cp -R "$REPO_ROOT/model_source" "$WORK/nwsrfsr/src"
+rm -f "$WORK/nwsrfsr/NOTICE" && cp "$REPO_ROOT/NOTICE" "$WORK/nwsrfsr/NOTICE"
+rm -rf "$WORK/nwsrfsr/rv" "$WORK/nwsrfsr/.Rprofile"
+find "$WORK/nwsrfsr" -type f \
   \( -name '*.o' -o -name '*.so' -o -name '*.dylib' -o -name '*.a' \
   -o -name '*.mod' -o -name '*.smod' -o -name '*.obj' -o -name '*.dll' \
   -o -name '*.lib' \) -delete
@@ -68,7 +68,7 @@ find "$WORK/nwsrfs_r" -type f \
 cat > "$WORK/run.sh" <<'CONTAINER'
 set -e
 check="$1"
-cp -R /work/nwsrfs_r /tmp/pkg
+cp -R /work/nwsrfsr /tmp/pkg
 mkdir -p ~/.R
 
 case "$check" in

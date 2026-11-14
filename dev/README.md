@@ -38,16 +38,16 @@ Two one time prerequisites:
 
 2. The R development packages (`devtools`, `ggplot2`, `knitr`, `pkgdown`,
    `quarto`, `roxygen2`, `testthat`), managed declaratively by
-   [rv](https://github.com/A2-ai/rv) via `nwsrfs_r/rproject.toml` and locked in
-   `nwsrfs_r/rv.lock`:
+   [rv](https://github.com/A2-ai/rv) via `nwsrfsr/rproject.toml` and locked in
+   `nwsrfsr/rv.lock`:
 
-       cd nwsrfs_r && rv sync
+       cd nwsrfsr && rv sync
 
 `rproject.toml` points to Posit Package Manager
 (`https://packagemanager.posit.co/cran/latest`), which serves precompiled
 binaries for macOS, Windows, and major Linux distros, so `rv sync` installs in
-seconds without compiling from source. `nwsrfs_r/.Rprofile` activates the
-project library under `nwsrfs_r/rv/library/` whenever R starts in `nwsrfs_r/`.
+seconds without compiling from source. `nwsrfsr/.Rprofile` activates the
+project library under `nwsrfsr/rv/library/` whenever R starts in `nwsrfsr/`.
 The pixi R tasks (`pixi run test-r` and friends) use the system R and this `rv`
 library; only the Python/docs toolchain comes from conda-forge.
 

@@ -40,13 +40,13 @@ Or the development version from R:
 
 ```r
 # install.packages("devtools")
-devtools::install_github("NOAA-NWRFC/nwsrfs-hydro-models", subdir = "nwsrfs_r")
+devtools::install_github("NOAA-NWRFC/nwsrfs-hydro-models", subdir = "nwsrfsr")
 ```
 
 Or from a local clone:
 
 ```bash
-R CMD INSTALL nwsrfs_r
+R CMD INSTALL nwsrfsr
 ```
 
 Installing from source requires `gfortran` for compiling the Fortran code.
@@ -380,7 +380,7 @@ pixi run check-r-cran    # CRAN submission check on built tarball
 Or from R:
 
 ```r
-devtools::test("nwsrfs_r")
+devtools::test("nwsrfsr")
 ```
 
 Documentation
@@ -396,10 +396,10 @@ pixi run build-docs-r-readme   # render README.qmd to HTML
 pixi run build-docs            # build all docs (Python + R + R README)
 ```
 
-Or from R, in a session started in `nwsrfs_r/` (pkgdown comes from the `rv` library activated there):
+Or from R, in a session started in `nwsrfsr/` (pkgdown comes from the `rv` library activated there):
 
 ```r
-pkgdown::build_site(pkg = "nwsrfs_r", install = FALSE, preview = FALSE)
+pkgdown::build_site(pkg = "nwsrfsr", install = FALSE, preview = FALSE)
 ```
 
 Legal

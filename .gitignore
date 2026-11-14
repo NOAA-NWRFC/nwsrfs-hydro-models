@@ -63,18 +63,18 @@ __pycache__
 !.github/workflows/*.yaml
 .github/copilot-instructions.md
 .github/instructions/
-!nwsrfs_r/.gitignore
-!nwsrfs_r/.Rbuildignore
-!nwsrfs_r/.Rprofile
-!nwsrfs_r/rv/.gitignore
-nwsrfs_r/rv/library/
-nwsrfs_r/.github/
+!nwsrfsr/.gitignore
+!nwsrfsr/.Rbuildignore
+!nwsrfsr/.Rprofile
+!nwsrfsr/rv/.gitignore
+nwsrfsr/rv/library/
+nwsrfsr/.github/
 setup_*.sh
 *_report.md
 *_checklist.md
 *_response.md
 *-notes.md
-nwsrfs_r/LICENSE.md
+nwsrfsr/LICENSE.md
 nwsrfs_py/build/
 .pytest_cache/
 
@@ -89,11 +89,11 @@ nwsrfs_py/build/
 /nwsrfs_py/docs/_build/
 
 # R pkgdown site output
-/nwsrfs_r/docs/
-/nwsrfs_r/docs/_pkgdown.yml
+/nwsrfsr/docs/
+/nwsrfsr/docs/_pkgdown.yml
 
 #pypi distribution
 /nwsrfs_py/dist/*
 
-# src/Makevars is generated from Makevars.in by nwsrfs_r/configure
+# src/Makevars is generated from Makevars.in by nwsrfsr/configure
 model_source/Makevars

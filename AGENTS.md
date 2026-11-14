@@ -13,7 +13,7 @@ Guidance for coding agents working in `nwsrfs-hydro-models`.
 ## Repository Layout and Ownership
 
 - `model_source/`: Shared Fortran 77/90 source (`.f`, `.f90`), R's `Makevars.in` and `Makevars.win`, and `init.c`. Both packages symlink `src -> ../model_source`, so any Fortran change affects both R and Python.
-- `nwsrfs_r/`: R package (`nwsrfsr`, on CRAN), maintained by Cameron Bracken. Calls Fortran via `.Fortran()`.
+- `nwsrfsr/`: R package (`nwsrfsr`, on CRAN), maintained by Cameron Bracken. Calls Fortran via `.Fortran()`.
 - `nwsrfs_py/`: Python package (`nwsrfspy`, on PyPI), maintained by Geoffrey Walters. Built with `meson-python` and `f2py`. Ask before modifying `nwsrfs_py/` when working on R or repo-level tasks.
 - `dev/`: Maintainer scripts and developer documentation (`dev/README.md`, `dev/test-cross-package.R`, `dev/check-local.sh`, `dev/rhub-submit.sh`).
 - `pages/`: Landing page assets for the combined GitHub Pages documentation site.
@@ -21,11 +21,11 @@ Guidance for coding agents working in `nwsrfs-hydro-models`.
 ## Environment Setup
 
 - **Pixi (`pixi.toml`)**: Orchestrates tasks across the monorepo and manages the Python, Fortran (conda-forge), Sphinx, and Quarto toolchains.
-- **R (`rig` + `rv`)**: R itself is not managed by `pixi`. Use system R (installed via `rig`) together with [`rv`](https://github.com/A2-ai/rv). `nwsrfs_r/rproject.toml` and `nwsrfs_r/rv.lock` manage R development dependencies (`devtools`, `ggplot2`, `knitr`, `pkgdown`, `quarto`, `roxygen2`, `testthat`) from Posit Package Manager (`https://packagemanager.posit.co/cran/latest`).
+- **R (`rig` + `rv`)**: R itself is not managed by `pixi`. Use system R (installed via `rig`) together with [`rv`](https://github.com/A2-ai/rv). `nwsrfsr/rproject.toml` and `nwsrfsr/rv.lock` manage R development dependencies (`devtools`, `ggplot2`, `knitr`, `pkgdown`, `quarto`, `roxygen2`, `testthat`) from Posit Package Manager (`https://packagemanager.posit.co/cran/latest`).
   ```bash
-  cd nwsrfs_r && rv sync
+  cd nwsrfsr && rv sync
   ```
-  `nwsrfs_r/.Rprofile` activates the project library under `nwsrfs_r/rv/library/` whenever R runs with `nwsrfs_r/` as the working directory (including `pixi` R tasks). On macOS, CRAN R expects `/opt/gfortran` (see `dev/README.md`).
+  `nwsrfsr/.Rprofile` activates the project library under `nwsrfsr/rv/library/` whenever R runs with `nwsrfsr/` as the working directory (including `pixi` R tasks). On macOS, CRAN R expects `/opt/gfortran` (see `dev/README.md`).
 
 ## Common Commands
 
@@ -37,8 +37,8 @@ pixi run install-r             # R CMD INSTALL into the rv library
 pixi run test-r                # testthat suite
 pixi run check-r               # R CMD build + R CMD check --no-manual
 pixi run check-r-cran          # R CMD build + R CMD check --as-cran
-pixi run build-docs-r          # pkgdown site (nwsrfs_r/docs/)
-pixi run build-docs-r-readme   # render nwsrfs_r/README.qmd to README.md and README.html
+pixi run build-docs-r          # pkgdown site (nwsrfsr/docs/)
+pixi run build-docs-r-readme   # render nwsrfsr/README.qmd to README.md and README.html
 
 # Python package
 pixi run install-py            # editable pip install (--no-build-isolation)
@@ -53,12 +53,12 @@ dev/check-local.sh             # Docker LTO and -fcheck=all Fortran bounds check
 When regenerating R documentation (`man/` and `NAMESPACE`) from roxygen comments:
 
 ```bash
-cd nwsrfs_r && Rscript -e 'roxygen2::roxygenize()'
+cd nwsrfsr && Rscript -e 'roxygen2::roxygenize()'
 ```
 
 ## Architecture Notes
 
-### R Package (`nwsrfs_r/`)
+### R Package (`nwsrfsr/`)
 - `R/sac-snow-uh.R`: Low-level `.Fortran()` wrappers (`sac_snow()`, `uh()`, `lagk()`, `chanloss()`, `consuse()`, `fa_nwrfc()`, `rsnwelev()`, `pet_ind()`).
 - `R/nwsrfs-run.R`: High-level `nwsrfs_run()`, `load_example()`, and `update_pars()` workflow.
 - `R/adjustq.R`: `adjustq()` and `adjustq_load_example()` for observed daily/instantaneous flow adjustment.
@@ -74,7 +74,7 @@ cd nwsrfs_r && Rscript -e 'roxygen2::roxygenize()'
 ### Shared Fortran (`model_source/`)
 - **Module order**: `types.f90` -> `sorting.f90` -> `stats.f90` -> `utilities.f90` must compile in order; explicit dependencies live in `Makevars.in` and `Makevars.win`.
 - **Legacy Fortran 77**: `fka7.f`, `flag7.f`, `pin7.f`, `ex57.f`, and `exsnow19.f` use legacy constructs and compile via explicit rules without `-std=f95`. Keep `$(PKG_FFLAGS)` on those rules.
-- **Floating-point contraction**: Cross-platform reproducibility requires `-ffp-contract=off`. On Unix, `nwsrfs_r/configure` probes the Fortran compiler and substitutes `@FPCONTRACT@` into `src/Makevars` from `model_source/Makevars.in` (`src/Makevars` is `.Rbuildignore`d and removed by `cleanup`). Never put literal `-f*` flags in a shipped `Makevars`, as CRAN rejects them as non-portable.
+- **Floating-point contraction**: Cross-platform reproducibility requires `-ffp-contract=off`. On Unix, `nwsrfsr/configure` probes the Fortran compiler and substitutes `@FPCONTRACT@` into `src/Makevars` from `model_source/Makevars.in` (`src/Makevars` is `.Rbuildignore`d and removed by `cleanup`). Never put literal `-f*` flags in a shipped `Makevars`, as CRAN rejects them as non-portable.
 - **No nested callbacks**: Do not pass Fortran internal (nested) procedures as callbacks; `gfortran` emits executable-stack trampolines (`GNU_STACK` `RWE`) that fail to load on Debian/CRAN. Use module-level procedures instead.
 
 ## Code Style

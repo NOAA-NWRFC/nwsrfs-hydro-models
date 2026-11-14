@@ -1,9 +1,9 @@
 # %%
 # Prepare NRKW1 and SFLN2 example data from Python package CSVs
-# Run from repo root: Rscript nwsrfs_r/data-raw/prepare_example_data.R
+# Run from repo root: Rscript nwsrfsr/data-raw/prepare_example_data.R
 
 py_data = file.path("nwsrfs_py", "nwsrfs_py", "data")
-r_data = file.path("nwsrfs_r", "data")
+r_data = file.path("nwsrfsr", "data")
 
 # %%
 # --- NRKW1 ---
@@ -80,7 +80,7 @@ cat("SFLN2 data saved\n")
 # --- Area-elevation curve for SFLN2 (used by rsnwelev) ---
 # col1 = cumulative area quantile, subsequent cols = elevation per zone (ft)
 area_elev_curve = read.csv(
-  file.path("nwsrfs_r", "data-raw", "area_elev_curve.csv"),
+  file.path("nwsrfsr", "data-raw", "area_elev_curve.csv"),
   check.names = FALSE,
   stringsAsFactors = FALSE
 )

@@ -32,7 +32,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # The package lives in nwsrfs_r/ and reaches the shared Fortran source
+      # The package lives in nwsrfsr/ and reaches the shared Fortran source
       # through committed symlinks (src -> ../model_source, NOTICE -> ../NOTICE).
       # Assemble a clean, self-contained package tree with the symlinks turned
       # into real copies and local rv files / stale compiled artifacts removed, so
@@ -41,12 +41,12 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          rm -rf nwsrfs_r/src
-          cp -R model_source nwsrfs_r/src
-          rm -f nwsrfs_r/NOTICE
-          cp NOTICE nwsrfs_r/NOTICE
-          rm -rf nwsrfs_r/rv nwsrfs_r/.Rprofile
-          find nwsrfs_r/src -type f \
+          rm -rf nwsrfsr/src
+          cp -R model_source nwsrfsr/src
+          rm -f nwsrfsr/NOTICE
+          cp NOTICE nwsrfsr/NOTICE
+          rm -rf nwsrfsr/rv nwsrfsr/.Rprofile
+          find nwsrfsr/src -type f \
             \( -name '*.o' -o -name '*.so' -o -name '*.dylib' -o -name '*.a' \
             -o -name '*.mod' -o -name '*.smod' -o -name '*.obj' -o -name '*.dll' \
             -o -name '*.lib' \) -delete
@@ -59,7 +59,7 @@ jobs:
         run: |
           set -euxo pipefail
           mkdir -p "$GITHUB_WORKSPACE/check"
-          R CMD build --no-build-vignettes nwsrfs_r
+          R CMD build --no-build-vignettes nwsrfsr
           cp nwsrfsr_*.tar.gz "$GITHUB_WORKSPACE/check/"
 
       # Run the valgrind check and scan the output the way CRAN's memtest does.

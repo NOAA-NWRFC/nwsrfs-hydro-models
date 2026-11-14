@@ -1,5 +1,5 @@
 [project]
-name = "nwsrfs_r"
+name = "nwsrfsr"
 r_version = "4.6"
 
 repositories = [
