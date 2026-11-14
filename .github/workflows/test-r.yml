@@ -27,35 +27,34 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
-      # nwsrfs_r/.Rprofile sources renv/activate.R, which would hijack the
-      # library and break setup-r-dependencies (pak not found in the renv lib).
-      # renv keeps these files out of the built package via .Rbuildignore, so
-      # disabling the autoloader here does not affect what CRAN checks. This
-      # mirrors the RENV_CONFIG_AUTOLOADER_ENABLED=FALSE used in the pixi tasks.
-      RENV_CONFIG_AUTOLOADER_ENABLED: "FALSE"
 
     steps:
       - uses: actions/checkout@v4
 
-      # The R package lives in nwsrfs_r/ and reaches the shared Fortran source
+      # The R package lives in nwsrfsr/ and reaches the shared Fortran source
       # through committed symlinks (src -> ../model_source, NOTICE -> ../NOTICE).
       # Git symlinks are not restored as real directories on Windows runners, so
-      # replace them with copies before the check. Safe on all platforms.
+      # replace them with copies before the check. Also drop the local rv
+      # activation files (which are .Rbuildignore'd) so setup-r-dependencies uses
+      # the runner library cleanly without requiring rv to be installed.
       - name: Materialize symlinked sources
         shell: bash
         run: |
           set -euxo pipefail
-          rm -rf nwsrfs_r/src
-          cp -R model_source nwsrfs_r/src
-          rm -f nwsrfs_r/NOTICE
-          cp NOTICE nwsrfs_r/NOTICE
+          rm -rf nwsrfsr/src
+          cp -R model_source nwsrfsr/src
+          rm -f nwsrfsr/NOTICE
+          cp NOTICE nwsrfsr/NOTICE
+          rm -rf nwsrfsr/rv nwsrfsr/.Rprofile
           # Drop any stale compiled Fortran artifacts so the check builds clean.
-          find nwsrfs_r/src -type f \
+          find nwsrfsr/src -type f \
             \( -name '*.o' -o -name '*.so' -o -name '*.dylib' -o -name '*.a' \
             -o -name '*.mod' -o -name '*.smod' -o -name '*.obj' -o -name '*.dll' \
             -o -name '*.lib' \) -delete
 
       - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: quarto-dev/quarto-actions/setup@v2
 
       - uses: r-lib/actions/setup-r@v2
         with:
@@ -67,11 +66,11 @@ jobs:
         with:
           extra-packages: any::rcmdcheck
           needs: check
-          working-directory: nwsrfs_r
+          working-directory: nwsrfsr
 
       - uses: r-lib/actions/check-r-package@v2
         with:
-          working-directory: nwsrfs_r
+          working-directory: nwsrfsr
           upload-snapshots: true
           build_args: 'c("--no-manual")'
           error-on: '"warning"'
@@ -90,7 +89,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/lib"
-          R CMD INSTALL --no-docs --library="$RUNNER_TEMP/lib" nwsrfs_r
+          R CMD INSTALL --no-docs --library="$RUNNER_TEMP/lib" nwsrfsr
           so=$(find "$RUNNER_TEMP/lib/nwsrfsr" -name '*.so' | head -n1)
           echo "Inspecting $so"
           readelf -lW "$so" | grep -E 'GNU_STACK' || { echo "No GNU_STACK segment (OK)"; exit 0; }
@@ -114,7 +113,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          find nwsrfs_r/src -type f \( -name '*.o' -o -name '*.mod' -o -name '*.so' \) -delete
+          find nwsrfsr/src -type f \( -name '*.o' -o -name '*.mod' -o -name '*.so' \) -delete
           if make --version | head -1 | grep -qE '4\.(4|[5-9])|[5-9]\.'; then
             export MAKEFLAGS="-j$(nproc) --shuffle=reverse"
           else
@@ -122,4 +121,4 @@ jobs:
           fi
           echo "Building with MAKEFLAGS=$MAKEFLAGS"
           mkdir -p "$RUNNER_TEMP/plib"
-          R CMD INSTALL --no-docs --library="$RUNNER_TEMP/plib" nwsrfs_r
+          R CMD INSTALL --no-docs --library="$RUNNER_TEMP/plib" nwsrfsr

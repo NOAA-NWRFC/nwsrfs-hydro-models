@@ -1,0 +1,42 @@
+{
+  "title": "NWSRFS Operational Hydrology Models (nwsrfs-hydro-models)",
+  "description": "Fortran source code, R package (nwsrfsr), and Python package (nwsrfspy) for the National Weather Service River Forecast System (NWSRFS) operational hydrology models used at the Northwest River Forecast Center (SAC-SMA, SNOW-17, UNIT-HG, LAG-K, CHANLOSS, CONS_USE, and RSNWELEV).",
+  "upload_type": "software",
+  "license": "Apache-2.0",
+  "creators": [
+    {
+      "name": "Walters, Geoffrey",
+      "affiliation": "NOAA National Weather Service, Northwest River Forecast Center",
+      "orcid": "0009-0009-3804-8898"
+    },
+    {
+      "name": "Bracken, Cameron",
+      "affiliation": "Pacific Northwest National Laboratory",
+      "orcid": "0000-0003-1917-402X"
+    }
+  ],
+  "keywords": [
+    "hydrology",
+    "NWSRFS",
+    "SAC-SMA",
+    "SNOW-17",
+    "streamflow forecasting",
+    "R",
+    "Python",
+    "Fortran"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "10.1111/1752-1688.70112",
+      "relation": "isSupplementTo",
+      "resource_type": "publication-article",
+      "scheme": "doi"
+    },
+    {
+      "identifier": "10.5281/zenodo.18829935",
+      "relation": "references",
+      "resource_type": "dataset",
+      "scheme": "doi"
+    }
+  ]
+}

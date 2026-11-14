@@ -71,23 +71,23 @@ fi
 
 # Assemble a clean, self-contained package tree in a temp dir: turn the
 # committed symlinks (src -> ../model_source, NOTICE -> ../NOTICE) into real
-# copies and drop renv files, stale build artifacts, and any src/Makevars
+# copies and drop rv files, stale build artifacts, and any src/Makevars
 # left behind by a local install (configure regenerates it; .Rbuildignore
 # would exclude it from the tarball anyway).
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
-cp -R "$REPO_ROOT/nwsrfs_r" "$WORK/nwsrfs_r"
-rm -rf "$WORK/nwsrfs_r/src" && cp -R "$REPO_ROOT/model_source" "$WORK/nwsrfs_r/src"
-rm -f "$WORK/nwsrfs_r/NOTICE" && cp "$REPO_ROOT/NOTICE" "$WORK/nwsrfs_r/NOTICE"
-rm -rf "$WORK/nwsrfs_r/renv" "$WORK/nwsrfs_r/.Rprofile"
-rm -f "$WORK/nwsrfs_r/src/Makevars"
-find "$WORK/nwsrfs_r" -type f \
+cp -R "$REPO_ROOT/nwsrfsr" "$WORK/nwsrfsr"
+rm -rf "$WORK/nwsrfsr/src" && cp -R "$REPO_ROOT/model_source" "$WORK/nwsrfsr/src"
+rm -f "$WORK/nwsrfsr/NOTICE" && cp "$REPO_ROOT/NOTICE" "$WORK/nwsrfsr/NOTICE"
+rm -rf "$WORK/nwsrfsr/rv" "$WORK/nwsrfsr/.Rprofile"
+rm -f "$WORK/nwsrfsr/src/Makevars"
+find "$WORK/nwsrfsr" -type f \
   \( -name '*.o' -o -name '*.so' -o -name '*.dylib' -o -name '*.a' \
   -o -name '*.mod' -o -name '*.smod' -o -name '*.obj' -o -name '*.dll' \
   -o -name '*.lib' \) -delete
 
 echo ">>> R CMD build"
-(cd "$WORK" && R CMD build nwsrfs_r > build.log 2>&1) || {
+(cd "$WORK" && R CMD build nwsrfsr > build.log 2>&1) || {
   echo "BUILD FAILED"; tail -20 "$WORK/build.log"; exit 1; }
 tarball="$(ls "$WORK"/nwsrfsr_*.tar.gz)"
 cp "$tarball" "$REPO_ROOT/"

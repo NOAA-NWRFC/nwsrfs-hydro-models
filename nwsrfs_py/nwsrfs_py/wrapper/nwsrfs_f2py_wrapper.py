@@ -9,6 +9,8 @@ from .. import utils
 
 #create a new type for sacsnow_tci output
 SACSnowTCI = NewType('SACSnowTCI',pd.DataFrame)
+
+
 """
 Custom type alias for total channel inflow (tci) output.
 
@@ -25,7 +27,6 @@ class SacSnowPars:
 
     This class supports vectorized execution across multiple zones and timesteps simultaneously. 
     Input arrays should adhere to the following shape conventions:
-    
     **Dimensions:**
 
     * **T**: Number of timesteps.
@@ -44,6 +45,8 @@ class SacSnowPars:
     **ADC Table Equation:**
 
     swe/ai = a * AESC**b+(1-a)*AESC**c
+
+    Supported model time steps are 1, 2, 3, 4, 6, 8, 12, or 24 hours.
 
     Args:
         year (np.ndarray): Array of years for each timestep (units: time).
@@ -120,23 +123,7 @@ class SacSnowPars:
         #check that all inputs contain finite values
         utils._validate_finite_fields(self)
 
-        #Start validate time arrays
-        time_arrays = (self.year, self.month, self.day, self.hour)
-
-        if not utils._validate_nd_array(*time_arrays):
-            raise ValueError("Time arrays must be 1D numpy arrays")
-
-        if not utils._validate_array_length(*time_arrays):
-            raise ValueError("Time arrays must have equal lengths")
-
-        if len(self.year) < 2:
-            raise ValueError("FAPars requires at least two timestamps to infer the timestep")
-
-        for name in ("year", "month", "day", "hour"):
-            values = getattr(self, name)
-            if not np.all(values == np.floor(values)):
-                raise ValueError(f"{name} must contain integer values")
-        #End validate time arrays 
+        utils._validate_time_arrays(self)
 
         self.dt_seconds = np.int32(utils._define_timestep_sec(self.year, self.month, self.day, self.hour))
         time_list = ['year','month','day','hour'] 
@@ -162,14 +149,12 @@ class SacSnowPars:
     def validate(self):
         """Checks that all inputs meet shape, type, and value constraints."""
 
-        #check to make sure that dates are not reversed, are positive, no longer than a day, and a factor of 24hrs
-        if (
-            self.dt_seconds <= 0
-            or self.dt_seconds > 86400
-            or 86400 % self.dt_seconds != 0
-        ):
+        # Supported timesteps are whole-hour divisors of one day.
+        supported_seconds = (3600, 7200, 10800, 14400, 21600, 28800, 43200, 86400)
+        if self.dt_seconds not in supported_seconds:
             raise ValueError(
-                "Timestep must be positive, no longer than one day, and a factor of 24 hrs "
+                f"Unsupported dt_seconds: {self.dt_seconds} ({self.dt_seconds/3600} hours). "
+                "Supported timesteps are 1, 2, 3, 4, 6, 8, 12, or 24 hours."
             )
 
         #check to make there are no gaps in the timeseries
@@ -200,10 +185,9 @@ class SacSnowPars:
         if not utils._validate_array_length(self.alat,self.elev,self.init_swe,self.peadj,self.pxadj,*self.sac_pars,*self.snow_pars):
             raise ValueError("SAC-SMA and Snow17 parameter arrays must have the same length")
 
-        #check that sac-sma and snow17 parameters are equal or greater than zero
-        #if np.vstack([self.init_swe,self.peadj,self.pxadj,*self.sac_pars,*self.snow_pars]).min() < 0:
-        if not utils._validate_positive_values(self.init_swe,self.peadj,self.pxadj,*self.sac_pars,*self.snow_pars):
-            raise ValueError("SAC-SMA and Snow17 parameters (excluding elev and alat) must be equal or greater than zero")    
+        #check nonnegative SAC-SMA and SNOW-17 parameters
+        if not utils._validate_positive_values(self.init_swe,self.peadj,self.pxadj,*self.sac_pars[:14],*self.sac_pars[15:],*self.snow_pars):
+            raise ValueError("SAC-SMA and Snow17 parameters (excluding elev, alat, and SIDE) must be equal or greater than zero")
 
         #if elev and alat are below zero raise warning
         if not utils._validate_positive_values(self.elev,self.alat):
@@ -375,6 +359,605 @@ class SacSnow():
 
         return sacsnow_states
 
+
+@dataclass
+class OrdinatesUhPars:
+
+    '''
+    Container for all inputs required to create a UNIT-HG models via F2PY bindings. Multiple unit hydrographs can be defined for each zone. 
+
+    This class supports vectorized execution across multiple zones. 
+    Input arrays should adhere to the following shape conventions:
+    
+    **Dimensions:**
+
+    * **Z**: Number of zones.
+    * **UH**: Number of unit hydograph ordinates.
+
+    **Array Shapes:**
+
+    * **Parameters** (e.g., ``area``): Shape (Z,)
+    * **ORDINATES**: Shape (UH,Z)
+
+    Supported model time steps are 1, 2, 3, 4, 6, 8, 12, or 24 hours.
+
+    Args:
+        dt_hours (int): Unit hydrograph ordinate timestep (units: hours). Must divide 24 and match the paired SAC-SMA model timestep.
+        area (np.ndarray): Array of each zone's area. (units:  km**2)
+        ordinates (np.ndarray): Unit hydrograph ordinates (cfs/in). For each zone,
+            their integrated volume must represent 1 inch of runoff over its area,
+            within 0.1 inch. Trailing NaN values may pad shorter hydrographs.
+    '''
+    
+    dt_hours: numbers.Number
+    area: np.ndarray
+    ordinates: np.array
+
+    def __post_init__(self):
+
+        self.dt_hours = utils._integer_hours(self.dt_hours, 'dt_hours')
+        try:
+            finite = np.isfinite(self.area)
+        except TypeError as exc:
+            raise TypeError('area must contain numeric values') from exc
+        if not np.all(finite):
+            raise ValueError('area must contain only finite values')
+
+        #Convert area and ordinates to double dtype
+        pars_list = ['area','ordinates']
+        utils._dtype_conversion_batch(self,  np.float64, pars_list)
+
+        #Convert all arrays to a fortran friendly format
+        utils._arrayasfortran(self)
+
+    def validate(self):
+        """Checks that all inputs meet shape, type, and value constraints."""
+
+        #check that dt_hours is a single value
+        if np.ndim(self.dt_hours) != 0:
+            raise ValueError("dt_hours must be a scalar")
+
+        #check that dt_hours is greater than zero
+        if self.dt_hours <= 0:
+            raise ValueError("dt_hours must be greater than zero")
+
+        #check area length
+        if len(self.area) == 0:
+            raise ValueError('At least one zone must be provided')
+
+        #check that the area parameter is 1d array
+        if not utils._validate_nd_array(self.area):
+            raise ValueError(f"area must be 1D arrays")
+
+        #check that the area parameter has positive values
+        if not utils._validate_positive_values(self.area, allow_zero=False):
+            raise ValueError(f"area values must be positive")
+
+        #check that the ordinates parameters is a 2d array
+        if not utils._validate_nd_array(self.ordinates, ndim=2):
+            raise ValueError("Ordinate array must have a 2d shape")
+
+        #check ordinate length   
+        if len(self.ordinates) == 0:
+            raise ValueError('At least one ordinate must be provided')
+
+        #check that there a ordinate set for each zone
+        if not utils._validate_array_length(self.area,self.ordinates[0]):
+            raise ValueError("Each nested ordinate list length must correspond to number of zones which is specified by the length of the area array")
+
+        #check each ordinate column is valid 
+        for i in range(len(self.area)):
+            uh = self.ordinates[:,i]
+            valid_indices = np.flatnonzero(~np.isnan(uh))
+            if valid_indices.size == 0:
+                raise ValueError(f"ordinates[:,{i}] must contain at least a single value")
+            trimmed = uh[:valid_indices[-1] + 1]
+
+            try:
+                finite = np.isfinite(trimmed)
+            except TypeError as exc:
+                raise TypeError(
+                    f"ordinates[:,{i}] must contain numeric values"
+                ) from exc
+            if not np.all(finite):
+                raise ValueError(
+                    f"ordinates[:,{i}] must contain only finite values, except for trailing np.nan values"
+                )
+            if np.any(trimmed < 0):
+                raise ValueError(f"ordinates[:,{i}] must be nonnegative")
+            if not np.any(trimmed > 0):
+                raise ValueError(f"ordinates[:,{i}] must contain a positive value")
+
+            # Convert the hydrograph volume (ft3) to runoff depth (inches).
+            one_inch_volume_ft3 = self.area[i] * 0.386102 * 5280**2 / 12
+            depth_inches = np.sum(trimmed) * self.dt_hours * 3600 / one_inch_volume_ft3
+            if abs(depth_inches - 1.0) > 0.1:
+                raise ValueError(
+                    f"ordinates[:,{i}] must represent 1 inch of runoff "
+                    f"within 0.1 inch (got {depth_inches:.3f} inches)"
+                )
+
+class OrdinatesUh():
+
+    '''
+    Class to generate a UNIT-HG and route flows via F2PY bindings.
+
+    Args:
+        pars_dataclass (OrdinatesUhPars): Dataclass which contains all inputs needed for UNIT-HG calculations. 
+        validate (bool): Validate :class:`OrdinatesUhPars` dataclass inputs are correct format/type. Default: ``True``.
+    Attributes:
+        ordinatesuh_pars (OrdinatesUhPars): Dataclass which contains all inputs needed for UNIT-HG calculations. 
+    
+    '''
+
+    def __init__(self, pars_dataclass: OrdinatesUhPars, validate: bool = True):
+        
+        self.ordinatesuh_pars = pars_dataclass
+        if validate:
+            self.ordinatesuh_pars.validate()
+        self.__n_zones = self.ordinatesuh_pars.ordinates.shape[1]
+
+    def return_uh(self, tstep):
+        """
+        Performs S Hydrograph conversion to return a unit hydrograph with a ordinate timestep specified by the ``tstep`` argument.
+
+        Args:
+            tstep (int): Unit hydrograph timestep in hours. Must divide 24.
+
+        Returns:
+            pd.DataFrame: A DataFrame containing unit hydrograph (uh) with a column for each zone (units: cfs/in). Shorter zone hydrographs are padded with NaN.
+        """
+
+        #Create a copy of the parameters
+        pars = self.ordinatesuh_pars
+
+        tstep = utils._integer_hours(tstep, 'tstep')
+
+        #Get original ordinates tstep and ordinates
+        tstep_old = pars.dt_hours
+        uh_old = self.uh
+
+        #Calculate ordinate padding for the calculation based on conversion from old to new ordinate tstep
+        padding = np.int32(np.ceil(tstep/ tstep_old))
+        #create padding DataFrame
+        padding_df = pd.DataFrame(np.nan, index=range(padding), columns=['uh_old','sh'])
+
+        uh_dic = {}
+        for i in range(self.__n_zones): 
+            uh = uh_old.iloc[:,i].rename('uh_old')
+            uh = uh.dropna()
+            uh = uh.to_frame()
+
+            #create s hydrograph
+            uh['sh'] = uh.rolling(window=len(uh), min_periods=1).sum()
+
+            #Add padding row to the dataframe to accommodate the shift
+            uh = pd.concat([uh,padding_df],ignore_index=True).ffill()
+            
+            #Update the index to reflect the original ordinate tstep
+            uh.index = np.int32(uh.index * tstep_old)
+
+            #Create an index to reflect the new ordinate tstep
+            nindex = pd.RangeIndex(stop=uh.index[-1], step=tstep)
+
+            #Join the new index into the uh DataFrame and interpolate its values
+            index_combined = nindex.union(uh.index)
+            uh = uh.reindex(index_combined).interpolate(method='pchip')
+
+            #shift the s hydrograph by tstep
+            uh['sh_shift'] = uh.sh.shift(uh.index.get_loc(tstep)).fillna(0)
+
+            #get difference between the s hydrograph and shifted shydrograph and multiply by the ratio of old/new tsteps
+            uh['uh_new']=uh.diff(axis=1, periods=-1).sh.multiply(tstep_old/tstep)
+
+            #Assign to UH to dictionary
+            uh_dic[f"uh_{i}"] = uh.loc[nindex,'uh_new']
+
+        #convert new uh at new ordinate tstep to a DataFrame
+        uh_new = pd.DataFrame(uh_dic)
+        uh_new.index.name = 'hours'
+
+        return uh_new
+
+    @property
+    def uh(self) -> pd.DataFrame:
+        '''
+        Generates a unit hydrograph as a DataFrame at a timestep specified by the ``dt_hours`` attribute (units: cfs/in).
+        '''
+        
+        pars = self.ordinatesuh_pars
+
+        uh_df = pd.DataFrame(pars.ordinates).add_prefix('uh_')
+        uh_df.index = pd.Index(
+            uh_df.index.to_numpy() * pars.dt_hours,
+            name="hours",dtype=int
+        )
+        return uh_df
+
+    def return_sf(self, tci: SACSnowTCI, return_inst: bool = True):
+        """
+        Route total channel inflow using each zone's supplied hydrograph.
+
+        Args:
+            tci (SACSnowTCI): Runoff depth in millimeters, with one
+                column per zone and the same timestep as the ordinates.
+            return_inst (bool): Return instantaneous flow when ``True``;
+                otherwise return the mean of adjacent samples.
+
+        Returns:
+            pd.DataFrame: Streamflow in cfs, with one column per zone.
+        """
+        pars = copy.deepcopy(self.ordinatesuh_pars)
+
+        #tci validation start
+        if tci.shape[1] != self.__n_zones:
+            raise ValueError(
+                f"tci must have exactly {self.__n_zones} zone columns"
+            )
+        if len(tci) > 1 and not utils._validate_timestep(
+            pars.dt_hours * 3600, tci.index.year, tci.index.month,
+            tci.index.day, tci.index.hour
+        ):
+            raise ValueError("tci timestep must match OrdinatesUhPars.dt_hours")
+        #tci validation end
+
+        #Format tci into a FORTRAN friendly datatype
+        tci_array = np.asfortranarray(
+            utils._dtype_conversion(tci.to_numpy(), np.float64)
+        )
+
+        sf = pd.DataFrame(index=tci.index)
+        for i in range(self.__n_zones):
+            
+            u1 = np.asarray(pars.ordinates[:, i], dtype=np.float32)
+            u1 = u1[~np.isnan(u1)]
+            m_uh = np.int32(len(u1))
+            n_uh = np.int32(len(tci_array) + m_uh)
+
+            flow_routed = nwsrfs_source.duamel(
+                tci_array[:, i], u1, np.float32(0), np.float32(0),
+                pars.dt_hours / 24, n_uh, m_uh, np.int32(0), np.int32(0)
+            )
+            # Ordinates are cfs per inch of runoff; TCI is millimeters.
+            sim_flow_inst_cfs = flow_routed[:len(tci_array)] / 25.4
+            sf[f"sf_{i}"] = (
+                sim_flow_inst_cfs if return_inst
+                else self._inst_to_ave(sim_flow_inst_cfs)
+            )
+        return sf
+
+    @staticmethod
+    def _inst_to_ave(ts_inst:np.ndarray):
+        '''
+        Return a timeseries of period average data.
+
+        Args:
+            ts_inst (np.ndarray): A timeseries of instantaneous data.
+        Returns:
+            np.ndarray: A timeseries of period average data.
+        '''
+
+        values = np.asarray(ts_inst, dtype=np.float64)
+
+        if values.ndim != 1:
+                    raise ValueError("ts_inst must be a 1D array")
+
+        if values.size == 0:
+            return values.copy()
+
+        #The final sample is repeated as the next endpoint because no subsequent sample is supplied.
+        following = np.concatenate((values[1:], values[-1:]))
+
+        return (values + following)/2
+
+
+@dataclass
+class GammaUhPars:
+
+    '''
+    Container for all inputs required to create a gamma UNIT-HG models via F2PY bindings. Multiple gamma unit hydrograph parameter sets can be ran simultaneously. 
+
+    This class supports vectorized execution across multiple zones. 
+    Input arrays should adhere to the following shape conventions:
+    
+    **Dimensions:**
+
+    * **Z**: Number of zones.
+
+    **Array Shapes:**
+
+    * **Parameters** (e.g., ``shape``): Shape (Z,)
+
+    Supported model time steps are 1, 2, 3, 4, 6, 8, 12, or 24 hours.
+
+    Args:
+        dt_hours (int): Unit hydrograph ordinate timestep (units: hours). Must divide 24 and match the paired SAC-SMA model timestep.
+        area (np.ndarray): Array of each zone's area. (units:  km**2)
+        shape (np.ndarray): Dimensionless gamma shape parameter for each zone. (units: NA)
+        scale (np.ndarray | None): Gamma scale parameter for each zone.  If ``scale`` is None, ``toc`` parameter must be provided. (units: NA)
+        toc  (np.ndarray | None): Target truncated hydrograph duration for each zone .  If ``toc`` is None, the ``scale`` parameter must be provided. (units: hours)
+    '''
+    
+    dt_hours: numbers.Number
+    area: np.ndarray
+    shape: np.ndarray
+    scale: np.ndarray | None = None
+    toc:  np.ndarray | None = None
+
+    def __post_init__(self):
+
+        self.dt_hours = utils._integer_hours(self.dt_hours, 'dt_hours')
+
+        #check that all inputs contain finite values
+        utils._validate_finite_fields(self)
+
+        #Convert area and shape to double dtype
+        pars_list = ['area','shape']
+        utils._dtype_conversion_batch(self,  np.float64, pars_list)
+
+        #if scale exists, then convert to double
+        if self.scale is not None:
+            self.scale = utils._dtype_conversion(self.scale, np.float64)
+
+        #if toc exists, then convert to double
+        if self.toc is not None:
+            self.toc = utils._dtype_conversion(self.toc, np.float64)
+
+        #Convert all arrays to a fortran friendly format
+        utils._arrayasfortran(self)
+
+    def validate(self):
+        """Checks that all inputs meet shape, type, and value constraints."""
+
+        #check that dt_hours is a single value
+        if np.ndim(self.dt_hours) != 0:
+            raise ValueError("dt_hours must be a scalar")
+
+        #check that dt_hours is greater than zero
+        if self.dt_hours <= 0:
+            raise ValueError("dt_hours must be greater than zero")
+
+        #check if either the scale or toc parameter is provided
+        if (self.scale is None) == (self.toc is None):
+            raise ValueError("Provide exactly one of scale or toc")
+
+        #validation check for scale or toc parameter
+        self._validate_batch("scale" if self.scale is not None else "toc")
+
+    def _validate_batch(self,opt_var: str):
+
+        names = ("area", "shape", opt_var)
+        arrays = tuple(getattr(self, name) for name in names)
+
+        #check that all uh parameters are 1d array
+        if not utils._validate_nd_array(*arrays):
+            raise ValueError(f"area, shape, and {opt_var} must be 1D arrays")
+        #check that all uh parameters has the same length
+        if not utils._validate_array_length(*arrays):
+            raise ValueError(f"area, shape, and {opt_var} must have equal lengths")
+
+        if len(self.area) == 0:
+            raise ValueError("At least one zone must be provided")
+
+        #check that uh parameters are greater than zero
+        for name, array in zip(names, arrays):
+                    if not np.all(array > 0):
+                        raise ValueError(
+                            f"{name} must contain values greater than zero"
+                        )
+
+class GammaUh():
+    '''
+    Class to generate Gamma UNIT-HG and route flows via F2PY bindings.
+
+    Args:
+        pars_dataclass (GammaUhPars): Dataclass which contains all inputs needed for gamma UNIT-HG calculations. 
+        validate (bool): Validate :class:`GammaUhPars` dataclass inputs are correct format/type. Default: ``True``.
+    Attributes:
+        gammauh_pars (GammaUhPars): Dataclass which contains all inputs needed for gamma UNIT-HG calculations. 
+    
+    .. warning::
+
+        Unit hydrographs are limited to 1,000 ordinates. Hydrographs that extend beyond this limit are truncated and normalized over the retained ordinates, which can alter their timing and shape.
+    '''
+    def __init__(self,  
+                pars_dataclass: GammaUhPars, 
+                validate:bool=True):
+
+        #Assign parameters
+        self.gammauh_pars = pars_dataclass
+
+        #Validate gammauh_pars
+        if validate:
+            self.gammauh_pars.validate()
+
+        #Get the number of zones
+        self.__n_zones = len(self.gammauh_pars.shape)
+
+        #If scale parameter is none, calcuate it
+        if self.gammauh_pars.scale is None:
+            self._get_shape_par()   
+        else:
+            self.__scale = self.gammauh_pars.scale.copy()
+
+        #Create attribute to track it uh has been ran
+        self.__uh = None
+
+    #calculate the scale parameter for each zone
+    def _get_shape_par(self):
+
+        #Create a copy of the parameters
+        pars = copy.deepcopy(self.gammauh_pars)
+
+        self.__scale = np.zeros(self.__n_zones)
+        for i in range(self.__n_zones):
+            shape = pars.shape[i]
+            toc = pars.toc[i]
+            self.__scale[i] = nwsrfs_source.uh2p_get_scale_root(shape,toc,np.float64(1))
+
+    def return_uh(self,
+                tstep):
+        '''
+        Return unit hydrograph ordinates for each zone (units: cfs/in).
+
+        Args:
+            tstep (int): Unit hydrograph timestep (units: hours). Must divide 24.
+        Returns:
+             pd.DataFrame: A DataFrame containing unit hydrograph (uh) with a column for each zone (units: cfs/in). Shorter zone hydrographs are padded with NaN.
+        '''
+
+        #Create a copy of the parameters
+        pars = copy.deepcopy(self.gammauh_pars)
+
+        tstep = utils._integer_hours(tstep, 'tstep')
+
+        #Calculate the uh for each zone
+        uh_dic = {}
+        for i in range(self.__n_zones):
+
+            shape = pars.shape[i]
+            scale = self.__scale[i]
+            area = pars.area[i]
+
+            #dimensionless uh
+            uh_dl = np.asarray(nwsrfs_source.uh2p_call(shape,scale,tstep,np.int32(1000)), dtype=np.float64)
+
+            #Start validation of uh_dl
+            if not np.all(np.isfinite(uh_dl)):
+                raise ValueError(f"Zone {i} produced nonfinite UH ordinates")
+
+            nonzero = np.flatnonzero(uh_dl != 0)
+            if nonzero.size == 0:
+                raise ValueError(
+                    f"Zone {i} produced an all-zero UH; check shape, "
+                    "scale, and timestep"
+                )
+            #End validation of uh_dl
+
+            # Preserve leading zeros and remove trailing zero padding.
+            uh_dl = uh_dl[:nonzero[-1] + 1]
+
+            # Volume generated by one inch of runoff over the zone.
+            #volume calcuation zone_area_km2 to mi2 (0.386102) to ft2 (5280^2)
+            #multiplied by 1 inch (in ft) for a volume of ft3
+            total_uh_vol = pars.area[i] * 0.386102 * 5280**2 / 12
+            #Distribute volume and divide by timestep in seconds
+            uh = uh_dl * total_uh_vol / (tstep * 3600)
+
+            #Assign to UH to dictionary
+            uh_dic[f"uh_{i}"] = pd.Series(uh)
+
+        #Create DataFrame and format index
+        uh_df = pd.DataFrame(uh_dic)
+        uh_df.index = pd.Index(
+            uh_df.index.to_numpy() * tstep,
+            name="hours",dtype=int
+        )
+        
+        return uh_df
+
+    @property
+    def uh(self) -> pd.DataFrame:
+        '''
+        Generates a unit hydrograph as a DataFrame at a timestep specified by the ``dt_hours`` attribute (units - cfs/in).
+        '''
+
+        if self.__uh is None:
+            #Create a copy of the parameters
+            pars = copy.deepcopy(self.gammauh_pars)
+            self.__uh = self.return_uh(tstep=pars.dt_hours)
+
+        return self.__uh.copy(deep=True)
+
+    def return_sf(self,
+                tci:SACSnowTCI,
+                return_inst:bool = True):
+
+        '''
+        Return a timeseries of streamflow for each zone.
+
+        Args:
+            tci (SACSnowTCI):  Custom type alias for total channel inflow from :class:`SacSnow`  (units:  mm).
+            return_inst (bool): Specifies to return instantaneous streamflow, rather than period mean flow.  Default: ``True``.
+        Returns:
+            pd.DataFrame: A DataFrame containing streamflow with a column for each zone (units: cfs).
+        '''
+
+        #Create a copy of the parameters
+        pars = copy.deepcopy(self.gammauh_pars)
+
+        #tci validation start
+        if tci.shape[1] != self.__n_zones:
+            raise ValueError(
+                f"tci must have exactly {self.__n_zones} zone columns"
+            )
+
+        if len(tci) > 1:
+            if not utils._validate_timestep(pars.dt_hours * 3600,tci.index.year,tci.index.month,tci.index.day,tci.index.hour):
+                raise ValueError(
+                    "tci timestep must match GammaUhPars.dt_hours"
+                )
+        #tci validation end
+
+        #Format tci into a FORTRAN friendly datatype
+        tci_array = utils._dtype_conversion(tci.to_numpy(),np.float64)
+        tci_array = np.asfortranarray(tci_array)
+
+        m_uh = np.int32(1000)  # max UH length
+        n_uh = np.int32(len(tci_array) + m_uh)
+
+        #Calculate the streamflow for each zone
+        sf = pd.DataFrame(index=tci.index)
+        for i in range(self.__n_zones):
+
+            shape=pars.shape[i]
+            scale=self.__scale[i]
+            area=pars.area[i]
+
+            col_name = f'sf_{i}'
+
+            flow_routed = nwsrfs_source.duamel(
+                tci_array[:, i], np.zeros(m_uh, dtype=np.float32), shape, scale,
+                pars.dt_hours/24, n_uh, m_uh, np.int32(1), np.int32(0))
+
+            # flow_routed units:  mm, zone_area units:  km2,  1000 is a combined conversion of km2->m2 and mm->m
+            # flow routed is depth of runoff over a basin for a time step. 3.28084^3 converts cubic meters to cubic feet
+            #Area converts it to a volume and dt.second (timestep in sec) is used to complete conversion of runoff to flow
+            # instantaneous routed flow weighted by zone area
+            sim_flow_inst_cfs = flow_routed[0:len(tci_array)] * 1000 * 3.28084 ** 3 / \
+                                (pars.dt_hours*60**2) * area
+
+            #return instantaneous or period avg depending on chosen option
+            if return_inst:
+                sf[col_name] = sim_flow_inst_cfs
+            else:
+                sf[col_name] = self._inst_to_ave(sim_flow_inst_cfs)
+        return sf
+
+    @staticmethod
+    def _inst_to_ave(ts_inst:np.ndarray):
+        '''
+        Return a timeseries of period average data.
+
+        Args:
+            ts_inst (np.ndarray): A timeseries of instantaneous data.
+        Returns:
+            np.ndarray: A timeseries of period average data.
+        '''
+
+        values = np.asarray(ts_inst, dtype=np.float64)
+
+        if values.ndim != 1:
+                    raise ValueError("ts_inst must be a 1D array")
+
+        if values.size == 0:
+            return values.copy()
+
+        #The final sample is repeated as the next endpoint because no subsequent sample is supplied.
+        following = np.concatenate((values[1:], values[-1:]))
+
+        return (values + following)/2
+
 @dataclass
 class LagkPars:
 
@@ -398,6 +981,8 @@ class LagkPars:
     **Lag/K Table Equation:**
 
     Lag/K_table=a*(Q-d)**2+b*Q+c
+
+    Supported model time steps are 1, 2, 3, 4, 6, 8, 12, or 24 hours.
 
     Args:
         year (np.ndarray): Array of years for each timestep (units: time).
@@ -457,23 +1042,7 @@ class LagkPars:
         #check that all inputs contain finite values
         utils._validate_finite_fields(self)
 
-        #Start validate time arrays
-        time_arrays = (self.year, self.month, self.day, self.hour)
-
-        if not utils._validate_nd_array(*time_arrays):
-            raise ValueError("Time arrays must be 1D numpy arrays")
-
-        if not utils._validate_array_length(*time_arrays):
-            raise ValueError("Time arrays must have equal lengths")
-
-        if len(self.year) < 2:
-            raise ValueError("FAPars requires at least two timestamps to infer the timestep")
-
-        for name in ("year", "month", "day", "hour"):
-            values = getattr(self, name)
-            if not np.all(values == np.floor(values)):
-                raise ValueError(f"{name} must contain integer values")
-        #End validate time arrays 
+        utils._validate_time_arrays(self)
 
         self.dt_hours = np.int32(utils._define_timestep_sec(self.year, self.month, self.day, self.hour)/3600)
         time_list = ['year', 'month', 'day', 'hour']
@@ -503,20 +1072,18 @@ class LagkPars:
     def validate(self):
         """Checks that all inputs meet shape, type, and value constraints."""
 
-        #check to make sure that dates are not reversed, are positive, no longer than a day, and a factor of 24hrs
-        if (
-            self.dt_hours <= 0
-            or self.dt_hours > 24
-            or 24 % self.dt_hours != 0
-        ):
+        # Supported timesteps are whole-hour divisors of one day.
+        supported_hours = (1, 2, 3, 4, 6, 8, 12, 24)
+        if self.dt_hours not in supported_hours:
             raise ValueError(
-                "Timestep must be positive, no longer than one day, and a factor of 24 hrs "
+                f"Unsupported dt_hours: {self.dt_hours}. "
+                "Supported timesteps are 1, 2, 3, 4, 6, 8, 12, or 24 hours."
             )
 
         #check to make there are no gaps in the timeseries
         dt_seconds = self.dt_hours*3600
         if not utils._validate_timestep(dt_seconds,self.year, self.month, self.day, self.hour):
-            raise Values("Time arrays (year, month, day, hour) cannot have gaps or duplicates")
+            raise ValueError("Time arrays (year, month, day, hour) cannot have gaps or duplicates")
 
         #check that the table limits are 1d arrays
         if not utils._validate_nd_array(self.tbl_lagmax, self.tbl_lagmin, self.tbl_kmax, self.tbl_kmin, self.tbl_qmax, self.tbl_qmin):
@@ -727,8 +1294,10 @@ class ConsusePars:
     **Array Shapes:**
 
     * **Time Arrays, Streamflow, and PET** (e.g., ``year``, ``qin``): Shape (T,)
-    * **PE Adjust Table ** (``peadj_m``): Shape (12,)
+    * **PE Adjust Table** (``peadj_m``): Shape (12,)
     
+    Model runs on a daily time step.
+
     Args:
         year (np.ndarray): Array of years for each timestep (units: time).
         month (np.ndarray): Array of months corresponding to each timestep (units: time).
@@ -740,7 +1309,7 @@ class ConsusePars:
         rf_decay_rate (numbers.Number): Fraction of return flow storage released to the channel each day (units: NA).
         pet_adj (numbers.Number):  Potential evaporation (PET) adjustment factor (units: NA).
         peadj_m (np.ndarray):  Monthly pe adjust table (units: NA).
-        pet (np.ndarray):  Daily potential evapotranspiration depth for each timestep (units:  mm per day), before applying pet_adj and peadj_m.
+        pet (np.ndarray):  Daily potential evapotranspiration demand for each timestep (units:  mm per day), before applying pet_adj and peadj_m.
         qin (np.ndarray):  Input daily average streamflow to adjust for CONS_USE (units: cfs).
     '''
 
@@ -762,23 +1331,7 @@ class ConsusePars:
         #check that all inputs contain finite values
         utils._validate_finite_fields(self)
 
-        #Start validate time arrays
-        time_arrays = (self.year, self.month, self.day)
-
-        if not utils._validate_nd_array(*time_arrays):
-            raise ValueError("Time arrays must be 1D numpy arrays")
-
-        if not utils._validate_array_length(*time_arrays):
-            raise ValueError("Time arrays must have equal lengths")
-
-        if len(self.year) < 2:
-            raise ValueError("FAPars requires at least two timestamps to infer the timestep")
-
-        for name in ("year", "month", "day"):
-            values = getattr(self, name)
-            if not np.all(values == np.floor(values)):
-                raise ValueError(f"{name} must contain integer values")
-        #End validate time arrays 
+        utils._validate_time_arrays(self, ("year", "month", "day"))
 
         #Convert dt_seconds, year, month, and day to integer dtype
         time_list = ['year','month','day'] 
@@ -799,19 +1352,12 @@ class ConsusePars:
     def validate(self):
         """Checks that all inputs meet shape, type, and value constraints."""
    
-        dt_sec = utils._define_timestep_sec(self.year, self.month, self.day)
-        #check to make sure that dates are not reversed, are positive, no longer than a day, and a factor of 24hrs
-        if (
-            dt_sec  <= 0
-            or dt_sec != 86400
-        ):
+        # Every consecutive timestamp must be exactly one day apart.
+        if not utils._validate_timestep(86400, self.year, self.month, self.day):
             raise ValueError(
-                "Timestep must be daily"
+                "ConsusePars requires a daily timestep of exactly 86400 seconds "
+                "(24 hours), with no gaps, duplicates, or reversed timestamps."
             )
-
-        #check to make there are no gaps in the timeseries
-        if not utils._validate_timestep(dt_sec,self.year, self.month, self.day):
-            raise Values("Time arrays (year, month, day) cannot have gaps or duplicates")
 
         #check that peadj_m is a 1d array.  
         if not utils._validate_nd_array(self.peadj_m):
@@ -935,6 +1481,20 @@ class Consuse():
 
             return pd.DataFrame(state_dic, index=self.__datetime)
 
+        @property
+        def peadj_table(self) -> pd.DataFrame:
+            '''
+            A table indexed by months 1 through 12 (January–December),
+            with index name ``month`` and a single column, ``pe_adj``, containing
+            the dimensionless factors from ``consuse_pars.peadj_m``.
+            '''
+
+            return pd.DataFrame(
+                {'pe_adj':self.consuse_pars.peadj_m},
+                index=pd.Index(data=range(1,13),name='month'),
+                copy=True
+                )
+
 @dataclass
 class ChanlossPars:
 
@@ -954,6 +1514,8 @@ class ChanlossPars:
     * **Time Arrays and Streamflow** (e.g., ``year``, ``qin``): Shape (T,)
     * **CHANLOSS Factors** (e.g., ``factors``): Shape (C,)
     * **CHANLOSS Periods** (e.g., ``periods``): Shape (C,2)
+
+    Supported model time steps are 1, 2, 3, 4, 6, 8, 12, or 24 hours.
 
     Args:
         year (np.ndarray): Array of years for each timestep (units: time).
@@ -982,23 +1544,7 @@ class ChanlossPars:
         #check that all inputs contain finite values
         utils._validate_finite_fields(self)
 
-        #Start validate time arrays
-        time_arrays = (self.year, self.month, self.day, self.hour)
-
-        if not utils._validate_nd_array(*time_arrays):
-            raise ValueError("Time arrays must be 1D numpy arrays")
-
-        if not utils._validate_array_length(*time_arrays):
-            raise ValueError("Time arrays must have equal lengths")
-
-        if len(self.year) < 2:
-            raise ValueError("FAPars requires at least two timestamps to infer the timestep")
-
-        for name in ("year", "month", "day", "hour"):
-            values = getattr(self, name)
-            if not np.all(values == np.floor(values)):
-                raise ValueError(f"{name} must contain integer values")
-        #End validate time arrays 
+        utils._validate_time_arrays(self)
 
         self.dt_seconds = np.int32(utils._define_timestep_sec(self.year, self.month, self.day, self.hour))
         time_list = ['year','month','day','hour'] 
@@ -1018,27 +1564,21 @@ class ChanlossPars:
     def validate(self):
         """Checks that all inputs meet shape, type, and value constraints."""
 
-        #check to make sure that dates are not reversed, are positive, no longer than a day, and a factor of 24hrs
-        if (
-            self.dt_seconds <= 0
-            or self.dt_seconds > 86400
-            or 86400 % self.dt_seconds != 0
-        ):
+        # Supported timesteps are whole-hour divisors of one day.
+        supported_seconds = (3600, 7200, 10800, 14400, 21600, 28800, 43200, 86400)
+        if self.dt_seconds not in supported_seconds:
             raise ValueError(
-                "Timestep must be positive, no longer than one day, and a factor of 24 hrs "
+                f"Unsupported dt_seconds: {self.dt_seconds} ({self.dt_seconds/3600} hours). "
+                "Supported timesteps are 1, 2, 3, 4, 6, 8, 12, or 24 hours."
             )
 
-        #check to make there are no gaps in the timeseries
-        if not utils._validate_timestep(self.dt_seconds,self.year, self.month, self.day, self.hour):
-            raise Values("Time arrays (year, month, day, hour) cannot have gaps or duplicates")
+        # Every consecutive timestamp must match the supported timestep.
+        if not utils._validate_timestep(self.dt_seconds, self.year, self.month, self.day, self.hour):
+            raise ValueError("Time arrays (year, month, day, hour) cannot have gaps or duplicates")
 
         #check that factors are 1d arrays
         if not utils._validate_nd_array(self.factors):
             raise ValueError("factors must have a 1d shape")
-
-        #check to make there are no gaps in the timeseries
-        if not utils._validate_timestep(self.dt_seconds,self.year, self.month, self.day, self.hour):
-            raise Values("Time arrays (year, month, day, hour) cannot have gaps or duplicates")
 
         #check that periods is a 2d arrays
         if not utils._validate_nd_array(self.periods, ndim=2):
@@ -1125,6 +1665,45 @@ class Chanloss:
 
         return qin_adj
 
+    @property
+    def adj_table(self) -> pd.DataFrame:
+        """Return the monthly CHANLOSS factors used for time-step interpolation.
+
+        Rows are months 1 through 12 (index name ``month``), with a single
+        ``Chanloss_Adj`` column. 
+
+        Mode 1 (varp) uses dimensionless multipliers and mode 2 (varc) uses amounts 
+        in cfs.
+        With no periods, all months receive the mode's default factor.
+        These are monthly interpolation values, not adjusted streamflow.
+        """
+        def month_range(start, end):
+            return [
+                (start - 1 + offset) % 12 + 1
+                for offset in range((end - start) % 12 + 1)
+            ]
+
+        factors = self.chanloss_pars.factors
+        periods = self.chanloss_pars.periods
+        default_factor = 1.0 if self.chanloss_pars.cl_type == 1 else 0.0
+
+        monthly_factors = [
+            pd.Series(factor, index=month_range(start, end), dtype=float)
+            for (start, end), factor in zip(periods, factors, strict=True)
+        ]
+        if monthly_factors:
+            adjustments = pd.concat(monthly_factors).groupby(level=0).mean()
+        else:
+            adjustments = pd.Series(dtype=float)
+
+        return (
+            adjustments.reindex(range(1, 13), fill_value=default_factor)
+            .rename_axis('month')
+            .to_frame(name='Chanloss_Adj')
+        )
+
+
+
 @dataclass
 class FAPars:
 
@@ -1140,7 +1719,6 @@ class FAPars:
 
     Climatologies and adjustment limits use monthly totals in mm for MAP and PET, monthly mean temperature in degrees Celsius for MAT, and monthly mean fractions for PTPS. 
     Climatology is area weighted across zones. All four climatologies must be supplied together or omitted together.
-
 
     pet is calculated from adjusted MAT using the Hargreaves–Samani method and zone latitude. Pass forcings=None for PET and supply peadj_m to convert adjusted PET to evaporation demand.
 
@@ -1162,6 +1740,12 @@ class FAPars:
     * **Climo Parameter** (e.g., ``climo``): Shape (12, ) - A value for each month (Jan-Dec)
     * **limits**: Shape (12, 2), with lower bounds in column 0 and upper bounds in column 1.
     * **peadj_m**: Shape (12, Z), with months January–December along axis 0.   
+
+    Supported model time steps are 1, 2, 3, 4, 6, 8, or 12 hours.
+    A 24-hour timestep is not supported because the Hargreaves–Samani equation
+    requires daily minimum and maximum temperatures, which are estimated from
+    subdaily MAT samples. With only one sample per day, the estimated minimum
+    and maximum are equal, producing zero PET.
 
     Args:
         year (np.ndarray): Array of years for each timestep (units: time).
@@ -1202,23 +1786,7 @@ class FAPars:
         #check that all inputs contain finite values
         utils._validate_finite_fields(self)
 
-        #Start validate time arrays
-        time_arrays = (self.year, self.month, self.day, self.hour)
-
-        if not utils._validate_nd_array(*time_arrays):
-            raise ValueError("Time arrays must be 1D numpy arrays")
-
-        if not utils._validate_array_length(*time_arrays):
-            raise ValueError("Time arrays must have equal lengths")
-
-        if len(self.year) < 2:
-            raise ValueError("FAPars requires at least two timestamps to infer the timestep")
-
-        for name in ("year", "month", "day", "hour"):
-            values = getattr(self, name)
-            if not np.all(values == np.floor(values)):
-                raise ValueError(f"{name} must contain integer values")
-        #End validate time arrays 
+        utils._validate_time_arrays(self)
 
         #Convert time steps to integers
         self.dt_seconds = np.int32(utils._define_timestep_sec(self.year, self.month, self.day,self.hour))
@@ -1248,19 +1816,17 @@ class FAPars:
     def validate(self):
         """Checks that all inputs meet shape, type, and value constraints."""
 
-        #check to make sure that dates are not reversed, are positive, no longer than a day, and a factor of 24hrs
-        if (
-            self.dt_seconds <= 0
-            or self.dt_seconds > 86400
-            or 86400 % self.dt_seconds != 0
-        ):
+        # PET requires multiple temperature samples per day.
+        supported_seconds = (3600, 7200, 10800, 14400, 21600, 28800, 43200)
+        if self.dt_seconds not in supported_seconds:
             raise ValueError(
-                "FA timestep must be positive, no longer than one day, and a factor of 24 hrs "
+                f"Unsupported dt_seconds: {self.dt_seconds} ({self.dt_seconds/3600} hours). "
+                "Supported timesteps are 1, 2, 3, 4, 6, 8, or 12 hours."
             )
 
-        #check to make there are no gaps in the timeseries
-        if not utils._validate_timestep(self.dt_seconds,self.year, self.month, self.day, self.hour):
-            raise ValuesError("Time arrays (year, month, day, hour) cannot have gaps or duplicates")
+        # Every consecutive timestamp must match the supported timestep.
+        if not utils._validate_timestep(self.dt_seconds, self.year, self.month, self.day, self.hour):
+            raise ValueError("Time arrays (year, month, day, hour) cannot have gaps or duplicates")
 
         #Check that the run is longer than one year when climo is none
         if (self.climo is None) and (len(np.unique(self.month)) < 12):
@@ -1558,319 +2124,21 @@ class FA():
 
         return pd.DataFrame(self.__climo_array,index=pd.Index(range(1, 13), name="month"),columns=['map_climo','mat_climo','pet_climo','ptps_climo'])
 
-
-@dataclass
-class GammaUhPars:
-
-    '''
-    Container for all inputs required to create a gamma UNIT-HG models via F2PY bindings. Multiple gamma unit hydrograph parameter sets can be ran simultaneously. 
-
-    This class supports vectorized execution across multiple zones. 
-    Input arrays should adhere to the following shape conventions:
-    
-    **Dimensions:**
-
-    * **Z**: Number of zones.
-
-    **Array Shapes:**
-
-    * **Parameters** (e.g., ``shape``): Shape (Z,)
-
-    Args:
-        dt_hours (np.ndarray): Finite, positive scalar timestep in hours. (units: hours)
-        area (np.ndarray): Array of each zone's area. (units:  km**2)
-        shape (np.ndarray): Dimensionless gamma shape parameter for each zone. (units: NA)
-        scale (np.ndarray | None): Gamma scale parameter for each zone.  If ``scale`` is None, ``toc`` parameter must be provided. (units: NA)
-        toc  (np.ndarray | None): Target truncated hydrograph duration for each zone .  If ``toc`` is None, the ``scale`` parameter must be provided. (units: hours)
-    '''
-    
-    dt_hours: numbers.Number
-    area: np.ndarray
-    shape: np.ndarray
-    scale: np.ndarray | None = None
-    toc:  np.ndarray | None = None
-
-    def __post_init__(self):
-
-        #check that all inputs contain finite values
-        utils._validate_finite_fields(self)
-
-        #Convert dt_hours to float dtype
-        self.dt_hours = np.float64(self.dt_hours)
-
-        #Convert area and shape to double dtype
-        pars_list = ['area','shape']
-        utils._dtype_conversion_batch(self,  np.float64, pars_list)
-
-        #if scale exists, then convert to double
-        if self.scale is not None:
-            self.scale = utils._dtype_conversion(self.scale, np.float64)
-
-        #if toc exists, then convert to double
-        if self.toc is not None:
-            self.toc = utils._dtype_conversion(self.toc, np.float64)
-
-        #Convert all arrays to a fortran friendly format
-        utils._arrayasfortran(self)
-
-    def validate(self):
-        """Checks that all inputs meet shape, type, and value constraints."""
-
-        if np.ndim(self.dt_hours) != 0:
-            raise ValueError("dt_hours must be a scalar")
-
-        if self.dt_hours <= 0:
-            raise ValueError("dt_hours must be greater than zero")
-
-        #check if either the scale or toc parameter is provided
-        if (self.scale is None) == (self.toc is None):
-            raise ValueError("Provide exactly one of scale or toc")
-
-        #validation check for scale or toc parameter
-        self._validate_batch("scale" if self.scale is not None else "toc")
-
-    def _validate_batch(self,opt_var: str):
-
-        names = ("area", "shape", opt_var)
-        arrays = tuple(getattr(self, name) for name in names)
-
-        #check that all uh parameters are 1d array
-        if not utils._validate_nd_array(*arrays):
-            raise ValueError(f"area, shape, and {opt_var} must be 1D arrays")
-        #check that all uh parameters has the same length
-        if not utils._validate_array_length(*arrays):
-            raise ValueError(f"area, shape, and {opt_var} must have equal lengths")
-
-        if len(self.area) == 0:
-            raise ValueError("At least one zone must be provided")
-
-        #check that uh parameters are greater than zero
-        for name, array in zip(names, arrays):
-                    if not np.all(array > 0):
-                        raise ValueError(
-                            f"{name} must contain values greater than zero"
-                        )
-
-class GammaUh():
-    '''
-    Class to generate Gamma UNIT-HG and route flows via F2PY bindings.
-
-    Args:
-        pars_dataclass (GammaUhPars): Dataclass which contains all inputs needed for gamma UNIT-HG calculations. 
-        validate (bool): Validate :class:`GammaUhPars` dataclass inputs are correct format/type. Default: ``True``.
-    Attributes:
-        gammauh_pars (GammaUhPars): Dataclass which contains all inputs needed for gamma UNIT-HG calculations. 
-    
-    .. warning::
-
-        Unit hydrographs are limited to 1,000 ordinates. Hydrographs that extend beyond this limit are truncated and normalized over the retained ordinates, which can alter their timing and shape.
-    '''
-    def __init__(self,  
-                pars_dataclass: GammaUhPars, 
-                validate:bool=True):
-
-        #Assign parameters
-        self.gammauh_pars = pars_dataclass
-
-        #Validate gammauh_pars
-        if validate:
-            self.gammauh_pars.validate()
-
-        #Get the number of zones
-        self.__n_zones = len(self.gammauh_pars.shape)
-
-        #If scale parameter is none, calcuate it
-        if self.gammauh_pars.scale is None:
-            self._get_shape_par()   
-        else:
-            self.__scale = self.gammauh_pars.scale.copy()
-
-        #Create attribute to track it uh has been ran
-        self.__uh = None
-
-    #calculate the scale parameter for each zone
-    def _get_shape_par(self):
-
-        #Create a copy of the parameters
-        pars = copy.deepcopy(self.gammauh_pars)
-
-        self.__scale = np.zeros(self.__n_zones)
-        for i in range(self.__n_zones):
-            shape = pars.shape[i]
-            toc = pars.toc[i]
-            self.__scale[i] = nwsrfs_source.uh2p_get_scale_root(shape,toc,np.float64(1))
-
-    def return_uh(self,
-                tstep):
-        '''
-        Return unit hydrograph ordinates for each zone (units: cfs/in).
-
-        Args:
-            tstep (int): Specifies timestep of unit hydrograph (units: hours). Fractional hours are not supported and will be rounded.
-        Returns:
-             pd.DataFrame: A DataFrame containing unit hydrograph (uh) with a column for each zone (units: cfs/in). Trailing zero ordinates are omitted; leading zeros are preserved. Shorter zone hydrographs are padded with NaN.
-        '''
-
-        #Create a copy of the parameters
-        pars = copy.deepcopy(self.gammauh_pars)
-
-        #convert tstep to integer
-        tstep = np.int32(tstep)
- 
-        #Start validation of tstep
-        if np.ndim(tstep) != 0:
-            raise ValueError("tstep must be a scalar")
-
-        tstep = np.float64(tstep)
-        if not np.isfinite(tstep) or tstep <= 0:
-            raise ValueError("tstep must be finite and greater than zero")
-        #End validation of tstep
-
-        #Calculate the uh for each zone
-        uh_dic = {}
-        for i in range(self.__n_zones):
-
-            shape = pars.shape[i]
-            scale = self.__scale[i]
-            area = pars.area[i]
-
-            #dimensionless uh
-            uh_dl = np.asarray(nwsrfs_source.uh2p_call(shape,scale,tstep,np.int32(1000)), dtype=np.float64)
-
-            #Start validation of uh_dl
-            if not np.all(np.isfinite(uh_dl)):
-                raise ValueError(f"Zone {i} produced nonfinite UH ordinates")
-
-            nonzero = np.flatnonzero(uh_dl != 0)
-            if nonzero.size == 0:
-                raise ValueError(
-                    f"Zone {i} produced an all-zero UH; check shape, "
-                    "scale, and timestep"
-                )
-            #End validation of uh_dl
-
-            # Preserve leading zeros and remove trailing zero padding.
-            uh_dl = uh_dl[:nonzero[-1] + 1]
-
-            # Volume generated by one inch of runoff over the zone.
-            #volume calcuation zone_area_km2 to mi2 (0.386102) to ft2 (0.386102*5280)
-            #multiplied by 1 inch (in ft) for a volume of ft3
-            total_uh_vol = pars.area[i] * 0.386102 * 5280**2 / 12
-            #Distribute volume and divide by timestep in seconds
-            uh = uh_dl * total_uh_vol / (tstep * 3600)
-
-            #Assign to UH to dictionary
-            uh_dic[f"uh_{i}"] = pd.Series(uh)
-
-        #Create DataFrame and format index
-        uh_df = pd.DataFrame(uh_dic)
-        uh_df.index = pd.Index(
-            uh_df.index.to_numpy(dtype=float) * tstep,
-            name="hours",
-        )
-        
-        return uh_df
-
     @property
-    def uh(self) -> pd.DataFrame:
+    def peadj_table(self) -> pd.DataFrame:
         '''
-        Generates a unit hydrograph as a DataFrame at a timestep specified by the ``dt_hours`` attribute (units - cfs/in).
-        '''
-
-        if self.__uh is None:
-            #Create a copy of the parameters
-            pars = copy.deepcopy(self.gammauh_pars)
-            self.__uh = self.return_uh(tstep=pars.dt_hours)
-
-        return self.__uh.copy(deep=True)
-
-    def return_sf(self,
-                tci:SACSnowTCI,
-                return_inst:bool = True):
-
-        '''
-        Return a timeseries of streamflow for each zone.
-
-        Args:
-            tci (SACSnowTCI):  Custom type alias for total channel inflow from :class:`SacSnow`  (units:  mm).
-            return_inst (bool): Specifies to return instantaneous streamflow, rather than period mean flow.  Default: ``True``.
-        Returns:
-            pd.DataFrame: A DataFrame containing streamflow with a column for each zone (units: cfs).
+        Rows represent January–December, indexed 1 through 12 with index
+        name ``month``. Columns are zero-based zone indices, matching the
+        zone order used by ``forcings``. Values are the dimensionless
+        factors from ``fa_pars['pet'].peadj_m``.
         '''
 
-        #Create a copy of the parameters
-        pars = copy.deepcopy(self.gammauh_pars)
+        return pd.DataFrame(
+            self.fa_pars['pet'].peadj_m,
+            index=pd.Index(data=range(1,13),name='month'),
+            copy=True
+            ).add_prefix('peadj_')
 
-        #tci validation start
-        if tci.shape[1] != self.__n_zones:
-            raise ValueError(
-                f"tci must have exactly {self.__n_zones} zone columns"
-            )
-
-        if len(tci) > 1:
-            if not utils._validate_timestep(pars.dt_hours * 3600,tci.index.year,tci.index.month,tci.index.day,tci.index.hour):
-                raise ValueError(
-                    "tci timestep must match GammaUhPars.dt_hours"
-                )
-        #tci validation end
-
-        #Format tci into a FORTRAN friendly datatype
-        tci_array = utils._dtype_conversion(tci.to_numpy(),np.float64)
-        tci_array = np.asfortranarray(tci_array)
-
-        m_uh = np.int32(1000)  # max UH length
-        n_uh = np.int32(len(tci_array) + m_uh)
-
-        #Calculate the streamflow for each zone
-        sf = pd.DataFrame(index=tci.index)
-        for i in range(self.__n_zones):
-
-            shape=pars.shape[i]
-            scale=self.__scale[i]
-            area=pars.area[i]
-
-            col_name = f'sf_{i}'
-
-            flow_routed = nwsrfs_source.duamel(tci_array[:, i], shape, scale,
-                pars.dt_hours/24, n_uh, m_uh, np.int32(1), np.int32(0))
-
-            # flow_routed units:  mm, zone_area units:  km2,  1000 is a combined conversion of km2->m2 and mm->m
-            # flow routed is depth of runoff over a basin for a time step. that with area converts it to a volume
-            # and dt.second (timestep in sec) is used to complete conversion of runoff to flow
-            # instantaneous routed flow weighted by zone area
-            sim_flow_inst_cfs = flow_routed[0:len(tci_array)] * 1000 * 3.28084 ** 3 / \
-                                (pars.dt_hours*60**2) * area
-
-            #return instantaneous or period avg depending on chosen option
-            if return_inst:
-                sf[col_name] = sim_flow_inst_cfs
-            else:
-                sf[col_name] = self._inst_to_ave(sim_flow_inst_cfs)
-        return sf
-
-    @staticmethod
-    def _inst_to_ave(ts_inst:np.ndarray):
-        '''
-        Return a timeseries of period average data.
-
-        Args:
-            ts_inst (np.ndarray): A timeseries of instantaneous data.
-        Returns:
-            np.ndarray: A timeseries of period average data.
-        '''
-
-        values = np.asarray(ts_inst, dtype=np.float64)
-
-        if values.ndim != 1:
-                    raise ValueError("ts_inst must be a 1D array")
-
-        if values.size == 0:
-            return values.copy()
-
-        #The final sample is repeated as the next endpoint because no subsequent sample is supplied.
-        following = np.concatenate((values[1:], values[-1:]))
-
-        return (values + following)/2
 
 @dataclass
 class RSnwElevPars:
@@ -1895,6 +2163,7 @@ class RSnwElevPars:
     * **Area-Elevation Table Index** (e.g., ``aetbl_index``): Shape (E,)
     * **Area-Elevation Table Values** (e.g., ``aetbl_values``): Shape (E,Z)
 
+    Supported model time steps are 1, 2, 3, 4, 6, 8, 12, or 24 hours.
 
     Args:
         year (np.ndarray): Array of years for each timestep (units: time).
@@ -1905,7 +2174,7 @@ class RSnwElevPars:
         talr (np.ndarray): Lapse rate during precipitation periods (units: degc/100m).
         pxtemp (np.ndarray): Rain/snow threshold temperature (units: degc).
         aetbl_index (np.ndarray): Area-elevation table index array (units: fraction 0-1).
-        aetbl_values (np.ndarray): Area-elevation table values array(units: m).
+        aetbl_values (np.ndarray): Area-elevation table values array (units: m).
         forcings_mat(np.ndarray): Air temperature array for each timestep (units: degc).
     '''
     year: np.ndarray
@@ -1924,23 +2193,7 @@ class RSnwElevPars:
         #check that all inputs contain finite values
         utils._validate_finite_fields(self)
 
-        #Start validate time arrays
-        time_arrays = (self.year, self.month, self.day, self.hour)
-
-        if not utils._validate_nd_array(*time_arrays):
-            raise ValueError("Time arrays must be 1D numpy arrays")
-
-        if not utils._validate_array_length(*time_arrays):
-            raise ValueError("Time arrays must have equal lengths")
-
-        if len(self.year) < 2:
-            raise ValueError("FAPars requires at least two timestamps to infer the timestep")
-
-        for name in ("year", "month", "day", "hour"):
-            values = getattr(self, name)
-            if not np.all(values == np.floor(values)):
-                raise ValueError(f"{name} must contain integer values")
-        #End validate time arrays 
+        utils._validate_time_arrays(self)
 
         #Convert time inputs to integer dtypes
         time_list = ['year','month','day','hour'] 
@@ -1960,19 +2213,17 @@ class RSnwElevPars:
         """Checks that all inputs meet shape, type, and value constraints."""
 
         dt_sec = utils._define_timestep_sec(self.year, self.month, self.day, self.hour)
-        #check to make sure that dates are not reversed, are positive, no longer than a day, and a factor of 24hrs
-        if (
-            dt_sec  <= 0
-            or dt_sec  > 86400
-            or 86400 % dt_sec  != 0
-        ):
+        # Supported timesteps are whole-hour divisors of one day.
+        supported_seconds = (3600, 7200, 10800, 14400, 21600, 28800, 43200, 86400)
+        if dt_sec not in supported_seconds:
             raise ValueError(
-                "Timestep must be positive, no longer than one day, and a factor of 24 hrs "
+                f"Unsupported timestep: {dt_sec} seconds ({dt_sec/3600} hours). "
+                "Supported timesteps are 1, 2, 3, 4, 6, 8, 12, or 24 hours."
             )
 
-        #check to make there are no gaps in the timeseries
-        if not utils._validate_timestep(dt_sec,self.year, self.month, self.day, self.hour):
-            raise Values("Time arrays (year, month, day, hour) cannot have gaps or duplicates")
+        # Every consecutive timestamp must match the supported timestep.
+        if not utils._validate_timestep(dt_sec, self.year, self.month, self.day, self.hour):
+            raise ValueError("Time arrays (year, month, day, hour) cannot have gaps or duplicates")
 
         #check that taelev, talr, pxtemp, aetbl_index are 1d arrays
         if not utils._validate_nd_array(self.taelev, self.talr, self.pxtemp, self.aetbl_index):
@@ -2085,4 +2336,20 @@ class RSnwElev:
         ptps= pd.DataFrame(self.__raw_output,index=self.__datetime).add_prefix('ptps_')
 
         return ptps
+
+    @property
+    def area_elev_table(self) -> pd.DataFrame:
+        '''
+        The index, named ``quantiles``, contains cumulative fractions of
+        zone area below each corresponding elevation. Columns are named
+        ``elev_0``, ``elev_1``, etc., in parameter zone order, and contain
+        elevations in meters. .
+        '''
+
+        return pd.DataFrame(
+            self.rsnwelev_pars.aetbl_values,
+            index=pd.Index(data=self.rsnwelev_pars.aetbl_index,name='quantiles'),
+            copy=True
+            ).add_prefix('elev_')
+
 

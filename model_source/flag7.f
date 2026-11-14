@@ -40,7 +40,8 @@ CFC      INCLUDE 'common/fcpuck'
 C
 CGW      DIMENSION P(1),C(1),QA(1),QB(1),QT(1),CONLQ(2)
       INTEGER NDT, IB
-      REAL QB(NDT),QA(NDT),QT(NDT*3)
+      REAL QB(NDT),QA(NDT)
+      REAL, ALLOCATABLE :: QT(:)
       DIMENSION P(*),C(*),CONLQ(2)
 CGW   ADDING ARRAYS TO TRACK CARRY OVER TIME
       REAL, DIMENSION(NDT) :: CO_ST
@@ -87,14 +88,17 @@ CFC     1  ', TOTAL CPU TIME = ',F13.2)
 C
 CGW  Added varible
       IB=0
-      COTIME=NDT*6
+      ITA=int(P(5))
+      COTIME=NDT*REAL(ITA)
 C
 CCB  QT is a scratch work array. The lag algorithm indexes it sparsely
 CCB  (pairs written at computed offsets) and later reads spans that may
 CCB  include never-written slots, which valgrind flags as conditional
 CCB  jumps on uninitialised values. Zero it up front so those reads are
 CCB  deterministic; it does not change the computed QB output.
-      DO 1 IQT=1,NDT*3
+CGW  Include carryover pairs and endpoints, even for one-step runs.
+      ALLOCATE(QT(MAX(NDT*3,2*(NDT+INT(C(5)))+4)))
+      DO 1 IQT=1,SIZE(QT)
          QT(IQT)=0.0
     1 CONTINUE
 C

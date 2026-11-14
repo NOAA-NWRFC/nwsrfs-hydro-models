@@ -3,8 +3,8 @@
 # Upstream template: https://github.com/r-hub/actions/blob/v1/workflows/rhub.yaml
 # The rhub package's local helpers (rhub_setup(), rhub_doctor(), rhub_check())
 # refuse to run because they require the R package DESCRIPTION at the repository
-# root, and ours lives in nwsrfs_r/. Those helpers are NOT needed: the checks run
-# entirely through the r-hub/actions steps below, and each job promotes nwsrfs_r/
+# root, and ours lives in nwsrfsr/. Those helpers are NOT needed: the checks run
+# entirely through the r-hub/actions steps below, and each job promotes nwsrfsr/
 # to the workspace root (turning the committed symlinks into real files) before
 # any R-hub step touches the package, so R-hub sees a root-level package at run
 # time.
@@ -38,12 +38,6 @@ on:
         description: "Unique ID. You can leave this empty now."
         type: string
 
-env:
-  # nwsrfs_r/.Rprofile sources renv/activate.R; disable the autoloader so it
-  # does not hijack the R library on the runner. renv files are .Rbuildignore'd,
-  # so this does not change what R-hub checks. Mirrors the pixi tasks.
-  RENV_CONFIG_AUTOLOADER_ENABLED: "FALSE"
-
 jobs:
   setup:
     runs-on: ubuntu-latest
@@ -75,7 +69,7 @@ jobs:
       - name: Promote subdirectory package to root
         shell: bash
         run: |
-          # R-hub checks the repository root, but the package is in nwsrfs_r/.
+          # R-hub checks the repository root, but the package is in nwsrfsr/.
           # Assemble a clean package tree (with symlinks turned into copies) in a
           # scratch dir, wipe the workspace, then restore only the package so
           # R CMD build does not sweep in sibling dirs (nwsrfs_py/, pages/, ...).
@@ -83,9 +77,10 @@ jobs:
           pkg="$RUNNER_TEMP/pkg"
           rm -rf "$pkg" && mkdir -p "$pkg"
           shopt -s dotglob
-          cp -R nwsrfs_r/* "$pkg"/
+          cp -R nwsrfsr/* "$pkg"/
           rm -rf "$pkg/src" && cp -R model_source "$pkg/src"
           rm -f "$pkg/NOTICE" && cp NOTICE "$pkg/NOTICE"
+          rm -rf "$pkg/rv" "$pkg/.Rprofile"
           find "$pkg/src" -type f \
             \( -name '*.o' -o -name '*.so' -o -name '*.dylib' -o -name '*.a' \
             -o -name '*.mod' -o -name '*.smod' -o -name '*.obj' -o -name '*.dll' \
@@ -120,7 +115,7 @@ jobs:
       - name: Promote subdirectory package to root
         shell: bash
         run: |
-          # R-hub checks the repository root, but the package is in nwsrfs_r/.
+          # R-hub checks the repository root, but the package is in nwsrfsr/.
           # Assemble a clean package tree (with symlinks turned into copies) in a
           # scratch dir, wipe the workspace, then restore only the package so
           # R CMD build does not sweep in sibling dirs (nwsrfs_py/, pages/, ...).
@@ -128,9 +123,10 @@ jobs:
           pkg="$RUNNER_TEMP/pkg"
           rm -rf "$pkg" && mkdir -p "$pkg"
           shopt -s dotglob
-          cp -R nwsrfs_r/* "$pkg"/
+          cp -R nwsrfsr/* "$pkg"/
           rm -rf "$pkg/src" && cp -R model_source "$pkg/src"
           rm -f "$pkg/NOTICE" && cp NOTICE "$pkg/NOTICE"
+          rm -rf "$pkg/rv" "$pkg/.Rprofile"
           find "$pkg/src" -type f \
             \( -name '*.o' -o -name '*.so' -o -name '*.dylib' -o -name '*.a' \
             -o -name '*.mod' -o -name '*.smod' -o -name '*.obj' -o -name '*.dll' \

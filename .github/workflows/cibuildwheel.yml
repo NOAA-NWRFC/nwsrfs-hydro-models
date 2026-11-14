@@ -15,6 +15,12 @@ jobs:
       matrix:
         os: ["ubuntu-latest", "macos-latest", "windows-latest"]
 
+    env:
+      # Oldest macOS the published wheels support. Passed to cibuildwheel and read by the
+      # post-build check, so the tag and the assertion cannot drift apart.
+      # Ignored on Linux and Windows.
+      WHEEL_MACOS_TARGET: "11.0"
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -33,10 +39,22 @@ jobs:
       # macOS compiler setup
       - name: Install macOS Fortran compiler
         if: runner.os == 'macOS'
-        uses: fortran-lang/setup-fortran@v1
-        with:
-          compiler: gcc
-          version: '13'
+        run: |
+          # CRAN's universal gfortran, the same toolchain dev/README.md prescribes for the R
+          # package. Its static libgfortran/libquadmath/libgcc are built for macOS 11, so the
+          # objects linked into the wheel match the deployment target it is tagged with.
+          #
+          # Homebrew's gcc is bottled for the runner's own macOS. Linking its archives at 11.0
+          # works, but emits ~200 "object file was built for newer 'macOS' version" warnings
+          # and leaves the macOS 11 claim resting on object code compiled against a much newer
+          # SDK. Using it also meant setting CC=gcc, which built the C sources with GCC instead
+          # of Apple clang.
+          set -euo pipefail
+          curl -fLO https://mac.r-project.org/tools/gfortran-14.2-universal.pkg
+          sudo installer -pkg gfortran-14.2-universal.pkg -target /
+          rm -f gfortran-14.2-universal.pkg
+          echo "/opt/gfortran/bin" >> "$GITHUB_PATH"
+          /opt/gfortran/bin/gfortran --version
 
       # Windows compiler setup
       - name: Install Windows Fortran compiler
@@ -94,8 +112,10 @@ jobs:
           # re-check bundled DLLs and this repair command.
           CIBW_BEFORE_BUILD_WINDOWS: "python -m pip install --upgrade pip delvewheel"
           CIBW_REPAIR_WHEEL_COMMAND_WINDOWS: "delvewheel repair --add-path C:/msys64/mingw64/bin -w {dest_dir} {wheel}"
-          # macOS: Set base deployment target for Apple Silicon compatibility (macOS 11.0+)
-          CIBW_ENVIRONMENT_MACOS: "MACOSX_DEPLOYMENT_TARGET=11.0"
+          # macOS: Set base deployment target for Apple Silicon compatibility (macOS 11.0+).
+          # FC is pinned so meson uses the CRAN toolchain rather than any gfortran that happens
+          # to be on PATH. CC is left alone so the C sources keep building with Apple clang.
+          CIBW_ENVIRONMENT_MACOS: "MACOSX_DEPLOYMENT_TARGET=${{ env.WHEEL_MACOS_TARGET }} FC=/opt/gfortran/bin/gfortran"
         with:
           # GitHub can occasionally return 429 while cibuildwheel fetches virtualenv.pyz.
           # Retry the whole build to avoid failing on transient infrastructure errors.
@@ -108,6 +128,42 @@ jobs:
         run: |
           python -m pip install --upgrade twine
           python -m twine check wheelhouse/*.whl
+
+      - name: Verify macOS wheels are self-contained and match their tag
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          # The macosx_11_0 tag is a compatibility claim CI cannot exercise directly, because
+          # the runner is many releases newer. Assert the two properties it rests on: the
+          # extension links no gfortran runtime dylib, and it is built for the target we claim.
+          set -euo pipefail
+          target_tag="macosx_${WHEEL_MACOS_TARGET//./_}"
+          work="$(mktemp -d)"
+          for whl in wheelhouse/*.whl; do
+            name="$(basename "$whl")"
+            echo "== $name"
+            case "$name" in
+              *"$target_tag"*) ;;
+              *) echo "::error::$name is not tagged $target_tag"; exit 1 ;;
+            esac
+            rm -rf "$work/x" && mkdir -p "$work/x"
+            unzip -q "$whl" -d "$work/x"
+            so="$(find "$work/x" -name '*.so' | head -n1)"
+            if [ -z "$so" ]; then
+              echo "::error::no extension module found in $name"; exit 1
+            fi
+            if otool -L "$so" | tail -n +2 | grep -qE 'libgfortran|libquadmath|libgcc'; then
+              echo "::error::$name links the gfortran runtime dynamically; static link did not apply"
+              otool -L "$so" | tail -n +2
+              exit 1
+            fi
+            minos="$(otool -l "$so" | awk '/LC_BUILD_VERSION/{f=1} f && /minos/{print $2; exit}')"
+            echo "   minos=$minos, no gfortran runtime dylib"
+            if [ "$minos" != "$WHEEL_MACOS_TARGET" ]; then
+              echo "::error::$name is built for macOS $minos but tagged ${WHEEL_MACOS_TARGET}"
+              exit 1
+            fi
+          done
 
       - name: Smoke test install from built wheel artifact
         run: |

@@ -49,28 +49,34 @@ __pycache__
 # Mac junk
 .DS_Store
 
-# Local notes and scripts
+# Local notes, agent configs, and build outputs
 *.Rcheck/
 *_*.tar.gz
+.worktrees/
 .*
+!/.gitignore
+!/.gitattributes
+!/.zenodo.json
 !.github/
 !.github/workflows/
 !.github/workflows/*.yml
-*.md
+!.github/workflows/*.yaml
+.github/copilot-instructions.md
+.github/instructions/
+!nwsrfsr/.gitignore
+!nwsrfsr/.Rbuildignore
+!nwsrfsr/.Rprofile
+!nwsrfsr/rv/.gitignore
+nwsrfsr/rv/library/
+nwsrfsr/.github/
 setup_*.sh
 *_report.md
 *_checklist.md
-# Vendored license file for the roots-fortran library must be shipped
-# with the R package (required by its BSD-3-clause license).
-!nwsrfs_r/inst/LICENSE_roots_fortran.md
-# Developer tooling docs are tracked (the *.md rule above would hide them).
-!dev/README.md
-# Design specs and implementation plans are project records.
-!docs/superpowers/specs/*.md
-!docs/superpowers/plans/*.md
-# The CRAN response note is a top-level project record.
-# just in case it is needed to commit to the repo later
-# !cran_authors_review_response.md
+*_response.md
+*-notes.md
+nwsrfsr/LICENSE.md
+nwsrfs_py/build/
+.pytest_cache/
 
 # R build arifacts
 00*.log
@@ -83,11 +89,11 @@ setup_*.sh
 /nwsrfs_py/docs/_build/
 
 # R pkgdown site output
-/nwsrfs_r/docs/
-/nwsrfs_r/docs/_pkgdown.yml
+/nwsrfsr/docs/
+/nwsrfsr/docs/_pkgdown.yml
 
 #pypi distribution
 /nwsrfs_py/dist/*
 
-# src/Makevars is generated from Makevars.in by nwsrfs_r/configure
+# src/Makevars is generated from Makevars.in by nwsrfsr/configure
 model_source/Makevars

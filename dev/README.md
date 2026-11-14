@@ -36,24 +36,20 @@ Two one time prerequisites:
        curl -fLO https://mac.r-project.org/tools/gfortran-14.2-universal.pkg
        sudo installer -pkg gfortran-14.2-universal.pkg -target /
 
-2. The R development packages (testthat, pkgdown, devtools, roxygen2),
-   restored by renv into the project's renv library (kept in the user cache
-   directory, since the project has a DESCRIPTION file):
+2. The R development packages (`devtools`, `ggplot2`, `knitr`, `pkgdown`,
+   `quarto`, `roxygen2`, `testthat`), managed declaratively by
+   [rv](https://github.com/A2-ai/rv) via `nwsrfsr/rproject.toml` and locked in
+   `nwsrfsr/rv.lock`:
 
-       cd nwsrfs_r && Rscript -e 'renv::restore()'
+       cd nwsrfsr && rv sync
 
-renv installs from Posit Package Manager
+`rproject.toml` points to Posit Package Manager
 (`https://packagemanager.posit.co/cran/latest`), which serves precompiled
-binaries for macOS, Windows and major Linux distros, so restores do not
-compile from source. The pixi R tasks (`pixi run test-r` and friends) use
-the system R and this renv library; only the Python toolchain still comes
-from conda. Packages used only by the maintainer are declared in
-`nwsrfs_r/dev-dependencies.R` so `renv::snapshot()` keeps them in the
-lockfile.
-
-[rv](https://github.com/A2-ai/rv) is a likely successor to renv here (a
-declarative manager built around a lockfile), but it was pre-1.0 (v0.19) as
-of July 2026. Revisit once it reaches 1.0.
+binaries for macOS, Windows, and major Linux distros, so `rv sync` installs in
+seconds without compiling from source. `nwsrfsr/.Rprofile` activates the
+project library under `nwsrfsr/rv/library/` whenever R starts in `nwsrfsr/`.
+The pixi R tasks (`pixi run test-r` and friends) use the system R and this `rv`
+library; only the Python/docs toolchain comes from conda-forge.
 
 ## Cross-package test suite
 
@@ -187,7 +183,7 @@ source file.
 rhub v2 runs on the R-Consortium runners from a locally built tarball, so the
 monorepo stays intact (no need to move the R package to a repo root, which would
 fork the shared `model_source` symlink). `dev/rhub-submit.sh` wraps the whole
-flow: it assembles a clean package tree (symlinks materialized, renv and stale
+flow: it assembles a clean package tree (symlinks materialized, `rv` and stale
 artifacts stripped), runs `R CMD build`, and submits the tarball:
 
 ```bash
@@ -209,3 +205,19 @@ rhub::rc_new_token()   # email token; the submit email defaults to the
 Results and the tarball become public on the `r-hub2` GitHub org; allow at least
 five minutes between submissions. The script prompts before submitting for this
 reason (pass `--yes` to skip).
+
+## Minting DOIs with Zenodo and GitHub Releases
+
+Repository-level Zenodo metadata lives in `.zenodo.json` at the repo root (authors,
+ORCIDs, license, and links to the 2026 JAWRA article and sample calibration dataset).
+Once the repository is linked in Zenodo, each published GitHub Release automatically
+mints a versioned DOI and updates the concept DOI.
+
+One-time link setup (requires GitHub org admin permissions for `NOAA-NWRFC`):
+
+1. Sign in at <https://zenodo.org> with GitHub.
+2. Open **GitHub** under account settings (<https://zenodo.org/account/settings/github/>),
+   flip the toggle on for `NOAA-NWRFC/nwsrfs-hydro-models`, and click **Sync now**.
+3. Publish a GitHub Release from a version tag (for example `v1.1.0`). Zenodo archives
+   the release tarball using `.zenodo.json` and assigns a DOI; add the resulting
+   concept DOI badge to `README.md` after the first archived release.

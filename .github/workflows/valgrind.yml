@@ -29,29 +29,24 @@ jobs:
     container:
       image: ghcr.io/r-hub/containers/valgrind:latest
 
-    env:
-      # nwsrfs_r/.Rprofile sources renv/activate.R, which would hijack the
-      # library inside the container. renv files are .Rbuildignore'd, so this
-      # does not change what is checked. Mirrors the other R workflows.
-      RENV_CONFIG_AUTOLOADER_ENABLED: "FALSE"
-
     steps:
       - uses: actions/checkout@v4
 
-      # The package lives in nwsrfs_r/ and reaches the shared Fortran source
+      # The package lives in nwsrfsr/ and reaches the shared Fortran source
       # through committed symlinks (src -> ../model_source, NOTICE -> ../NOTICE).
       # Assemble a clean, self-contained package tree with the symlinks turned
-      # into real copies and any stale compiled artifacts removed, so the source
-      # tarball built below is exactly what CRAN would build.
+      # into real copies and local rv files / stale compiled artifacts removed, so
+      # the source tarball built below is exactly what CRAN would build.
       - name: Materialize symlinked sources
         shell: bash
         run: |
           set -euxo pipefail
-          rm -rf nwsrfs_r/src
-          cp -R model_source nwsrfs_r/src
-          rm -f nwsrfs_r/NOTICE
-          cp NOTICE nwsrfs_r/NOTICE
-          find nwsrfs_r/src -type f \
+          rm -rf nwsrfsr/src
+          cp -R model_source nwsrfsr/src
+          rm -f nwsrfsr/NOTICE
+          cp NOTICE nwsrfsr/NOTICE
+          rm -rf nwsrfsr/rv nwsrfsr/.Rprofile
+          find nwsrfsr/src -type f \
             \( -name '*.o' -o -name '*.so' -o -name '*.dylib' -o -name '*.a' \
             -o -name '*.mod' -o -name '*.smod' -o -name '*.obj' -o -name '*.dll' \
             -o -name '*.lib' \) -delete
@@ -64,7 +59,7 @@ jobs:
         run: |
           set -euxo pipefail
           mkdir -p "$GITHUB_WORKSPACE/check"
-          R CMD build nwsrfs_r
+          R CMD build --no-build-vignettes nwsrfsr
           cp nwsrfsr_*.tar.gz "$GITHUB_WORKSPACE/check/"
 
       # Run the valgrind check and scan the output the way CRAN's memtest does.
@@ -84,7 +79,7 @@ jobs:
           R -q -e "pak::pkg_install('deps::./${pkg}', dependencies = TRUE)"
           # CHECK_ARGS is set in the image (--use-valgrind --extra-arch
           # --no-stop-on-test-error); pass it unquoted so it word-splits.
-          R CMD check ${CHECK_ARGS} "${pkg}"
+          R CMD check --no-build-vignettes --ignore-vignettes ${CHECK_ARGS} "${pkg}"
 
       # Scan for valgrind error frames exactly like CRAN's memtest: any line of
       # the form "==NNN== at " in the example or test transcripts is a real

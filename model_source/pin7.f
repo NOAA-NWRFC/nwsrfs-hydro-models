@@ -60,7 +60,9 @@ CFC      COMMON/FDBUG/IODBUG,ITRACE,IDBALL,NDEBUG,IDEBUG(20)
       COMMON /FATLGK/ IATL,C1,C2
 C
 CFC      DIMENSION P(LP),C(LC)
-      DIMENSION P(500),C(100)
+CGW   Caller sizes carryover C for maximum lag and input time step.
+CGW   Keep P capacity consistent with LAGK and PINA7.
+      DIMENSION P(1000),C(*)
 CGW   Adding FTPY help
 CGW Cf2py intent(out) P
 CGW Cf2py intent(out) C
@@ -276,7 +278,9 @@ CGW180   FORMAT ('0**ERROR** INFLOW TIME STEP (',I2,
 CGW     1  ') MUST NOT BE GREATER THAN THE OUTFLOW TIME STEP (',I2,'.')
 CFC         CALL ERROR
          GO TO 200
-C
+
+CGW   This condition is never invoked (hard coding ITA to LAGDT)
+CGW   because TSIDA1 and TSIDA2 are provided dummy values 
 190   ITA=LAGDT
       ITB=ITA
       MEANQ=.FALSE.

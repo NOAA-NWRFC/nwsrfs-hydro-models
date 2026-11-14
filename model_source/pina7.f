@@ -34,7 +34,8 @@ CFC      COMMON/FDBUG/IODBUG,ITRACE,IDBALL,NDEBUG,IDEBUG(20)
       COMMON/FATLGK/IATL,C1,C2
 C
 CCB      DIMENSION P(500),C(100)
-      DIMENSION P(500)
+CGW   Match caller capacity for expanded storage-routing tables.
+      DIMENSION P(1000)
 C
 C    ================================= RCS keyword statements ==========
       CHARACTER(len=68)     RCSKW1,RCSKW2

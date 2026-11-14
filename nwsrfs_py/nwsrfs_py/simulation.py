@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from . import nwsrfs
 from . import utils
-#import pdb; pdb.set_trace()
+#import pdb; pdb.set_trace() | breakpoint()
 
 #create a new type for sacsnow_tci output
 SACSnowTCI = NewType('SACSnowTCI',pd.DataFrame)
@@ -26,6 +26,71 @@ class _NwrfcAcPrep:
     (i.e. no local inflow modeled by SAC-SMA, Snow17, UH).
 
     If no ``run_dir`` is provided, the first ``'results_*'`` directory found within the ``autocalb_dir`` path will be used.
+
+    Supported model time steps are 1, 2, 3, 4, 6, 8, 12, or 24 hours.
+
+    .. rubric:: PTPS input
+
+    The ``ptps`` column supplies the fraction of precipitation falling as snow
+    and must be present in every ``forcing_por*`` CSV file to use supplied
+    precipitation typing (``ptps_logic = True``). If any forcing file lacks
+    ``ptps``, provide a single CSV file whose name starts with ``area_elev``
+    in ``autocalb_dir``. The area-elevation CSV must contain one column per
+    zone, labeled with the zone name and containing elevations in meters.
+    The first CSV column, regardless of its header, is loaded as the index
+    and named ``quantile``; zone columns are sorted alphabetically. The index
+    represents the nonexceedance fraction: the fraction of the zone's area
+    at or below the corresponding elevation. For example,
+    a fraction of ``1.0`` corresponds to the maximum elevation in each zone.
+    To calculate precipitation typing with ``RSnwElev``, also provide the
+    parameters ``pxtemp`` and ``talr`` with ``type == 'rsnwelev'`` in
+    ``autocalb_dir/run_dir/pars_optimal.csv`` for each zone. The ``taelev``
+    input uses that zone's ``elev`` parameter with ``type == 'snow'``;
+    a separate ``taelev`` parameter is not required.
+
+    Multiple ``area_elev*`` CSV files are ambiguous and raise :exc:`ValueError`.
+    Supplying both an ``area_elev*`` CSV and ``ptps`` in every forcing file
+    also raises :exc:`ValueError`. If only some forcing files contain ``ptps``,
+    supplied PTPS is ignored and the area-elevation input is required.
+    A :exc:`ValueError` is also raised if ``ptps`` is missing from any forcing
+    file and no area-elevation CSV is available.
+
+    .. rubric:: Unit hydrograph selection
+
+    The unit hydrograph method is determined from the ``name`` column of
+    ``pars_optimal.csv``, considering only rows where ``type == 'uh'``:
+
+    * ``unit_shape`` identifies a gamma unit hydrograph
+      (``uh_type = 'gamma'``).
+    * Numbered ordinate parameters named ``uh_0``, ``uh_1``, and so on
+      identify an ordinate unit hydrograph (``uh_type = 'ordinate'``).
+      Numbering must be consecutive from ``uh_0`` within each zone.
+      Values are in cfs/in at the model timestep; shorter zone hydrographs
+      are padded with trailing NaN values.
+
+    Supply either one gamma or ordinate UH parameter set for all SAC-Snow
+    zones, or one UH parameter set per SAC-Snow zone. A gamma set contains
+    ``unit_shape``, ``unit_toc``, and ``unit_toc_adj``; an ordinate set
+    contains the numbered ``uh_0``, ``uh_1``, ... parameters.
+
+    In both cases, provide exactly one ``zone_area`` parameter (in km2)
+    with ``type == 'uh'`` for every SAC-Snow zone, using that zone's name
+    in the ``zone`` column. These individual areas are required by forcing
+    adjustments even when the UH parameters are shared. For a shared UH,
+    the areas are summed before being passed to the UH dataclass, and
+    ``return_sf()`` area-weights TCI across zones before routing it through the UH.
+    Supplied ordinates for a shared UH must represent the combined area.
+
+    ``shared_uh_logic`` is ``True`` only when multiple SAC-Snow zones use
+    one UH parameter set. A single SAC-Snow zone is not considered shared;
+    its UH parameter set must use the same zone name. When multiple UH
+    parameter sets are supplied, their zone names must match the SAC-Snow
+    zone names.
+
+    Providing both ``unit_shape`` and any numbered ``uh_<number>`` entry
+    raises :exc:`ValueError` because the method is ambiguous. If neither
+    ``unit_shape`` nor ``uh_0`` is present, :exc:`ValueError` is raised because
+    the method cannot be determined.
 
     Arguments:
         autocalb_dir (str): Path to a NWRFC autocalibration directory
@@ -126,6 +191,17 @@ class _NwrfcAcPrep:
             msg = 'POR forcing csv files are missing. Files must start with forcing_por_*.'
             raise ValueError(msg)
 
+        #Check for an optional area-elevation file used for precipitation typing
+        area_elev_df = self.autocalb_files.loc[
+            self.autocalb_files.file_name.str.startswith('area_elev')]
+        if len(area_elev_df) > 1:
+            raise ValueError(
+                'Area-elevation csv file is ambiguous. Only one csv file must start with area_elev*.')
+        self.area_elev_logic = len(area_elev_df) == 1
+        self.area_elev_path = (
+            os.path.join(area_elev_df.path.squeeze(), area_elev_df.file_name.squeeze())
+            if self.area_elev_logic else None)
+
         #Check for instantaneous flow file 
         self._inst_flow_df = self.autocalb_files.loc[self.autocalb_files.file_name.str.startswith('flow_instantaneous')]
         if len(self._inst_flow_df) == 0:
@@ -166,23 +242,39 @@ class _NwrfcAcPrep:
 
         #Read forcing file data as DataFrame and reconstruct as a dictionary with each forcing as a key
         forcings_import = self._read_tsfiles(self.forcings_por_df, drop_cols)
-        self.forcings_raw = {'map': pd.DataFrame(index=forcings_import[0].index),
-                             'mat': pd.DataFrame(index=forcings_import[0].index),
-                             'ptps': pd.DataFrame(index=forcings_import[0].index)}
-        
+        #PTPS is usable only when it is supplied for every forcing file.
+        self.ptps_logic = all('ptps' in forcing.columns for forcing in forcings_import)
+        self.area_elev = None
+        if self.ptps_logic and self.area_elev_logic:
+            raise ValueError(
+                'Ambiguous precipitation typing inputs: every forcing file contains '
+                'a ptps column, but an area_elev* CSV is also present. '
+                'Remove the area_elev* CSV to use supplied PTPS, or remove the '
+                'ptps columns from the forcing files to calculate PTPS with RSnwElev.')
+        elif not self.ptps_logic:
+            if not self.area_elev_logic:
+                raise ValueError(
+                    'Precipitation typing requires a ptps column in every forcing file '
+                    'or a single area_elev* csv file.')
+            self.area_elev = pd.read_csv(self.area_elev_path, index_col=0)
+            self.area_elev.index.name = 'quantile'
+            self.area_elev = self.area_elev.sort_index(axis=1)
+
         #Create lists for each type of forcing
         map_list, mat_list, ptps_list = [], [], []
-        for i in range(len(forcings_import)):
-            map_list.append(forcings_import[i].loc[:,'map_mm'].rename(f'zone_{str(i)}'))
-            mat_list.append(forcings_import[i].loc[:,'mat_degc'].rename(f'zone_{str(i)}'))
-            ptps_list.append(forcings_import[i].loc[:,'ptps'].rename(f'zone_{str(i)}'))
+        for i, forcing in enumerate(forcings_import):
+            map_list.append(forcing.loc[:, 'map_mm'].rename(f'zone_{i}'))
+            mat_list.append(forcing.loc[:, 'mat_degc'].rename(f'zone_{i}'))
+            if self.ptps_logic:
+                ptps_list.append(forcing.loc[:, 'ptps'].rename(f'zone_{i}'))
 
-        #Concatenate forcing list into a dictionary
+        #PTPS will be calculated separately when area-elevation data is needed.
         self.forcings_raw = {
             'map': pd.concat(map_list, axis=1),
-            'mat': pd.concat(mat_list, axis=1),
-            'ptps': pd.concat(ptps_list, axis=1)
-            }
+            'mat': pd.concat(mat_list, axis=1)
+        }
+        if self.ptps_logic:
+            self.forcings_raw['ptps'] = pd.concat(ptps_list, axis=1)
 
         #If exists, read in instantaneous flow file
         if self.inst_flow_logic:
@@ -208,13 +300,51 @@ class _NwrfcAcPrep:
         '''
 
         #Get zone names and number , if present
-        self.zone_names = tuple(self.pars.loc[(self.pars.zone.str.contains('-'))].zone.sort_values().unique())
+        self.zone_names = tuple(self.pars.loc[(self.pars.zone.str.contains('-'))&
+                                (self.pars.type == 'sac')].zone.sort_values().unique())
         self.n_zones = len(self.zone_names)
         if self.n_zones > 0:
             self.localflow_logic = True
         else:
             self.localflow_logic = False
         
+        if self.localflow_logic:
+            #Identify the unit hydrograph from parameter names in the UH rows.
+            uh_names = self.pars.loc[self.pars.type == 'uh', 'name']
+            has_shape = uh_names.eq('unit_shape').any()
+            has_ordinates = uh_names.str.fullmatch(r'uh_[0-9]+', na=False).any()
+            if has_shape and has_ordinates:
+                raise ValueError(
+                    "UH parameters are ambiguous: unit_shape and uh_<number> entries "
+                    "cannot both be provided in rows where type == 'uh'.")
+            if has_shape:
+                self.uh_type = 'gamma'
+            elif uh_names.eq('uh_0').any():
+                self.uh_type = 'ordinate'
+            else:
+                raise ValueError(
+                    "UH parameters (type == 'uh') must include unit_shape for a gamma "
+                    "unit hydrograph or uh_<number> entries starting with uh_0 "
+                    "for an ordinate unit hydrograph.")
+
+            #Get names of UH zone names
+            marker = 'unit_shape' if self.uh_type == 'gamma' else 'uh_0'
+            self.uh_zone_names = tuple(
+                self.pars.loc[
+                    (self.pars.type == 'uh') & (self.pars.name == marker),
+                    'zone',
+                ].sort_values().unique()
+            )
+            self.shared_uh_logic = (len(self.uh_zone_names) == 1) & (len(self.zone_names) != 1)
+            #Multiple hydrographs must match the SAC-Snow zones.
+            if not self.shared_uh_logic:
+                if set(self.uh_zone_names) != set(self.zone_names):
+                    raise ValueError(
+                        "Provide one shared UH parameter set or one set per SAC-Snow zone."
+                    )
+        else:
+            self.uh_type = self.uh_zone_names = self.shared_uh_logic = None
+
         #Catalog routing, if present
         if self.upflow_logic:
            self.upflow_names = tuple(self.pars.loc[self.pars.type=='lagk'].zone.unique())
@@ -310,14 +440,13 @@ class _NwrfcAcPrep:
 
 
 class NwsrfsRun(_NwrfcAcPrep,
+                nwsrfs.RSnwElev,
                 nwsrfs.FA,
                 nwsrfs.SacSnow,
-                nwsrfs.GammaUh,
                 nwsrfs.Lagk,
                 nwsrfs.Chanloss):
     '''
     Orchestrates the execution of NWSRFS models (SAC-SMA, Snow17, lagk, etc.) using NWRFC autocalibration data.
-
 
     Files and folders in ``autocalb_dir`` must follow file conventions of the 
     `NOAA-NWRFC/nwsrfs-hydro-autocalibration repository <https://github.com/NOAA-NWRFC/nwsrfs-hydro-autocalibration>`_ optimization tools.
@@ -325,13 +454,78 @@ class NwsrfsRun(_NwrfcAcPrep,
 
     If no ``run_dir`` is provided, the first ``'results_*'`` directory found within the ``autocalb_dir`` path will be used.
 
+    Supported model time steps are 1, 2, 3, 4, 6, 8, 12, or 24 hours.
+
+    .. rubric:: PTPS input
+
+    The ``ptps`` column supplies the fraction of precipitation falling as snow
+    and must be present in every ``forcing_por*`` CSV file to use supplied
+    precipitation typing (``ptps_logic = True``). If any forcing file lacks
+    ``ptps``, provide a single CSV file whose name starts with ``area_elev``
+    in ``autocalb_dir``. The area-elevation CSV must contain one column per
+    zone, labeled with the zone name and containing elevations in meters.
+    The first CSV column, regardless of its header, is loaded as the index
+    and named ``quantile``; zone columns are sorted alphabetically. The index
+    represents the nonexceedance fraction: the fraction of the zone's area
+    at or below the corresponding elevation. For example,
+    a fraction of ``1.0`` corresponds to the maximum elevation in each zone.
+    To calculate precipitation typing with ``RSnwElev``, also provide the
+    parameters ``pxtemp`` and ``talr`` with ``type == 'rsnwelev'`` in
+    ``autocalb_dir/run_dir/pars_optimal.csv`` for each zone. The ``taelev``
+    input uses that zone's ``elev`` parameter with ``type == 'snow'``;
+    a separate ``taelev`` parameter is not required.
+
+    Multiple ``area_elev*`` CSV files are ambiguous and raise :exc:`ValueError`.
+    Supplying both an ``area_elev*`` CSV and ``ptps`` in every forcing file
+    also raises :exc:`ValueError`. If only some forcing files contain ``ptps``,
+    supplied PTPS is ignored and the area-elevation input is required.
+    A :exc:`ValueError` is also raised if ``ptps`` is missing from any forcing
+    file and no area-elevation CSV is available.
+
+    .. rubric:: Unit hydrograph selection
+
+    The unit hydrograph method is determined from the ``name`` column of
+    ``pars_optimal.csv``, considering only rows where ``type == 'uh'``:
+
+    * ``unit_shape`` identifies a gamma unit hydrograph
+      (``uh_type = 'gamma'``).
+    * Numbered ordinate parameters named ``uh_0``, ``uh_1``, and so on
+      identify an ordinate unit hydrograph (``uh_type = 'ordinate'``).
+      Numbering must be consecutive from ``uh_0`` within each zone.
+      Values are in cfs/in at the model timestep; shorter zone hydrographs
+      are padded with trailing NaN values.
+
+    Supply either one gamma or ordinate UH parameter set for all SAC-Snow
+    zones, or one UH parameter set per SAC-Snow zone. A gamma set contains
+    ``unit_shape``, ``unit_toc``, and ``unit_toc_adj``; an ordinate set
+    contains the numbered ``uh_0``, ``uh_1``, ... parameters.
+
+    In both cases, provide exactly one ``zone_area`` parameter (in km2)
+    with ``type == 'uh'`` for every SAC-Snow zone, using that zone's name
+    in the ``zone`` column. These individual areas are required by forcing
+    adjustments even when the UH parameters are shared. For a shared UH,
+    the areas are summed before being passed to the UH dataclass, and
+    ``return_sf()`` area-weights TCI across zones before routing it through the UH.
+    Supplied ordinates for a shared UH must represent the combined area.
+
+    ``shared_uh_logic`` is ``True`` only when multiple SAC-Snow zones use
+    one UH parameter set. A single SAC-Snow zone is not considered shared;
+    its UH parameter set must use the same zone name. When multiple UH
+    parameter sets are supplied, their zone names must match the SAC-Snow
+    zone names.
+
+    Providing both ``unit_shape`` and any numbered ``uh_<number>`` entry
+    raises :exc:`ValueError` because the method is ambiguous. If neither
+    ``unit_shape`` nor ``uh_0`` is present, :exc:`ValueError` is raised because
+    the method cannot be determined.
+
     Arguments:
         autocalb_dir (str): Path to a NWRFC autocalibration run directory
         run_dir (str | None): Name of optimization run subdirectory within the ``autocal_dir``. If ``'None'`` is provided, defaults to using first ``'results_*'`` directory found within the ``autocalb_dir``.
         forcing_adj (bool | list[str]):  If ``True`` monthly climatological forcing adjustments will be applied to all forcings.  Alternatively, a list with
             with specific forcing to apply climatological forcing adjustments can be supplied: ``'map'``, ``'mat'``, ``'ptps'``, ``'pet'``. Default: ``True``.
         return_inst (bool): Specifies to return instantaneous streamflow, rather than period average.  Default: ``True``.
-        shift_sf (bool):  Shifts :class:`~nwsrfs_py.nwsrfs.GammaUh` derived streamflow forward on one timestep.  Requirement for NWRFC calibrations. Default: ``True``.
+        shift_sf (bool):  Shifts streamflow from the selected UH model forward by one timestep.  Requirement for NWRFC calibrations. Default: ``True``.
     Attributes:
         pars (pd.DataFrame):  Contains all parameters used with NWSRFS models
         forcings_raw (dict[str, pd.DataFrame]):  A dictionary with forcings prior to applying :class:`~nwsrfs_py.nwsrfs.FA` adjustments
@@ -340,24 +534,41 @@ class NwsrfsRun(_NwrfcAcPrep,
            
             * **map**: Precipitation (units: mm) 
             * **mat**: Air temperature (units: degc)
-            * **ptps**: Fraction of precipitation as snow (units: fraction 0-1)
+            * **ptps**: Fraction of precipitation as snow (units: fraction 0-1).
+              Included during input preparation only when ``ptps_logic`` is ``True``.
         
+
         zone_names (tuple):  Names of zones modeled in basin.
         cu_names (tuple):  Names of consuse zones modeled in basin.
         daily_flow (pd.DataFrame):  Daily mean observed flow.
         inst_flow (pd.DataFrame|None):  Instantaneous observed flow.
         upflow (pd.DataFrame|None): Upstream flow derived from the :class:`adjustq.AdjustQ`.
         fa_pars (dict[str, nwsrfs.FAPars]|None):  If ``localflow_logic`` is ``True``, than dictionary of :class:`~nwsrfs_py.nwsrfs.FAPars` classes representing ``'map'``, ``'mat'``, ``'ptps'``, and ``'pet'``, otherwise ``'None'``.
+        rsnwelev_pars (nwsrfs.RSnwElevPars|None): If ``localflow_logic`` is ``True`` and ``ptps_logic`` is ``False``, a :class:`~nwsrfs_py.nwsrfs.RSnwElevPars` instance containing precipitation typing inputs; otherwise ``None``.
         sacsnow_pars (nwsrfs.SacSnowPars|None): If ``localflow_logic`` is ``True``, than :class:`~nwsrfs_py.nwsrfs.SacSnowPars` class, otherwise ``'None'``.
-        gammauh_pars (nwsrfs.GammaUhPars|None): If ``localflow_logic`` is ``True``, than :class:`~nwsrfs_py.nwsrfs.GammmaUhPars` class, otherwise ``'None'``.
+        uh_pars (nwsrfs.GammaUhPars | nwsrfs.OrdinatesUhPars | None): Parameters for
+            the selected :class:`~nwsrfs_py.nwsrfs.GammaUh` or
+            :class:`~nwsrfs_py.nwsrfs.OrdinatesUh` model; ``None`` without local flow.
         lagk_pars (nwsrfs.LagkPars|None): If ``upflow_logic`` is ``True``, than :class:`~nwsrfs_py.nwsrfs.LagkPars` class, otherwise ``'None'``.
         chanloss_pars (nwsrfs.ChanlossPars|None): If ``chanloss_logic`` is ``True``, than :class:`~nwsrfs_py.nwsrfs.ChanlossPars` class, otherwise ``'None'``.
         consuse_pars (dict[str, nwsrfs.ConsusePars]|None): If ``consuse_logic`` is ``True``, than dictionary of :class:`~nwsrfs_py.nwsrfs.ConsusePars` classes representing each ``cu_names``, otherwise ``'None'``.
-        localflow_logic (bool): Logic if :class:`~nwsrfs_py.nwsrfs.FAPars`, :class:`~nwsrfs_py.nwsrfs.SacSnow`, and :class:`~nwsrfs_py.nwsrfs.GammaUh` models exist in configuration.
+        localflow_logic (bool): ``True`` when the configuration includes local runoff from SAC/Snow and a unit hydrograph.
         upflow_logic (bool): Logic if :class:`~nwsrfs_py.nwsrfs.Lagk` model exist in configuration.
         chanloss_logic (bool): Logic if :class:`~nwsrfs_py.nwsrfs.Chanloss` model exist in configuration.
         consuse_logic (bool): Logic if :class:`~nwsrfs_py.nwsrfs.Consuse` model exist in configuration.
         n_zones (integer):  Number of zones in the configuration.
+        ptps_logic (bool): ``True`` when every forcing CSV contains a ``ptps``
+            column; otherwise ``False`` and area-elevation data is required.
+        area_elev_logic (bool): ``True`` when a single ``area_elev*`` CSV is
+            present in the input file inventory, regardless of whether it is loaded.
+        shared_uh_logic (bool | None): ``True`` when multiple SAC-Snow zones
+            share one UH parameter set; their TCI is summed before routing.
+            ``False`` for a single SAC-Snow zone or one UH per zone.
+            ``None`` when there is no local SAC-Snow runoff.
+        uh_type (str): Unit hydrograph method determined from parameter names
+            in rows where ``type == 'uh'``: ``'gamma'`` for ``unit_shape`` or
+            ``'ordinate'`` for numbered ``uh_<number>`` entries including ``uh_0``.
+            Ambiguous or unrecognized parameter sets raise :exc:`ValueError`.
 
     '''
 
@@ -425,14 +636,27 @@ class NwsrfsRun(_NwrfcAcPrep,
         '''
 
         #Set all dataclass attributes to None
-        self.fa_pars = self.sacsnow_pars = self.gammauh_pars = self.lagk_pars = self.chanloss_pars = self.consuse_pars = None
+        self.rsnwelev_pars = self.fa_pars = self.sacsnow_pars = self.uh_pars = self.lagk_pars = self.chanloss_pars = self.consuse_pars = None
 
-        #If there is a sac-snow model, perform forcing adjustments and activate SAC-SMA, SNOW17, UH Gamma models
+        self._uh = None
+
+        #Prepare forcing adjustments, SAC-SMA, SNOW17, and the selected UH.
         if not self.localflow_logic:
             self.fa_factors = self.forcings_climo = None            
         else:
+            if not self.ptps_logic:
+                self._rsnwelev_run()
+
             self._fa_run()
-            self._sacsnow_uh_run()
+            self._sacsnow_run()
+
+            #initate uh, depending on which version using (gamma or ordinates)
+            if self.uh_type == 'gamma':
+                self._gammauh_run()
+            elif self.uh_type == 'ordinate':
+                self._ordinatesuh_run()
+            else:
+                raise ValueError(f"Unknown unit hydrograph type: {self.uh_type!r}")
 
         #If there is a lagk model, activate
         if self.upflow_logic:
@@ -447,43 +671,150 @@ class NwsrfsRun(_NwrfcAcPrep,
             self._consuse_run()
 
     def update_pars(self, new_pars: pd.DataFrame):
-        '''
-        Updates the ``pars`` file with new values.  
+        """Update existing parameter values and rebuild the models atomically.
 
-        **DataFrame Format**
+        ``new_pars`` must contain ``p_name`` and ``value`` columns. Parameter
+        names must be non-null, unique, and present in ``self.pars``. Additional
+        columns are ignored; existing parameter metadata is preserved, including
+        normalized CHANLOSS names and zones. Missing values retain the old value.
 
-        ``new_pars`` must have a ``'p_name'`` and ``'value'`` column. All values in the ``'p_name'`` columns must map to an row in the exiting ``pars`` DataFrame attribute.
+        This method updates values only, not model types or zone structure.
+        If validation or model setup fails, the existing model is unchanged.
 
         Args:
-            new_pars (pd.DataFrame): dataframe with parameters to update nwsrfs models
-        '''
+            new_pars (pd.DataFrame): Parameters to update.
 
-        new_pars = new_pars.sort_values('p_name')
-        #Make par file edits for CHANLOSS
-        new_pars = self._cl_parfile_edits(new_pars)
+        Raises:
+            TypeError: The input is not a DataFrame.
+            ValueError: Required columns are missing, parameter names are invalid,
+                or the updated model parameters fail validation.
+        """
+        if not isinstance(new_pars, pd.DataFrame):
+            raise TypeError('new_pars must be a pandas DataFrame.')
+        if not new_pars.columns.is_unique:
+            raise ValueError('new_pars must have unique column names.')
+        if not {'p_name', 'value'}.issubset(new_pars.columns):
+            raise ValueError('new_pars must contain p_name and value columns.')
+        if new_pars.p_name.isna().any() or new_pars.p_name.duplicated().any():
+            raise ValueError('new_pars p_name values must be non-null and unique.')
+        if self.pars.p_name.isna().any() or self.pars.p_name.duplicated().any():
+            raise ValueError('Existing pars p_name values must be non-null and unique.')
+        if not new_pars.p_name.isin(self.pars.p_name).all():
+            raise ValueError('All p_name values in new_pars must exist in pars.')
+        if new_pars.empty:
+            return
 
-        #If the p_name column can't be mapped to p_name values in the existing ``pars`` attribute, then throw a error
-        if not set(new_pars.p_name).issubset(self.pars.p_name):
-            msg = 'All values in the p_value column of "new_pars" argument must exist in the ``pars`` attribute.'
-            raise ValueError(msg)
+        #Build in isolation: setup can mutate nested forcing data before failing.
+        candidate = copy.deepcopy(self)
+        replacements = candidate.pars.p_name.map(new_pars.set_index('p_name').value)
+        candidate.pars['value'] = replacements.where(
+            replacements.notna(), candidate.pars.value)
+        candidate.nwsrfs_run()
 
-        #Get old parameter dataframe and rename values column
-        old_pars = self.pars.rename({'value':'old_value'},axis=1)
+        #Commit only after every model has been successfully initialized.
+        self.__dict__.update(candidate.__dict__)
 
-        #Merge old parameter file with new parameter file
-        pars = old_pars.merge(new_pars.loc[:,['p_name','value']],on='p_name',how='left')
+    def _parameter_arrays(self, par_type, names, zones, model=None):
+        """Read required parameters, checking for missing or duplicate rows.
 
-        #For row with which no new value was provided use the old value
-        pars['value'] = pars.value.where(~pars.value.isna(),pars.old_value)
-        #Reassign parameter attribute
-        self.pars = pars.drop('old_value',axis=1)
+        Args:
+            par_type (str): Value of the parameter table's ``type`` column.
+            names (sequence[str]): Required parameter names.
+            zones (str | sequence[str]): Required identifiers from the ``zone``
+                column, in output order. Accepts a single basin name (for example,
+                ``'SSSW1'``), or zone, upstream reach, or channel-loss period names.
+            model (str | None): Model label used in error messages.
 
-        #Rerun all the NWRFS models with new pars file
-        self.nwsrfs_run()
+        Returns:
+            dict[str, np.ndarray]: Parameter arrays aligned with ``zones``.
+                A single identifier produces one-element arrays.
+
+        Raises:
+            ValueError: A required parameter is missing or duplicated. These
+                structural checks also run when wrapper validation is disabled.
+        """
+        model = model or par_type
+        zones = (zones,) if isinstance(zones, str) else tuple(zones)
+        if not zones:
+            raise ValueError(f"{model} requires at least one basin, zone, reach, or period.")
+        parameters = self.pars.loc[self.pars.type == par_type]
+        result, errors = {}, []
+        for name in names:
+            rows = parameters.loc[parameters.name == name]
+            rows = rows.loc[rows.zone.isin(zones)]
+            counts = rows.groupby('zone').size().reindex(zones, fill_value=0)
+            invalid = counts[counts != 1]
+            if not invalid.empty:
+                details = ', '.join(f"{zone} (found {count})" for zone, count in invalid.items())
+                errors.append(f"{name}: {details}")
+            else:
+                result[name] = rows.set_index('zone').value.reindex(zones).to_numpy()
+        if errors:
+            raise ValueError(
+                f"{model} requires exactly one value for each required parameter "
+                f"with type == '{par_type}'; " + '; '.join(errors))
+        return result
+
+    def _rsnwelev_run(self, validate: bool = True):
+        """
+        Calculate precipitation typing from unadjusted temperature and elevation.
+
+        For each modeled zone, ``pars`` must contain exactly one ``pxtemp``
+        and ``talr`` parameter with ``type == 'rsnwelev'``, and one ``elev``
+        parameter with ``type == 'snow'``.  ``area_elev`` must have and an elevation 
+        column named for each zone. The index is loaded from the first CSV column 
+        regardless of its original header.
+
+        The calculated fractions populate ``forcings_raw['ptps']``. PTPS is
+        removed from ``forcing_adj_types`` before :meth:`_fa_run` is called.
+        ``ptps_logic`` remains ``False`` so parameter updates recalculate PTPS.
+        Supplied PTPS and routing-only configurations are left unchanged.
+
+        Args:
+            validate (bool): Validate :class:`~nwsrfs_py.nwsrfs.RSnwElevPars`
+                inputs. Default: ``True``.
+
+        Raises:
+            ValueError: Required zone parameters or area-elevation columns
+                are missing, or zone parameters are duplicated.
+        """
+        if not self.localflow_logic or self.ptps_logic:
+            return None
+
+        pars_dict = self._parameter_arrays(
+            'rsnwelev', ['pxtemp', 'talr'], self.zone_names, 'RSnwElev')
+        pars_dict['taelev'] = self._parameter_arrays(
+            'snow', ['elev'], self.zone_names, 'RSnwElev')['elev']
+
+        #The first CSV column was loaded as the nonexceedance-fraction index.
+        required_columns = list(self.zone_names)
+        if self.area_elev is None:
+            raise ValueError('RSnwElev requires area-elevation data.')
+        missing_columns = [name for name in required_columns if name not in self.area_elev.columns]
+        if missing_columns:
+            raise ValueError(
+                f"Area-elevation CSV is missing required columns: {', '.join(missing_columns)}.")
+
+        rsnwelev_dc = nwsrfs.RSnwElevPars(
+            year=self.year, month=self.month, day=self.day, hour=self.hour,
+            pxtemp=pars_dict['pxtemp'], taelev=pars_dict['taelev'], talr=pars_dict['talr'],
+            aetbl_index=self.area_elev.index.to_numpy(),
+            aetbl_values=self.area_elev.loc[:, list(self.zone_names)].to_numpy(),
+            forcings_mat=self.forcings_raw['mat'].loc[:, list(self.zone_names)].to_numpy())
+
+        #Initialize the parent and evaluate its lazy PTPS output.
+        nwsrfs.RSnwElev.__init__(self, pars_dataclass=rsnwelev_dc, validate=validate)
+        ptps = nwsrfs.RSnwElev.forcing_ptps.fget(self)
+        self.forcings_raw['ptps'] = ptps.set_axis(self.zone_names, axis=1)
+        self.forcing_adj_types = tuple(f for f in self.forcing_adj_types if f != 'ptps')
 
     def _fa_run(self,validate:bool = True):
         '''
-        Apply monthly climatological forcing adjustments to forcing specified by the ``forcing_adj_types`` attribute
+        Apply monthly climatological forcing adjustments to forcing specified by the ``forcing_adj_types`` attribute.
+
+        Monthly lower and upper limits are read from ``pars`` only for enabled
+        forcing adjustments. Disabled adjustments use the Fortran default-limit
+        sentinel ``-999.0`` and do not require limit parameters in the CSV.
         
         Args:
             validate (bool): Validate that map, mat, ptps, and pet inputs are correct format/type. Default: True
@@ -496,7 +827,7 @@ class NwsrfsRun(_NwrfcAcPrep,
         #If forcing_adj_types is None or then set all fa_pars values to scale=1, p_redist=0, std=10, shift=0
         nofa_pars = np.array([1,0,10,0])
         #fa adjustment parameters:  scale, p_redist, std, shift 
-        df_2_dict = dict(zip(self.pars.loc[self.pars.type == 'fa'].name,self.pars.loc[self.pars.type == 'fa'].value))
+        basin_name = self.zone_names[0].split('-', 1)[0]
         fa_pars = {}
         for f in ['map','mat','ptps','pet']:
             #Turn off fa adjustments for all forcings not within forcing_adj_types attribute 
@@ -504,24 +835,22 @@ class NwsrfsRun(_NwrfcAcPrep,
                 fa_pars[f] = nofa_pars
             #Otherwise use forcing adjustment parameters provided in pars
             else:
-                fa_pars[f] = np.array([df_2_dict[f'{f}_scale'], df_2_dict[f'{f}_p_redist'],
-                                          df_2_dict[f'{f}_std'], df_2_dict[f'{f}_shift']])
+                names = [f'{f}_{suffix}' for suffix in ['scale', 'p_redist', 'std', 'shift']]
+                values = self._parameter_arrays('fa', names, basin_name, 'FA')
+                fa_pars[f] = np.array([values[name].item() for name in names])
             
-        # monthly forcing adjustments
-        fa_limits = {key: np.full([12, 2], np.nan)  for key in ['map','mat','ptps','pet']}
-        peadj_m = np.full([12, self.n_zones], np.nan)
-        peadj = {key:None for key in ['map','mat','ptps']}
-        
-        for i in range(12):
-            m = i + 1
-            for f in ['map','mat','ptps','pet']:
-                fa_limits[f][i, 0] = self.pars[(self.pars.name == f'{f}_lower_{m:02}')&(self.pars.zone==self.zone_names[0])].value.item()
-                fa_limits[f][i, 1] = self.pars[(self.pars.name == f'{f}_upper_{m:02}')&(self.pars.zone==self.zone_names[0])].value.item()
-            for j, z in zip(range(self.n_zones), self.zone_names):
-                #import pdb; pdb.set_trace()
-                peadj_m[i, j] = self.pars.loc[(self.pars.name == f'peadj_{m:02}') & (self.pars.zone == z) &
-                        (self.pars.type == 'sac')].value.item()
-        peadj['pet'] = peadj_m
+        #Use Fortran default limits unless forcing adjustments are enabled.
+        fa_limits = {key: np.full([12, 2], -999.0) for key in ['map','mat','ptps','pet']}
+        for f in self.forcing_adj_types:
+            names = [f'{f}_{bound}_{month:02}' for month in range(1, 13)
+                     for bound in ['lower', 'upper']]
+            #FA limits are shared; preserve the first-zone convention.
+            values = self._parameter_arrays('fa_limit', names, self.zone_names[:1], 'FA')
+            fa_limits[f] = np.array([values[name].item() for name in names]).reshape(12, 2)
+        monthly_names = [f'peadj_{month:02}' for month in range(1, 13)]
+        monthly = self._parameter_arrays('sac', monthly_names, self.zone_names, 'FA')
+        peadj = {key: None for key in ['map', 'mat', 'ptps']}
+        peadj['pet'] = np.stack([monthly[name] for name in monthly_names])
 
         #Make dummy climo input
         climo = None
@@ -533,8 +862,8 @@ class NwsrfsRun(_NwrfcAcPrep,
         forcings_raw['pet'] = None
 
         #Get alat and area parameters
-        alat=self.pars.loc[self.pars.name.str.contains('alat')].value.to_numpy()
-        area=self.pars.loc[self.pars.name.str.contains('zone_area')].value.to_numpy()
+        alat = self._parameter_arrays('snow', ['alat'], self.zone_names, 'FA')['alat']
+        area = self._parameter_arrays('uh', ['zone_area'], self.zone_names, 'FA')['zone_area']
 
         #Create a dictionary for each forcings dataclass
         fa_dc = {}
@@ -584,51 +913,36 @@ class NwsrfsRun(_NwrfcAcPrep,
         return fixed_output
 
 
-    def _sacsnow_uh_run(self, validate:bool=True):
+    def _sacsnow_run(self, validate:bool=True):
         '''
-        Run SAC-SMA, SNOW17, and gamma UH with the parameters specified in ``pars``.
+        Run SAC-SMA and SNOW-17 with the parameters specified in ``pars``.
 
         Args:
-            validate (bool): Validate that SAC-SMA, Snow17, and gamma UH inputs are correct format/type. Default: True
+            validate (bool): Validate that SAC-SMA and Snow17 inputs are correct format/type. Default: True
         '''
 
         #If SAC-SMA and SNOW17 parameter don't exist return none
         if not self.localflow_logic:
             return None
 
-        #Get a nested dictionary for SAC-SMA, Snow17, and gamma UH with parameter values
-        pars_dict = {}
-        for par_type in ['sac','snow','uh']:
-            pars_dict[par_type]= {}
-            for par in self.pars.loc[self.pars.type==par_type].name.unique():
-                pars_dict[par_type][par] = self.pars.loc[(self.pars.type==par_type)&
-                    (self.pars['name'] == par)].sort_values(by='zone')['value'].to_numpy()
-
-        #Apply toc adjustment to toc parameter
-        toc = pars_dict['uh']['unit_toc'] * pars_dict['uh']['unit_toc_adj'] 
-
-        #Initate gammauh_pars data class
-        gamma_dc = nwsrfs.GammaUhPars(dt_hours = self.dt_hours, area = pars_dict['uh']['zone_area'], 
-                        shape = pars_dict['uh']['unit_shape'], toc = toc)
-
-        #Initiate GammaUh wrapper class
-        nwsrfs.GammaUh.__init__(self,pars_dataclass = gamma_dc,validate = validate)        
+        #These lists also define the order expected by the Fortran wrapper.
+        sac_names = ['uztwm', 'uzfwm', 'lztwm', 'lzfpm', 'lzfsm', 'adimp',
+                     'uzk', 'lzpk', 'lzsk', 'zperc', 'rexp', 'pctim',
+                     'pfree', 'riva', 'side', 'rserv', 'efc']
+        snow_names = ['scf', 'mfmax', 'mfmin', 'uadj', 'si', 'nmf', 'tipm',
+                      'mbase', 'plwhc', 'daygm', 'adc_a', 'adc_b', 'adc_c']
+        required = {
+            'sac': sac_names + ['pxadj', 'peadj'],
+            'snow': snow_names + ['alat', 'elev', 'init_swe']
+        }
+        pars_dict = {
+            par_type: self._parameter_arrays(par_type, names, self.zone_names, 'SacSnow')
+            for par_type, names in required.items()
+        }
 
         #Format required dataclass inputs sac_pars and snow_pars
-        sac_pars = np.concatenate([[pars_dict['sac']['uztwm']], [pars_dict['sac']['uzfwm']], [pars_dict['sac']['lztwm']],
-                                    [pars_dict['sac']['lzfpm']],[pars_dict['sac']['lzfsm']], [pars_dict['sac']['adimp']],
-                                    [pars_dict['sac']['uzk']],[pars_dict['sac']['lzpk']], [pars_dict['sac']['lzsk']],
-                                    [pars_dict['sac']['zperc']],[pars_dict['sac']['rexp']], [pars_dict['sac']['pctim']],
-                                    [pars_dict['sac']['pfree']],[pars_dict['sac']['riva']], [pars_dict['sac']['side']],
-                                    [pars_dict['sac']['rserv']],[pars_dict['sac']['efc']]
-                                    ],axis=0)
-        
-        snow_pars = np.concatenate([[pars_dict['snow']['scf']], [pars_dict['snow']['mfmax']], [pars_dict['snow']['mfmin']],
-                            [pars_dict['snow']['uadj']],[pars_dict['snow']['si']], [pars_dict['snow']['nmf']],
-                            [pars_dict['snow']['tipm']],[pars_dict['snow']['mbase']], [pars_dict['snow']['plwhc']],
-                            [pars_dict['snow']['daygm']],[pars_dict['snow']['adc_a']], [pars_dict['snow']['adc_b']],
-                            [pars_dict['snow']['adc_c']]
-                            ],axis=0)
+        sac_pars = np.stack([pars_dict['sac'][name] for name in sac_names])
+        snow_pars = np.stack([pars_dict['snow'][name] for name in snow_names])
 
         #Initate SacSnowPars data class
         sacsnow_dc = nwsrfs.SacSnowPars(year = self.year,month =self.month,day = self.day,hour = self.hour,
@@ -706,64 +1020,148 @@ class NwsrfsRun(_NwrfcAcPrep,
         #For each dictionary value, rename column of Dataframe to correpond to zone names
         return {key: df.set_axis(self.zone_names, axis=1) for key, df in raw_output.items()}
 
+    def _gammauh_run(self, validate:bool=True):
+        '''
+        Run gamma UH with the parameters specified in ``pars``.
+
+        Args:
+            validate (bool): Validate that UH inputs are correct format/type. Default: True
+        '''
+
+        if not self.localflow_logic:
+            return None
+
+        area = self._parameter_arrays(
+            'uh', ['zone_area'], self.zone_names, 'UH'
+            )['zone_area']
+
+        if self.shared_uh_logic:
+            area = np.array([area.sum()])
+
+        names = ['unit_shape', 'unit_toc', 'unit_toc_adj']
+        pars_dict = self._parameter_arrays('uh', names, self.uh_zone_names, 'GammaUh')
+
+        #Apply toc adjustment to toc parameter
+        toc = pars_dict['unit_toc'] * pars_dict['unit_toc_adj'] 
+
+        #Initate gammauh_pars data class
+        self.uh_pars = nwsrfs.GammaUhPars(dt_hours = self.dt_hours, area = area,
+                        shape = pars_dict['unit_shape'], toc = toc)
+
+        #Initiate GammaUh wrapper class
+        self._uh = nwsrfs.GammaUh(pars_dataclass = self.uh_pars,validate = validate)  
+
+    def _ordinatesuh_run(self, validate: bool = True):
+        """Prepare and initialize the supplied-ordinate unit hydrograph.
+
+        Rows with ``type == 'uh'`` must contain ``zone_area`` for every
+        SAC-Snow zone and numbered ``uh_0``, ``uh_1``, ... parameters for
+        each UH zone. A shared UH uses the sum of the SAC-Snow zone areas. Ordinate
+        numbers must be consecutive from zero and values are in cfs/in at
+        ``dt_hours`` intervals. Shorter zone hydrographs are padded with NaN.
+
+        Args:
+            validate (bool): Validate :class:`~nwsrfs_py.nwsrfs.OrdinatesUhPars`
+                inputs, including hydrograph volume. Default: ``True``.
+
+        Raises:
+            ValueError: Required parameters are missing, duplicated, or ordinate
+                numbering is not consecutive from zero.
+        """
+        if not self.localflow_logic:
+            return None
+
+        area = self._parameter_arrays(
+            'uh', ['zone_area'], self.zone_names, 'OrdinatesUh')['zone_area']
+        if self.shared_uh_logic:
+            area = np.array([area.sum()])
+        rows = self.pars.loc[(self.pars.type == 'uh') &
+                             self.pars.name.str.fullmatch(r'uh_[0-9]+', na=False)]
+        zone_ordinates = []
+        for zone in self.uh_zone_names:
+            names = sorted(rows.loc[rows.zone == zone, 'name'].unique(),
+                           key=lambda name: int(name.split('_')[1]))
+            if not names or names != [f'uh_{i}' for i in range(len(names))]:
+                raise ValueError(
+                    f"OrdinatesUh requires consecutive uh_0, uh_1, ... parameters "
+                    f"for zone {zone}; found: {', '.join(names) or 'none'}.")
+            ordin_dict = self._parameter_arrays('uh', names, zone, 'OrdinatesUh')
+            zone_ordinates.append(np.array([ordin_dict[name].item() for name in names]))
+
+        ordinates = np.full((max(map(len, zone_ordinates)), len(self.uh_zone_names)), np.nan)
+        for i, values in enumerate(zone_ordinates):
+            ordinates[:len(values), i] = values
+        self.uh_pars = nwsrfs.OrdinatesUhPars(
+            dt_hours=self.dt_hours, area=area, ordinates=ordinates)
+        self._uh = nwsrfs.OrdinatesUh(pars_dataclass=self.uh_pars, validate=validate)
+
     def return_uh(self,tstep):
         '''
-        Generates a unit hydrograph as a DataFrame, using :class:`~nwsrfs_py.nwsrfs.GammaUh`, at a timestep specified by ``tstep``.
+        Generates a unit hydrograph as a DataFrame, using the selected UH model, at a timestep specified by ``tstep``.
 
         Args:
             tstep (int): Specifies timestep of unit hydrograph (units: hours).
         Returns:
-             pd.DataFrame: A DataFrame containing unit hydrograph (uh) with a column for each zone (units: cfs/in).
+             pd.DataFrame: A DataFrame containing unit hydrograph (uh) with a column for each UH parameter set (units: cfs/in).
         '''
 
         #If SAC-SMA and SNOW17 parameter don't exist return none
         if not self.localflow_logic:
             return None
 
-        raw_output = nwsrfs.GammaUh.return_uh(self,tstep)
+        raw_output = self._uh.return_uh(tstep)
 
         #Rename column of Dataframe to correpond to zone names
-        return raw_output.set_axis(self.zone_names, axis=1)
+        return raw_output.set_axis(self.uh_zone_names, axis=1)
 
     @property
     def uh(self) -> pd.DataFrame:
         '''
-        Generates a unit hydrograph as a DataFrame, using :class:`~nwsrfs_py.nwsrfs.GammaUh`, at a timestep specified by the ``dt_hours`` attribute (units - cfs/in).
+        Generates a unit hydrograph as a DataFrame, using the selected UH model, at a timestep specified by the ``dt_hours`` attribute (units - cfs/in).
         '''
 
         #If SAC-SMA and SNOW17 parameters don't exist return none
         if not self.localflow_logic:
             return None
 
-        #Get uh from gamma_uh class
-        #Use .fget (Function Get) to grab the actual function inside because forcings is a property object
-        raw_output = nwsrfs.GammaUh.uh.fget(self)
+        #note:  call is the same whether using GammaUH or OrdinatesUH
+        raw_output = self._uh.uh
 
         #Rename column of Dataframe to correpond to zone names
-        return raw_output.set_axis(self.zone_names, axis=1)
+        return raw_output.set_axis(self.uh_zone_names, axis=1)
 
     def return_sf(self,tci:SACSnowTCI):
         '''
-        Generates a timeseries of streamflow as a DataFrame using :class:`~nwsrfs_py.nwsrfs.GammaUh` and input ``tci``.
+        Generates a timeseries of streamflow as a DataFrame using the selected UH model and input ``tci``.
+        A shared UH routes the area-weighted mean TCI across all SAC-Snow zones.
 
         Args:
             tci (SACSnowTCI): Custom type alias for total channel inflow from :class:`~nwsrfs_py.nwsrfs.SacSnow`  (units:  mm).
         Returns:
-            pd.DataFrame: A DataFrame containing streamflow with a column for each zone (units: cfs).
+            pd.DataFrame: A DataFrame containing streamflow with a column for each UH parameter set (units: cfs).
         '''
 
         #If SAC-SMA and SNOW17 parameter don't exist return none
         if not self.localflow_logic:
             return None
 
-        raw_output = nwsrfs.GammaUh.return_sf(self,tci,self.return_inst)
+        if self.shared_uh_logic:
+            if len(tci.columns) != self.n_zones or set(tci.columns) != set(self.zone_names):
+                raise ValueError("tci must contain exactly one column per SAC-Snow zone.")
+            areas = self._parameter_arrays(
+                'uh', ['zone_area'], self.zone_names, 'UH')['zone_area']
+            weights = pd.Series(areas / areas.sum(), index=self.zone_names)
+            tci = tci.mul(weights, axis=1).sum(axis=1).to_frame()
+
+        #note:  call is the same whether using GammaUH or OrdinatesUH
+        raw_output = self._uh.return_sf(tci, return_inst=self.return_inst)
         #Rename column of Dataframe to correpond to zone names
-        return raw_output.set_axis(self.zone_names, axis=1)
+        return raw_output.set_axis(self.uh_zone_names, axis=1)
 
     @property
     def sacsnow_sf(self)-> pd.DataFrame:
         '''
-        Calculates streamflow for each zone using :class:`~nwsrfs_py.nwsrfs.SacSnow` and :class:`~nwsrfs_py.nwsrfs.GammaUh` models (units - cfs). 
+        Calculates streamflow for each zone using :class:`~nwsrfs_py.nwsrfs.SacSnow` and the selected UH model (units - cfs).
         '''
 
         #If SAC-SMA and SNOW17 parameters don't exist return none
@@ -773,7 +1171,7 @@ class NwsrfsRun(_NwrfcAcPrep,
         #Get tci from sacsnow class
         tci_output = self.sacsnow_tci
 
-        #Get streamflow from return_sf gamma_uh class function
+        #Route through the selected unit hydrograph.
         sf_output = self.return_sf(tci=tci_output)
 
         #For NWRFC Calibrations, UH output needs to be shifted forward one timestep because of how forcings are treated in AutoCalb
@@ -796,12 +1194,11 @@ class NwsrfsRun(_NwrfcAcPrep,
         if not self.upflow_logic:
             return None
 
-        #Get a dictionary of lagk parameter values
-        pars_dict = {}
-        for par in self.pars.loc[self.pars.type=='lagk'].name.unique():
-            pars_dict[par] = self.pars.loc[(self.pars.type=='lagk')&
-                (self.pars['name'] == par)].sort_values(by='zone')['value'].to_numpy()
-
+        names = ['lagtbl_a', 'lagtbl_b', 'lagtbl_c', 'lagtbl_d',
+                 'ktbl_a', 'ktbl_b', 'ktbl_c', 'ktbl_d',
+                 'lagk_lagmax', 'lagk_lagmin', 'lagk_kmax', 'lagk_kmin',
+                 'lagk_qmax', 'lagk_qmin', 'init_co', 'init_stor', 'init_if', 'init_of']
+        pars_dict = self._parameter_arrays('lagk', names, self.upflow_names, 'LagK')
 
         lagk_dc = nwsrfs.LagkPars(year = self.year,month =self.month,day = self.day,hour = self.hour,
                     tbl_lageq_a = pars_dict['lagtbl_a'], tbl_lageq_b = pars_dict['lagtbl_b'],
@@ -892,11 +1289,15 @@ class NwsrfsRun(_NwrfcAcPrep,
         if not self.chanloss_logic:
             return None
 
-        #Get a dictionary of chanloss parameter values
-        pars_dict = {}
-        for par in self.pars.loc[self.pars.type=='chanloss'].name.unique():
-            pars_dict[par] = self.pars.loc[(self.pars.type=='chanloss')&
-                (self.pars['name'] == par)].sort_values(by='zone')['value'].to_numpy()
+        #Period parameters use synthetic *_CLxx zones; controls are shared.
+        period_names = ['cl_period_start', 'cl_period_end', 'cl_factor']
+        period_zones = tuple(sorted(self.pars.loc[
+            (self.pars.type == 'chanloss') & self.pars.zone.str.contains('_CL'),
+            'zone'].unique()))
+        pars_dict = self._parameter_arrays('chanloss', period_names, period_zones, 'Chanloss')
+        basin_name = period_zones[0].rsplit('_CL', 1)[0]
+        pars_dict.update(self._parameter_arrays(
+            'chanloss', ['cl_type', 'cl_min_q'], basin_name, 'Chanloss'))
 
         periods =  np.column_stack((pars_dict['cl_period_start'],pars_dict['cl_period_end']))
 
@@ -961,25 +1362,19 @@ class NwsrfsRun(_NwrfcAcPrep,
         #Create dictionary of ConsusePars dataclass
         self.consuse_pars = dict()
 
-        #Get a dictionary of chanloss parameter values
-        pars_dict = dict()
-        for par in self.pars.loc[self.pars.type=='consuse'].name.unique():
-            pars_dict[par] = self.pars.loc[(self.pars.type=='consuse')&
-                (self.pars['name'] == par)].sort_values(by='zone')['value'].to_numpy()
-
-        #format peadj for consuse calculation 
-        peadj_cu = np.full([12, self.n_consuse], np.nan)
-        for i in range(12):
-            m = i + 1
-            for j, z in enumerate(self.consuse_names):
-                peadj_cu[i, j] = self.pars.loc[(self.pars.name == 'peadj_cu_' + f'{m:02}') & (self.pars.zone == z) &
-                        (self.pars.type == 'consuse')].value.item()
+        monthly_names = [f'peadj_cu_{month:02}' for month in range(1, 13)]
+        names = ['area_km2', 'irr_eff', 'min_flow', 'rf_accum_rate', 'rf_decay_rate']
+        pars_dict = self._parameter_arrays(
+            'consuse', names + monthly_names, self.consuse_names, 'Consuse')
+        peadj_cu = np.stack([pars_dict[name] for name in monthly_names])
+        pet_adjustments = self._parameter_arrays(
+            'sac', ['peadj'], self.consuse_names, 'Consuse')['peadj']
 
         #Get natural flow
         qnat = self._sacsnow_lagk_chanloss_sim
 
         #Convert natural streamflow to daily average
-        qnat_peravg = self._inst_to_ave(qnat.to_numpy())
+        qnat_peravg = self._uh._inst_to_ave(qnat.to_numpy())
         qnat_peravg = pd.Series(qnat_peravg,index=self.dates)
         qnat_daily = qnat_peravg.resample('1D').mean()
 
@@ -999,7 +1394,7 @@ class NwsrfsRun(_NwrfcAcPrep,
         for n, cu_name in enumerate(self.consuse_names):
 
             #Get peadj associated with cu zones
-            peadj = self.pars.loc[(self.pars.name=='peadj')&(self.pars.zone==cu_name),'value'].squeeze()   
+            peadj = pet_adjustments[n]
 
             #Concat the two timeseries and remove any na values
             ts_df = pd.concat([pet_daily[cu_name],qnat_daily],axis=1)
@@ -1069,7 +1464,7 @@ class NwsrfsRun(_NwrfcAcPrep,
     @property
     def sim(self) -> pd.Series:
         '''
-        Generates a Series of the sum of any local flow runoff (:class:`~nwsrfs_py.nwsrfs.SacSnow` + :class:`~nwsrfs_py.nwsrfs.GammaUh`)  and upstream routed (:class:`~nwsrfs_py.nwsrfs.Lagk`) flow for each timestep
+        Generates a Series of the sum of any local flow runoff (:class:`~nwsrfs_py.nwsrfs.SacSnow` and the selected UH model)  and upstream routed (:class:`~nwsrfs_py.nwsrfs.Lagk`) flow for each timestep
         with chanloss (:class:`~nwsrfs_py.nwsrfs.Chanloss`) and consuse (:class:`~nwsrfs_py.nwsrfs.Consuse`) applied (units - cfs).
         '''
 
