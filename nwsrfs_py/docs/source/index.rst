@@ -17,10 +17,12 @@ Key Features
 * **Pandas Integration:** Inputs and outputs are handled via Pandas DataFrames for easy analysis.
 * **Core Models:**
     * **SacSnow:** Combined wrapper for SAC-SMA and SNOW-17.
+    * **ORDINATE UNIT-HG:** Ordinated provided Unit Hydrograph routing.
     * **Gamma UNIT-HG:** Gamma Unit Hydrograph generation and routing.
     * **Lag-K:** Lag and K routing for upstream reaches.
     * **CONS_USE** Irrigation diversion adjustments.
     * **CHANLOSS** Channel loss, natural or anthropogenic, adjustments.
+    * **FA** NWRFC Climatological Forcing Adjustment technique.   
     * **RSNWELEV** Rain-snow elevation determination.
 
 Installation

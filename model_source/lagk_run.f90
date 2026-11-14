@@ -114,6 +114,7 @@ subroutine lagk(n_hrus, ita, itb, &
   character(len = 4), parameter:: meteng = 'METR'
   !character(len = 4), parameter:: meteng = 'ENGL'
   logical:: return_states
+  logical, external :: fop7
   double precision, dimension(n_hrus), intent(in):: ico_in, iinfl_in, ioutfl_in, istor_in
   double precision, dimension(n_hrus), intent(in):: lagtbl_a_in, lagtbl_b_in, lagtbl_c_in, lagtbl_d_in  
   double precision, dimension(n_hrus), intent(in):: ktbl_a_in, ktbl_b_in, ktbl_c_in, ktbl_d_in
@@ -129,13 +130,14 @@ subroutine lagk(n_hrus, ita, itb, &
   real, dimension(n_hrus):: lagk_kmin, lagk_lagmin, lagk_qmin
   real, dimension(22, n_hrus):: lagtbl, ktbl
   real, allocatable, dimension(:,:):: qa
-  real, dimension(500,n_hrus):: p
-  real, dimension(100,n_hrus):: c
-  real, dimension(100):: c_cpy
+  real, dimension(1000,n_hrus):: p
+  real, allocatable :: c(:,:), c_cpy(:)
+  integer :: ncarry
   real, allocatable, dimension(:,:):: qb, qc
   real, allocatable, dimension(:,:):: storage_st, co_st
   integer, dimension(n_hrus):: jlag, jk
-  integer:: nh, i
+  integer:: nh, i, k_start
+  logical :: attenuation_enabled
   real::  ndq, lag_entry, k_entry
   
   ! ! output 
@@ -183,8 +185,6 @@ subroutine lagk(n_hrus, ita, itb, &
   lag_entry = 0
   k_entry = 0
   p = 0
-  c = 0
-  c_cpy = 0
   qb = 0
   qc = 0
   ! Only initialize these array if states output is selected to be on
@@ -279,6 +279,14 @@ subroutine lagk(n_hrus, ita, itb, &
 !  write(*,*)jk
 
 
+  ! Odd table rows hold lag hours; use the largest lag across all reaches.
+  ! Match PIN7: five header values plus flow/time pairs for lag/ITA + 2.
+  ncarry = max(100, 5 + 2 * int( &
+      maxval(lagtbl(1:22:2,:)) / real(ita) + 2.0))
+  allocate(c(ncarry, n_hrus), c_cpy(ncarry))
+  c = 0.0
+  c_cpy = 0.0
+
   ! ! Loop through each reach and calculate lag 
   do nh=1,n_hrus
     
@@ -310,8 +318,18 @@ subroutine lagk(n_hrus, ita, itb, &
     !   write(*,*)qb(i,:)
     ! end do
     
-    call fka7(p(:,nh),c_cpy,qb(:,nh),qc(:,nh),int(sim_length,4), &
-       storage_st(:,nh))
+    ! P(18) points to the K table for this reach.
+    k_start = int(p(18,nh))
+    ! FOP7 takes two arguments: the encoded pair count and first K value.
+    attenuation_enabled = fop7(p(k_start,nh), p(k_start+1,nh))
+    ! PIN7 omits the storage table when K is zero; pass lagged flow through.
+    if (attenuation_enabled) then
+      call fka7(p(:,nh),c_cpy,qb(:,nh),qc(:,nh),int(sim_length,4), &
+         storage_st(:,nh))
+    else
+      qc(:,nh)=qb(:,nh)
+      storage_st(:,nh)=0.0
+    end if
     
   end do
   

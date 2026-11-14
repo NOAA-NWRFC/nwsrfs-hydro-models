@@ -68,6 +68,41 @@ def _validate_positive_values(*args: np.ndarray, allow_zero: bool = True):
 
     return True
 
+def _validate_time_arrays(instance, time_fields=("year", "month", "day", "hour")):
+    """Validate time fields before timestep inference or integer conversion.
+
+    Args:
+        instance: Object containing the named time arrays. Call
+            ``_validate_finite_fields`` first to check numeric, finite inputs.
+        time_fields (tuple[str, ...]): Time fields to check. Daily models can
+            pass ``("year", "month", "day")`` to omit the hour array.
+
+    Raises:
+        TypeError: If a time field is not a NumPy array.
+        ValueError: If arrays are not one-dimensional, have unequal lengths,
+            contain fewer than two timestamps, or have non-integer values.
+
+    This function does not modify inputs or check calendar dates, timestep
+    support, or continuity; those checks remain with the caller.
+    """
+    time_arrays = tuple(getattr(instance, name) for name in time_fields)
+
+    if not _validate_nd_array(*time_arrays):
+        raise ValueError("Time arrays must be 1D numpy arrays")
+
+    if not _validate_array_length(*time_arrays):
+        raise ValueError("Time arrays must have equal lengths")
+
+    if len(time_arrays[0]) < 2:
+        raise ValueError(
+            f"{type(instance).__name__} requires at least two timestamps to infer the timestep"
+        )
+
+    for name, values in zip(time_fields, time_arrays):
+        if not np.all(values == np.floor(values)):
+            raise ValueError(f"{name} must contain integer values")
+
+
 def _datetime_conversion(year,month,day,hour=0):
     """
     Converts time arrays to a datetime datatype within a pandas Series. This function is flexible to handle daily or 
@@ -110,6 +145,25 @@ def _validate_timestep(dt_sec: int, year: np.ndarray, month: np.ndarray,
         return False
 
     return True
+
+def _integer_hours(value, name):
+    """
+    Validate an hourly timestep and convert it to a 32-bit integer.
+
+    Args:
+        value (int): Timestep in hours. Must be one of 1, 2, 3, 4, 6, 8, 12, or 24.
+        name (str): Parameter name to include in validation errors.
+    Returns:
+        np.int32: The validated timestep in hours.
+    Raises:
+        ValueError: If ``value`` is not an integer-hour divisor of 24, or is a boolean.
+    """
+    if (isinstance(value, (bool, np.bool_)) or
+            not isinstance(value, numbers.Integral)):
+        raise ValueError(f"{name} must be a positive integer number of hours that divides 24")
+    if value <= 0 or value > 24 or 24 % value != 0:
+        raise ValueError(f"{name} must be a positive integer number of hours that divides 24")
+    return np.int32(value)
 
 def _validate_finite_fields(instance):
     """
