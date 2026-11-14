@@ -15,47 +15,88 @@ nwsrfs_run(
 \arguments{
 \item{autocalb_dir}{Path to an NWRFC autocalibration directory}
 
-\item{run_dir}{Name of results subdirectory (e.g. "results_por_02"). If NULL,
-uses the first results_* directory found.}
+\item{run_dir}{Name of results subdirectory (e.g. \code{"results_por_02"}). If \code{NULL},
+uses the first \verb{results_*} directory found.}
 
-\item{forcing_adj}{Apply monthly climatological forcing adjustments. TRUE
-adjusts all forcings, FALSE adjusts none, and a character vector naming a
-subset of "map", "mat", "ptps" and "pet" adjusts only those. Default TRUE.}
+\item{forcing_adj}{Apply monthly climatological forcing adjustments. \code{TRUE}
+adjusts all forcings, \code{FALSE} adjusts none, and a character vector naming a
+subset of \code{"map"}, \code{"mat"}, \code{"ptps"} and \code{"pet"} adjusts only those.
+When \code{ptps} is derived via \code{\link[=rsnwelev]{rsnwelev()}} from an \verb{area_elev*} CSV, \code{"ptps"}
+is automatically excluded from climatological forcing adjustments.
+Default \code{TRUE}.}
 
 \item{shift_sf}{Logical; shift UH-derived streamflow forward one timestep
-(required for NWRFC calibrations). Default TRUE.}
+(required for NWRFC calibrations). Default \code{TRUE}.}
 
 \item{return_inst}{Logical; return instantaneous streamflow rather than
-period average. Default TRUE.}
+period average. Default \code{TRUE}.}
 }
 \value{
-A list with class "nwsrfs_run" containing model results and metadata.
-See Details.
+A list with class \code{"nwsrfs_run"} containing model results, lookup
+tables, and metadata. See Details.
 }
 \description{
-Reads parameter, forcing, flow, and upflow CSVs from an NWRFC autocalibration
-directory, auto-detects which model components are present, and runs the full
-chain: FA -> SAC-SMA/SNOW17 -> UH -> Lag-K -> Chanloss -> Consuse.
+Reads parameter, forcing, flow, upstream flow, and optional area-elevation
+CSVs from an NWRFC autocalibration directory, auto-detects which model
+components are present, infers the simulation timestep, and runs the full
+chain: \code{(RSnwElev) -> FA -> SAC-SMA/SNOW17 -> UH -> Lag-K -> Chanloss -> Consuse}.
 }
 \details{
-The returned list contains:
+\subsection{Precipitation typing (\code{ptps} vs \verb{area_elev*})}{
+
+Either every \code{forcing_por_*.csv} file must include a \code{ptps} column
+(\code{ptps_logic = TRUE}, \code{area_elev_logic = FALSE}), or none may include \code{ptps}
+and a single \code{area_elev*.csv} file must be present (\code{ptps_logic = FALSE},
+\code{area_elev_logic = TRUE}), in which case \code{\link[=rsnwelev]{rsnwelev()}} calculates \code{ptps} from
+unadjusted air temperature and \code{pars} (\code{pxtemp}, \code{talr} with
+\code{type == "rsnwelev"}, and \code{elev} with \code{type == "snow"}). Providing both
+complete \code{ptps} columns and an \code{area_elev*.csv} file is rejected as ambiguous.
+}
+
+\subsection{Unit hydrograph selection}{
+
+Considering rows in \code{pars} where \code{type == "uh"}:
+\itemize{
+\item \code{unit_shape} selects a two-parameter gamma unit hydrograph (\code{uh_type = "gamma"}).
+\item Consecutive \code{uh_0}, \code{uh_1}, ... entries select an ordinate unit hydrograph
+(\code{uh_type = "ordinate"}), in \verb{cfs/in} at \code{dt_hours}.
+\item Either provide one UH parameter set per SAC-Snow zone, or one shared UH
+parameter set across multiple SAC-Snow zones (\code{shared_uh_logic = TRUE}),
+in which case \code{zone_area} (\code{type == "uh"}) is still supplied for every
+SAC-Snow zone and channel inflow is area-weighted before routing.
+}
+}
+
+\subsection{Returned list elements}{
+
 \describe{
-\item{sim}{Numeric vector of simulated flow (cfs)}
-\item{sacsnow_sf}{Numeric vector of SAC-SMA/SNOW17/UH flow per zone (cfs), or NULL}
-\item{sacsnow_tci}{Matrix of total channel inflow per zone (mm), or NULL}
-\item{lagk_route}{Numeric vector of Lag-K routed flow (cfs), or NULL}
-\item{forcings}{List of adjusted forcing data.frames, or NULL}
-\item{pars}{Parameter data.frame}
-\item{forcing_raw}{List of raw (unadjusted) forcing data.frames}
-\item{upflow}{List of upstream flow data.frames, or NULL}
-\item{daily_flow}{Daily observed flow data.frame}
-\item{inst_flow}{Instantaneous observed flow data.frame, or NULL}
-\item{dt_hours}{Model timestep in hours}
-\item{zone_names}{Character vector of zone names}
-\item{upflow_names}{Character vector of upstream reach names, or NULL}
+\item{sim}{Numeric vector of simulated outlet flow (cfs)}
+\item{sacsnow_sf}{Numeric vector of SAC-SMA/SNOW17/UH flow summed across zones (cfs), or \code{NULL}}
+\item{sacsnow_tci}{Matrix of total channel inflow per SAC-Snow zone (mm), or \code{NULL}}
+\item{lagk_route}{Numeric vector of Lag-K routed flow (cfs), or \code{NULL}}
+\item{forcings}{Named list of adjusted forcing \code{data.frame}s, or \code{NULL}}
+\item{uh}{Unit hydrograph \code{data.frame} (\code{hours} and per-UH-zone \verb{cfs/in}, see \code{\link[=uh_ordinates]{uh_ordinates()}}), or \code{NULL}}
+\item{area_elev}{Area-elevation \code{data.frame} (\code{quantile} and per-zone elevations in m), or \code{NULL}}
+\item{peadj_table}{Monthly SAC/FA crop-coefficient \code{data.frame} (\code{month = 1:12} and per-zone \code{peadj}), or \code{NULL}}
+\item{consuse_peadj_table}{Monthly consumptive-use crop-coefficient \code{data.frame} (\code{month = 1:12} and per-CU-zone \code{peadj_cu}), or \code{NULL}}
+\item{chanloss_table}{Monthly channel-loss interpolation factor \code{data.frame} (\code{month = 1:12} and \code{chanloss_adj}), or \code{NULL}}
+\item{pars}{Parameter \code{data.frame} (with \code{n_clmods} bookkeeping row removed)}
+\item{forcing_raw}{Named list of raw (unadjusted) forcing \code{data.frame}s, or \code{NULL}}
+\item{upflow}{Named list of upstream flow \code{data.frame}s, or \code{NULL}}
+\item{daily_flow}{Daily observed flow \code{data.frame}}
+\item{inst_flow}{Instantaneous observed flow \code{data.frame}, or \code{NULL}}
+\item{dt_hours}{Model timestep in hours (\code{1}, \code{2}, \code{3}, \code{4}, \code{6}, \code{8}, \code{12}, or \code{24})}
+\item{zone_names}{Character vector of SAC-Snow zone names}
+\item{uh_type}{\code{"gamma"}, \code{"ordinate"}, or \code{NULL}}
+\item{uh_zone_names}{Character vector of UH parameter-set zone names, or \code{NULL}}
+\item{shared_uh_logic}{Logical (\code{TRUE} when multiple SAC-Snow zones share one UH), or \code{NULL}}
+\item{ptps_logic}{Logical; \code{TRUE} when \code{ptps} was supplied in forcing inputs, \code{FALSE} when calculated via \code{\link[=rsnwelev]{rsnwelev()}}}
+\item{area_elev_logic}{Logical; \code{TRUE} when area-elevation data is used}
+\item{upflow_names}{Character vector of upstream reach names, or \code{NULL}}
 \item{localflow_logic}{Logical; SAC-SMA/SNOW17/UH present}
 \item{upflow_logic}{Logical; Lag-K routing present}
 \item{chanloss_logic}{Logical; chanloss present}
 \item{consuse_logic}{Logical; consuse present}
+}
 }
 }

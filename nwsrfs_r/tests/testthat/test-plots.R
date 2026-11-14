@@ -97,4 +97,19 @@ test_that("all plotting utilities build valid ggplot objects on NRKW1 and SFLN2"
   assert_builds(plot_cumulative(run_nrkw1, type = "error"))
   assert_builds(plot_water_supply(run_nrkw1, months = 4L:9L, type = "scatter"))
   assert_builds(plot_water_supply(run_nrkw1, months = 4L:9L, type = "timeseries"))
+
+  # plot_uh supports custom resampled dt_hours, ordinate UH, and shared UH
+  assert_builds(plot_uh(run_nrkw1, dt_hours = 3L))
+  non_uh = nrkw1_pars[!(nrkw1_pars$type == "uh" & nrkw1_pars$name != "zone_area"), ]
+  shared_pars = rbind(
+    non_uh,
+    data.frame(
+      p_name = c("unit_shape_NRKW1-UH", "unit_toc_NRKW1-UH", "unit_toc_adj_NRKW1-UH"),
+      name = c("unit_shape", "unit_toc", "unit_toc_adj"),
+      type = "uh",
+      zone = "NRKW1-UH",
+      value = c(2.2, 24.0, 1.0)
+    )
+  )
+  assert_builds(plot_uh(shared_pars))
 })

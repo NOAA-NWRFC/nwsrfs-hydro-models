@@ -12,19 +12,19 @@ load_example(
 )
 }
 \arguments{
-\item{lid}{Station identifier: "NRKW1" or "SFLN2"}
+\item{lid}{Station identifier: \code{"NRKW1"} or \code{"SFLN2"}}
 
-\item{forcing_adj}{Apply forcing adjustments. TRUE adjusts all forcings,
-FALSE adjusts none, and a character vector naming a subset of "map", "mat",
-"ptps" and "pet" adjusts only those. Default TRUE.}
+\item{forcing_adj}{Apply forcing adjustments. \code{TRUE} adjusts all forcings,
+\code{FALSE} adjusts none, and a character vector naming a subset of \code{"map"}, \code{"mat"},
+\code{"ptps"} and \code{"pet"} adjusts only those. Default \code{TRUE}.}
 
-\item{shift_sf}{Logical; shift UH flow forward one timestep. Default TRUE.}
+\item{shift_sf}{Logical; shift UH flow forward one timestep. Default \code{TRUE}.}
 
 \item{return_inst}{Logical; return instantaneous streamflow rather than
-period average. Default TRUE.}
+period average. Default \code{TRUE}.}
 }
 \value{
-A list with class "nwsrfs_run" (see \code{\link[=nwsrfs_run]{nwsrfs_run()}})
+A list with class \code{"nwsrfs_run"} (see \code{\link[=nwsrfs_run]{nwsrfs_run()}})
 }
 \description{
 Loads NRKW1 or SFLN2 bundled example data and runs the full NWSRFS model chain.

@@ -11,7 +11,7 @@ chanloss(flow, forcing, dt_hours, pars)
 
 \item{forcing}{forcing data}
 
-\item{dt_hours}{timestep in hours}
+\item{dt_hours}{timestep in hours (1, 2, 3, 4, 6, 8, 12, or 24)}
 
 \item{pars}{parameters}
 }

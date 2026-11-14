@@ -7,9 +7,9 @@
 lagk(dt_hours, uptribs, pars, sum_routes = TRUE, return_states = FALSE)
 }
 \arguments{
-\item{dt_hours}{timestep in hours}
+\item{dt_hours}{timestep in hours (1, 2, 3, 4, 6, 8, 12, or 24)}
 
-\item{uptribs}{a matrix where each column contains flow data (in cfs) for an upstream point}
+\item{uptribs}{a list of data.frames where each element contains \code{year}, \code{month}, \code{day}, \code{hour}, and \code{flow_cfs} for an upstream point}
 
 \item{pars}{parameters}
 
@@ -18,7 +18,7 @@ lagk(dt_hours, uptribs, pars, sum_routes = TRUE, return_states = FALSE)
 \item{return_states}{return the lagk states}
 }
 \value{
-vector of routed flows
+vector, matrix, or data.frame of routed flows
 }
 \description{
 Lag-K Routing for any number of upstream points

@@ -14,7 +14,7 @@ Lag-K channel routing, channel loss/gain, and consumptive use modules.
 \section{Low-level model wrappers}{
 
 Individual model components callable via Fortran interface:
-\code{\link[=sac_snow]{sac_snow()}}, \code{\link[=uh]{uh()}}, \code{\link[=lagk]{lagk()}}, \code{\link[=chanloss]{chanloss()}}, \code{\link[=consuse]{consuse()}}, \code{\link[=fa_nwrfc]{fa_nwrfc()}}
+\code{\link[=sac_snow]{sac_snow()}}, \code{\link[=uh]{uh()}}, \code{\link[=uh_ordinates]{uh_ordinates()}}, \code{\link[=rsnwelev]{rsnwelev()}}, \code{\link[=lagk]{lagk()}}, \code{\link[=chanloss]{chanloss()}}, \code{\link[=consuse]{consuse()}}, \code{\link[=fa_nwrfc]{fa_nwrfc()}}
 }
 
 \section{High-level orchestration}{

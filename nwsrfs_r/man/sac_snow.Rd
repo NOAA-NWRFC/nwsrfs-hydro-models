@@ -7,18 +7,18 @@
 sac_snow(dt_hours, forcing, pars, return_states = FALSE)
 }
 \arguments{
-\item{dt_hours}{timestep in hours}
+\item{dt_hours}{timestep in hours (1, 2, 3, 4, 6, 8, 12, or 24)}
 
-\item{forcing}{data frame with with columns for forcing inputs}
+\item{forcing}{data frame list with columns for forcing inputs}
 
-\item{pars}{sac parameters}
+\item{pars}{sac and snow parameters}
 
 \item{return_states}{logical value indicating if the states should be output as well as the tci}
 }
 \value{
-data.frame (1 column per zone) of unrouted channel inflow (tci), sac states
-uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, and snow water equivalent (swe),
-and adjusted forcing data.
+Matrix (1 column per zone) of unrouted channel inflow (\code{tci}), or a
+\code{data.frame} of SAC-SMA / SNOW-17 states and adjusted forcings when
+\code{return_states = TRUE}.
 }
 \description{
 Execute SAC-SMA, SNOW17, return total channel inflow per zone, and model states

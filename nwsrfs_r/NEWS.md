@@ -1,5 +1,24 @@
 # nwsrfsr 1.1.0
 
+* Add multi-timestep support (`1`, `2`, `3`, `4`, `6`, `8`, `12`, and `24` hours;
+  `1`--`12` hours for `fa_nwrfc()`) across `nwsrfs_run()`, `sac_snow()`, `uh()`,
+  `lagk()`, `chanloss()`, and `consuse()`, including updated `Lag-K` Fortran
+  routing routines (`pin7`, `pina7`, `flag7`, `fka7`, `lagk_run`) and general
+  subdaily-to-daily `consuse()` alignment.
+* Add ordinate unit hydrograph (`uh_0`, `uh_1`, ...) and shared basin unit
+  hydrograph routing in `uh()` and `nwsrfs_run()`, plus exported
+  `uh_ordinates()` with S-hydrograph and monotone cubic Hermite (PCHIP)
+  timestep resampling and updated `plot_uh()` support.
+* Integrate `area_elev*.csv` precipitation typing via `rsnwelev()` into
+  `nwsrfs_run()` and `update_pars()` (`ptps_logic`, `area_elev_logic`,
+  `area_elev`), automatically excluding `ptps` from `fa_nwrfc()` adjustments
+  without requiring `ptps_lower_*` / `ptps_upper_*` limit rows when `ptps` is
+  derived via `rsnwelev()`.
+* Add parameter lookup tables (`uh`, `area_elev`, `peadj_table`,
+  `consuse_peadj_table`, `chanloss_table`) and UH metadata (`uh_type`,
+  `uh_zone_names`, `shared_uh_logic`) to `"nwsrfs_run"` objects, and strengthen
+  input, timestamp, and parameter bounds validation across wrappers and
+  `update_pars()` to match `nwsrfspy` 1.1.0.
 * Add hydrological alignment, skill-metric, and `ggplot2` diagnostic utilities
   (`sim_to_daily()`, `flow_metrics()`, `plot.nwsrfs_run()`, `theme_nwsrfs()`,
   `plot_hydrograph()`, `plot_water_year()`, `plot_fdc()`, `plot_monthly_bias()`,

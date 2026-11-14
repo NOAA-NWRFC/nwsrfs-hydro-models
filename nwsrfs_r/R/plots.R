@@ -46,7 +46,11 @@ utils::globalVariables(".data")
 }
 
 .runoff_zones = function(pars, include_cu = FALSE) {
-  zones = sort(unique(pars$zone[grepl("-", pars$zone)]))
+  if ("type" %in% names(pars) && any(pars$type %in% c("sac", "snow"))) {
+    zones = sort(unique(pars$zone[!is.na(pars$zone) & grepl("-", pars$zone) & pars$type %in% c("sac", "snow")]))
+  } else {
+    zones = sort(unique(pars$zone[!is.na(pars$zone) & grepl("-", pars$zone)]))
+  }
   if (!include_cu) {
     zones = zones[!grepl("-CU$", zones)]
   }
@@ -121,7 +125,14 @@ utils::globalVariables(".data")
     forcings = if (!is.null(x$forcings)) {
       x$forcings
     } else {
-      fa_nwrfc(x$dt_hours, x$forcing_raw[x$zone_names], x$pars, adjust = x$.forcing_adj)
+      f_in = x$forcing_raw[x$zone_names]
+      fa_arg = x$.forcing_adj
+      if (identical(x$ptps_logic, FALSE)) {
+        f_in = rsnwelev(f_in, x$pars, x$area_elev)
+        fa_types = setdiff(.fa_adjust_types(fa_arg), "ptps")
+        fa_arg = if (length(fa_types) == 0L) FALSE else fa_types
+      }
+      fa_nwrfc(x$dt_hours, f_in, x$pars, adjust = fa_arg)
     }
     st = sac_snow_states(x$dt_hours, forcings, x$pars)
     return(list(states = st, pars = x$pars))
@@ -547,13 +558,15 @@ plot.nwsrfs_run = function(
 # %%
 # Basin parameter, routing, and forcing adjustment plots
 
-#' Plot two-parameter gamma unit hydrographs by runoff zone
+#' Plot unit hydrographs (gamma or ordinate, per-zone or shared)
 #'
-#' Computes and plots the 6-hour (or custom timestep) gamma unit hydrograph
-#' ordinates in `cfs / in` for each elevation runoff zone.
+#' Computes (or resamples) and plots unit hydrograph ordinates in `cfs / in`
+#' via [uh_ordinates()] for each UH zone (or shared basin UH).
 #'
 #' @param x An `"nwsrfs_run"` object or parameter `data.frame` (`pars`).
-#' @param dt_hours Unit hydrograph timestep in hours. Default `6L`.
+#' @param dt_hours Unit hydrograph timestep in hours (`1`, `2`, `3`, `4`, `6`,
+#'   `8`, `12`, or `24`). Defaults to `x$dt_hours` for `"nwsrfs_run"` objects,
+#'   or `6L` for parameter `data.frame`s.
 #' @param include_cu Logical; include `-CU` consumptive-use zones when present.
 #'   Default `FALSE`.
 #'
@@ -564,33 +577,42 @@ plot.nwsrfs_run = function(
 #' if (requireNamespace("ggplot2", quietly = TRUE)) {
 #'   plot_uh(nrkw1_pars)
 #' }
-plot_uh = function(x, dt_hours = 6L, include_cu = FALSE) {
+plot_uh = function(x, dt_hours = NULL, include_cu = FALSE) {
   .check_ggplot2()
   pars = .extract_pars(x)
-  zones = .runoff_zones(pars, include_cu = include_cu)
-  if (length(zones) == 0L) {
+  uh_wide = if (inherits(x, "nwsrfs_run")) {
+    uh_ordinates(x, dt_hours = dt_hours)
+  } else {
+    uh_ordinates(pars, dt_hours = if (is.null(dt_hours)) 6L else dt_hours)
+  }
+  if (is.null(uh_wide) || ncol(uh_wide) < 2L) {
     stop("No runoff zones found in 'pars'.", call. = FALSE)
   }
-  z_labs = .zone_labels(pars, zones)
+
+  is_shared = if (inherits(x, "nwsrfs_run")) {
+    isTRUE(x$shared_uh_logic)
+  } else {
+    isTRUE(.detect_uh_spec(pars)$shared_uh_logic)
+  }
+
+  uh_zones = names(uh_wide)[-1L]
+  if (!include_cu && !is_shared) {
+    uh_zones = uh_zones[!grepl("-CU$", uh_zones)]
+  }
+  if (length(uh_zones) == 0L) {
+    stop("No runoff zones found in 'pars'.", call. = FALSE)
+  }
+  z_labs = .zone_labels(pars, uh_zones)
 
   uh_df = do.call(
     rbind,
-    lapply(seq_along(zones), \(i) {
-      z = zones[i]
-      area_sqmi = .get_par_val(pars, z, "zone_area") * 0.386102
-      shape = .get_par_val(pars, z, "unit_shape")
-      toc_gis = .get_par_val(pars, z, "unit_toc")
-      toc_adj = .get_par_val(pars, z, "unit_toc_adj")
-      scale = if (is.na(toc_gis) || is.na(toc_adj)) {
-        .get_par_val(pars, z, "unit_scale")
-      } else {
-        uh2p_get_scale(shape, toc_gis * toc_adj, 1)
-      }
-      ord = uh2p_cfs_in(shape, scale, dt_hours, area_sqmi)
+    lapply(seq_along(uh_zones), \(i) {
+      ord = uh_wide[[uh_zones[i]]]
+      keep = !is.na(ord)
       data.frame(
         zone = factor(z_labs[i], levels = z_labs),
-        hour = seq_along(ord) * dt_hours,
-        cfs_per_in = ord
+        hour = uh_wide$hours[keep],
+        cfs_per_in = ord[keep]
       )
     })
   )
@@ -811,11 +833,15 @@ plot_forcing_adjust = function(
     dt_hours = x$dt_hours
     all_zones = x$zone_names[x$zone_names %in% names(x$forcing_raw)]
     f_raw_in = x$forcing_raw[all_zones]
+    if (identical(x$ptps_logic, FALSE)) {
+      f_raw_in = rsnwelev(f_raw_in, pars, x$area_elev)
+    }
     f_unadj = fa_nwrfc(dt_hours, f_raw_in, pars, adjust = FALSE)
     f_adj = if (isTRUE(x$.forcing_adj) && !is.null(x$forcings)) {
       x$forcings
     } else {
-      fa_nwrfc(dt_hours, f_raw_in, pars, adjust = TRUE)
+      fa_arg = if (identical(x$ptps_logic, FALSE)) c("map", "mat", "pet") else TRUE
+      fa_nwrfc(dt_hours, f_raw_in, pars, adjust = fa_arg)
     }
   } else if (is.list(x) && !is.null(pars)) {
     pars = as.data.frame(pars)
@@ -1012,7 +1038,7 @@ plot_states = function(
   st = sp$states
   pars = sp$pars
 
-  all_zones = sort(unique(pars$zone[grepl("-", pars$zone)]))
+  all_zones = .runoff_zones(pars, include_cu = TRUE)
   keep_idx = if (include_cu) seq_along(all_zones) else which(!grepl("-CU$", all_zones))
   zones = all_zones[keep_idx]
   z_labs = .zone_labels(pars, zones)
@@ -1030,6 +1056,12 @@ plot_states = function(
     st = st[st$wy >= (min(st$wy, na.rm = TRUE) + spinup_years), , drop = FALSE]
   }
 
+  steps_per_day = if (inherits(x, "nwsrfs_run")) {
+    24L / x$dt_hours
+  } else {
+    max(1L, as.integer(round(nrow(st) / max(1L, length(unique(st$date))))))
+  }
+
   if (!is.null(water_year)) {
     st = st[st$wy %in% as.integer(water_year), , drop = FALSE]
   } else if (!is.null(start) || !is.null(end)) {
@@ -1037,7 +1069,7 @@ plot_states = function(
     if (!is.null(end)) st = st[st$date <= as.Date(end), , drop = FALSE]
   } else {
     wy_counts = table(st$wy)
-    full_wys = as.integer(names(wy_counts)[wy_counts >= 360L * 4L])
+    full_wys = as.integer(names(wy_counts)[wy_counts >= 360L * steps_per_day])
     target_wy = if (length(full_wys) > 0L) max(full_wys) else max(st$wy)
     st = st[st$wy == target_wy, , drop = FALSE]
   }
@@ -1206,7 +1238,7 @@ plot_runoff_regime = function(
   st = sp$states
   pars = sp$pars
 
-  all_zones = sort(unique(pars$zone[grepl("-", pars$zone)]))
+  all_zones = .runoff_zones(pars, include_cu = TRUE)
   keep_idx = if (include_cu) seq_along(all_zones) else which(!grepl("-CU$", all_zones))
   zones = all_zones[keep_idx]
   z_labs = .zone_labels(pars, zones)
@@ -1358,7 +1390,7 @@ plot_water_balance = function(
   st = sp$states
   pars = sp$pars
 
-  all_zones = sort(unique(pars$zone[grepl("-", pars$zone)]))
+  all_zones = .runoff_zones(pars, include_cu = TRUE)
   keep_idx = if (include_cu) seq_along(all_zones) else which(!grepl("-CU$", all_zones))
   zones = all_zones[keep_idx]
   z_labs = .zone_labels(pars, zones)
@@ -1367,8 +1399,14 @@ plot_water_balance = function(
   if (spinup_years > 0L) {
     st = st[st$wy >= (min(st$wy, na.rm = TRUE) + spinup_years), , drop = FALSE]
   }
+  steps_per_day = if (inherits(x, "nwsrfs_run")) {
+    24L / x$dt_hours
+  } else {
+    n_days_u = length(unique(sprintf("%04d-%02d-%02d", st$year, st$month, st$day)))
+    max(1L, as.integer(round(nrow(st) / max(1L, n_days_u))))
+  }
   wy_counts = table(st$wy)
-  full_wys = as.integer(names(wy_counts)[wy_counts >= 360L * 4L])
+  full_wys = as.integer(names(wy_counts)[wy_counts >= 360L * steps_per_day])
   if (length(full_wys) > 0L) {
     st = st[st$wy %in% full_wys, , drop = FALSE]
   }

@@ -7,7 +7,7 @@
 #'
 #' @section Low-level model wrappers:
 #' Individual model components callable via Fortran interface:
-#' [sac_snow()], [uh()], [lagk()], [chanloss()], [consuse()], [fa_nwrfc()]
+#' [sac_snow()], [uh()], [uh_ordinates()], [rsnwelev()], [lagk()], [chanloss()], [consuse()], [fa_nwrfc()]
 #'
 #' @section High-level orchestration:
 #' [nwsrfs_run()] reads NWRFC autocalibration directories and runs the full

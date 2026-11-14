@@ -44,6 +44,7 @@ export(uh2p)
 export(uh2p_cfs_in)
 export(uh2p_get_scale)
 export(uh2p_get_scale_r)
+export(uh_ordinates)
 export(update_pars)
 importFrom(stats,
   aggregate,
@@ -54,9 +55,9 @@ importFrom(stats,
   median,
   optimize,
   quantile,
-  reshape,
   sd,
-  setNames
+  setNames,
+  splinefunH
 )
 importFrom(utils,read.csv)
 useDynLib(nwsrfsr)
@@ -67,5 +68,6 @@ useDynLib(nwsrfsr,fa_ts_)
 useDynLib(nwsrfsr,lagk_)
 useDynLib(nwsrfsr,rsnwelev_)
 useDynLib(nwsrfsr,sacsnow_)
+useDynLib(nwsrfsr,uh2p_call_)
 useDynLib(nwsrfsr,uh2p_get_scale_root_)
 useDynLib(nwsrfsr,uh2p_len_obj_root_test_)

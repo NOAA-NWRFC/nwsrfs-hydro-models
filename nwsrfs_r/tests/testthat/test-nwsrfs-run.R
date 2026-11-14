@@ -178,3 +178,206 @@ test_that("update_pars modifies parameters and re-runs", {
   # Sim should be different after parameter change
   expect_false(identical(run2$sim, orig_sim))
 })
+
+
+test_that("nwsrfs_run exposes UH metadata, lookup tables, and chanloss wraparound/overlap", {
+  nrkw1 = load_example("NRKW1")
+  sfln2 = load_example("SFLN2")
+
+  expect_equal(nrkw1$uh_type, "gamma")
+  expect_equal(nrkw1$uh_zone_names, c("NRKW1-1", "NRKW1-2"))
+  expect_false(nrkw1$shared_uh_logic)
+  expect_true(nrkw1$ptps_logic)
+  expect_false(nrkw1$area_elev_logic)
+  expect_null(nrkw1$area_elev)
+  expect_true(is.data.frame(nrkw1$uh))
+  expect_equal(names(nrkw1$uh), c("hours", "NRKW1-1", "NRKW1-2"))
+  expect_equal(nrkw1$peadj_table$month, 1L:12L)
+  expect_null(nrkw1$chanloss_table)
+
+  expect_true(is.data.frame(sfln2$chanloss_table))
+  expect_equal(sfln2$chanloss_table$month, 1L:12L)
+  expect_true(is.data.frame(sfln2$consuse_peadj_table))
+  expect_equal(names(sfln2$consuse_peadj_table), c("month", "SFLN2-CU"))
+
+  # Verify year-boundary wraparound (11..2) and overlapping month averaging in .build_chanloss_table()
+  syn_cl = data.frame(
+    p_name = c(
+      "cl_type", "cl_min_q",
+      "cl_period_start_01", "cl_period_end_01", "cl_factor_01",
+      "cl_period_start_02", "cl_period_end_02", "cl_factor_02"
+    ),
+    name = c(
+      "cl_type", "cl_min_q",
+      "cl_period_start_01", "cl_period_end_01", "cl_factor_01",
+      "cl_period_start_02", "cl_period_end_02", "cl_factor_02"
+    ),
+    type = "chanloss",
+    zone = "SYN",
+    value = c(1, 0, 11, 2, 0.6, 2, 4, 0.8)
+  )
+  tbl = nwsrfsr:::.build_chanloss_table(syn_cl)
+  expect_equal(tbl$chanloss_adj[1L], 0.6)
+  expect_equal(tbl$chanloss_adj[2L], 0.7)
+  expect_equal(tbl$chanloss_adj[3L], 0.8)
+  expect_equal(tbl$chanloss_adj[7L], 1.0)
+})
+
+
+test_that("nwsrfs_run supports area_elev + RSnwElev, ordinate/shared UH, and 12-hour timesteps", {
+  data("sfln2_pars", package = "nwsrfsr")
+  data("sfln2_forcing", package = "nwsrfsr")
+  data("sfln2_daily_flow", package = "nwsrfsr")
+  data("area_elev_curve", package = "nwsrfsr")
+
+  td = tempfile("autocalb_rsnw_")
+  dir.create(file.path(td, "results_por_01"), recursive = TRUE)
+  on.exit(unlink(td, recursive = TRUE), add = TRUE)
+
+  # Subset 2 full years of SFLN2 (all 12 calendar months) for fast directory tests
+  n_sub = 2924L
+  for (z in names(sfln2_forcing)) {
+    df = sfln2_forcing[[z]][seq_len(n_sub), c("year", "month", "day", "hour", "map_mm", "mat_degc")]
+    write.csv(df, file.path(td, paste0("forcing_por_", z, ".csv")), row.names = FALSE)
+  }
+  write.csv(sfln2_daily_flow[1:731, ], file.path(td, "flow_daily_SFLN2.csv"), row.names = FALSE)
+
+  # Build 3-zone area_elev CSV (including SFLN2-CU)
+  ae3 = area_elev_curve
+  ae3[["SFLN2-CU"]] = ae3[["SFLN2-1"]]
+  write.csv(ae3, file.path(td, "area_elev_SFLN2.csv"), row.names = FALSE)
+
+  # Remove ptps_lower_* / ptps_upper_* limit rows to verify RSnwElev runs don't require them,
+  # and add pxtemp + talr rows for all 3 zones
+  rs_pars = sfln2_pars[!grepl("^ptps_(lower|upper)_", sfln2_pars$name), ]
+  zones = c("SFLN2-1", "SFLN2-2", "SFLN2-CU")
+  rs_add = data.frame(
+    p_name = c(paste0("pxtemp_", zones), paste0("talr_", zones)),
+    name = rep(c("pxtemp", "talr"), each = length(zones)),
+    type = "rsnwelev",
+    zone = rep(zones, 2L),
+    value = c(rep(0.5, 3L), rep(0.55, 3L))
+  )
+  rs_pars = rbind(rs_pars, rs_add)
+  write.csv(rs_pars, file.path(td, "results_por_01", "pars_optimal.csv"), row.names = FALSE)
+
+  run_rs = nwsrfs_run(td, "results_por_01")
+  expect_false(run_rs$ptps_logic)
+  expect_true(run_rs$area_elev_logic)
+  expect_true(is.data.frame(run_rs$area_elev))
+  expect_false("ptps" %in% names(run_rs$forcing_raw[[1L]]))
+  expect_true("ptps" %in% names(run_rs$forcings[[1L]]))
+
+  # Updating pxtemp via update_pars recalculates RSnwElev ptps and changes simulated flow
+  run_rs2 = update_pars(
+    run_rs,
+    data.frame(p_name = c("pxtemp_SFLN2-1", "pxtemp_SFLN2-2"), value = c(3.5, 3.5))
+  )
+  expect_false(identical(run_rs2$forcings[["SFLN2-1"]]$ptps, run_rs$forcings[["SFLN2-1"]]$ptps))
+  expect_false(identical(run_rs2$sim, run_rs$sim))
+
+  # Ambiguous: both ptps in forcing CSVs and area_elev CSV present
+  td_amb = tempfile("autocalb_amb_")
+  dir.create(file.path(td_amb, "results_por_01"), recursive = TRUE)
+  on.exit(unlink(td_amb, recursive = TRUE), add = TRUE)
+  for (z in names(sfln2_forcing)) {
+    write.csv(
+      sfln2_forcing[[z]][seq_len(n_sub), ],
+      file.path(td_amb, paste0("forcing_por_", z, ".csv")),
+      row.names = FALSE
+    )
+  }
+  write.csv(sfln2_daily_flow[1:731, ], file.path(td_amb, "flow_daily_SFLN2.csv"), row.names = FALSE)
+  write.csv(ae3, file.path(td_amb, "area_elev_SFLN2.csv"), row.names = FALSE)
+  write.csv(sfln2_pars, file.path(td_amb, "results_por_01", "pars_optimal.csv"), row.names = FALSE)
+  expect_error(nwsrfs_run(td_amb, "results_por_01"), "Ambiguous precipitation typing")
+
+  # Missing both ptps and area_elev CSV
+  unlink(file.path(td, "area_elev_SFLN2.csv"))
+  expect_error(nwsrfs_run(td, "results_por_01"), "Precipitation typing requires")
+
+  # Ambiguous multiple flow_instantaneous_*.csv files
+  unlink(file.path(td_amb, "area_elev_SFLN2.csv"))
+  inst_stub = data.frame(year = 1979L, month = 10L, day = 1L, hour = 0L, flow_cfs = 10)
+  write.csv(inst_stub, file.path(td_amb, "flow_instantaneous_a.csv"), row.names = FALSE)
+  write.csv(inst_stub, file.path(td_amb, "flow_instantaneous_b.csv"), row.names = FALSE)
+  expect_error(nwsrfs_run(td_amb, "results_por_01"), "Instantaneous flow csv file is ambiguous")
+  unlink(file.path(td_amb, c("flow_instantaneous_a.csv", "flow_instantaneous_b.csv")))
+
+  # Ordinate UH and shared UH via nwsrfs_run() + 12-hour simulation with Consuse
+  run_g = nwsrfs_run(td_amb, "results_por_01")
+  uh_g = run_g$uh
+  non_uh = sfln2_pars[!(sfln2_pars$type == "uh" & sfln2_pars$name != "zone_area"), ]
+  ord_rows = do.call(
+    rbind,
+    lapply(zones, \(z) {
+      v = uh_g[[z]]
+      v = v[!is.na(v)]
+      data.frame(
+        p_name = paste0("uh_", seq_along(v) - 1L, "_", z),
+        name = paste0("uh_", seq_along(v) - 1L),
+        type = "uh",
+        zone = z,
+        value = v
+      )
+    })
+  )
+  write.csv(rbind(non_uh, ord_rows), file.path(td_amb, "results_por_01", "pars_optimal.csv"), row.names = FALSE)
+  run_o = nwsrfs_run(td_amb, "results_por_01")
+  expect_equal(run_o$uh_type, "ordinate")
+  expect_equal(run_o$sim, run_g$sim, tolerance = 1e-3)
+
+  # Shared gamma UH on SFLN2 at 12-hour timestep
+  idx_12 = seq(1L, n_sub, by = 2L)
+  for (z in names(sfln2_forcing)) {
+    df12 = sfln2_forcing[[z]][idx_12, ]
+    df12$map_mm = df12$map_mm * 2
+    write.csv(df12, file.path(td_amb, paste0("forcing_por_", z, ".csv")), row.names = FALSE)
+  }
+  shared_uh = rbind(
+    non_uh,
+    data.frame(
+      p_name = c("unit_shape_SFLN2-UH", "unit_toc_SFLN2-UH", "unit_toc_adj_SFLN2-UH"),
+      name = c("unit_shape", "unit_toc", "unit_toc_adj"),
+      type = "uh",
+      zone = "SFLN2-UH",
+      value = c(2.0, 24.0, 1.0)
+    )
+  )
+  write.csv(shared_uh, file.path(td_amb, "results_por_01", "pars_optimal.csv"), row.names = FALSE)
+  run_12 = nwsrfs_run(td_amb, "results_por_01")
+  expect_equal(run_12$dt_hours, 12L)
+  expect_true(run_12$shared_uh_logic)
+  expect_equal(run_12$uh_zone_names, "SFLN2-UH")
+  expect_equal(length(run_12$sim), length(idx_12))
+  expect_true(all(is.finite(run_12$sim)))
+})
+
+
+test_that("update_pars validates inputs and preserves run on error or NA values", {
+  run = load_example("NRKW1")
+  orig_sim = run$sim
+
+  # Empty new_pars is a no-op
+  run_empty = update_pars(run, data.frame(p_name = character(0), value = numeric(0)))
+  expect_equal(run_empty$sim, orig_sim)
+
+  # NA in value retains existing parameter value
+  run_na = update_pars(run, data.frame(p_name = "uztwm_NRKW1-1", value = NA_real_))
+  expect_equal(run_na$sim, orig_sim)
+
+  # Input validation checks
+  expect_error(update_pars(run, list(p_name = "uztwm_NRKW1-1", value = 50)), "data.frame")
+  dup_cols = data.frame(p_name = "uztwm_NRKW1-1", value = 50, value = 60, check.names = FALSE)
+  expect_error(update_pars(run, dup_cols), "duplicate column")
+  expect_error(update_pars(run, data.frame(p_name = NA_character_, value = 50)), "missing")
+  expect_error(
+    update_pars(run, data.frame(p_name = c("uztwm_NRKW1-1", "uztwm_NRKW1-1"), value = c(50, 60))),
+    "Duplicate p_name"
+  )
+  expect_error(update_pars(run, data.frame(p_name = "not_a_par", value = 1)), "unknown")
+
+  # Invalid model parameter value fails validation without mutating 'run'
+  expect_error(update_pars(run, data.frame(p_name = "uztwm_NRKW1-1", value = -10)), "must be >= 0")
+  expect_equal(run$sim, orig_sim)
+})

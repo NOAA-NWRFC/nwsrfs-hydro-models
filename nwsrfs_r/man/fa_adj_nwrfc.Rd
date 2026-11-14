@@ -2,7 +2,7 @@
 % Please edit documentation in R/sac-snow-uh.R
 \name{fa_adj_nwrfc}
 \alias{fa_adj_nwrfc}
-\title{Conduct NWRFC style forcing adjustments}
+\title{Conduct NWRFC style forcing adjustments (return monthly adjustments or climo)}
 \usage{
 fa_adj_nwrfc(
   dt_hours,
@@ -15,13 +15,13 @@ fa_adj_nwrfc(
 )
 }
 \arguments{
-\item{dt_hours}{timestep in hours}
+\item{dt_hours}{timestep in hours (\code{1}, \code{2}, \code{3}, \code{4}, \code{6}, \code{8}, or \code{12})}
 
-\item{forcing}{data frame with with columns for forcing inputs}
+\item{forcing}{named list of per-zone forcing \code{data.frame}s}
 
-\item{pars}{sac parameters}
+\item{pars}{parameter \code{data.frame}}
 
-\item{climo}{climotology matrix}
+\item{climo}{optional \verb{12 x 4} climatology matrix}
 
 \item{dry_run}{Do a run without any forcing adjustments, only compute pet and etd.
 Shorthand for \code{adjust = FALSE}; when TRUE it overrides \code{adjust}.}
@@ -32,10 +32,10 @@ Shorthand for \code{adjust = FALSE}; when TRUE it overrides \code{adjust}.}
 or a character vector naming a subset of "map", "mat", "ptps" and "pet".}
 }
 \value{
-Matrix (1 column per zone) of unrouted channel inflow
+Monthly adjustment or climatology \code{data.frame}
 }
 \description{
-Conduct NWRFC style forcing adjustments
+Conduct NWRFC style forcing adjustments (return monthly adjustments or climo)
 }
 \examples{
 data(nrkw1_forcing)

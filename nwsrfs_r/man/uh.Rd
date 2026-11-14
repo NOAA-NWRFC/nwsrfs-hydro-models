@@ -2,7 +2,7 @@
 % Please edit documentation in R/sac-snow-uh.R
 \name{uh}
 \alias{uh}
-\title{Two parameter unit hydrograph routing for one or more basin zones}
+\title{Unit hydrograph routing (gamma or ordinate, per-zone or shared)}
 \usage{
 uh(
   dt_hours,
@@ -11,15 +11,16 @@ uh(
   sum_zones = TRUE,
   start_of_timestep = TRUE,
   backfill = TRUE,
-  return_inst = TRUE
+  return_inst = TRUE,
+  ordinates = NULL
 )
 }
 \arguments{
-\item{dt_hours}{timestep in hours}
+\item{dt_hours}{timestep in hours (\code{1}, \code{2}, \code{3}, \code{4}, \code{6}, \code{8}, \code{12}, or \code{24})}
 
-\item{tci}{channel inflow matrix, one column per zone}
+\item{tci}{channel inflow matrix (\code{mm}), one column per zone}
 
-\item{pars}{parameters}
+\item{pars}{parameter \code{data.frame}}
 
 \item{sum_zones}{should routed flows from multiple zones be added and returned as a vector, or
 kept separate and returned as a matrix}
@@ -33,12 +34,21 @@ forcing data that uses beginning of timestep labeling}
 Period average is the mean of a timestep and the one after it, with
 the final value carried forward. Applied before the
 start_of_timestep shift.}
+
+\item{ordinates}{optional numeric vector or matrix (\verb{ordinates x zones}) of
+unit hydrograph ordinates in \verb{cfs / in} at \code{dt_hours}, overriding UH rows
+in \code{pars} when supplied.}
 }
 \value{
-Vector of routed flow in cfs
+Vector (when \code{sum_zones = TRUE}) or matrix (when \code{sum_zones = FALSE})
+of routed flow in cfs
 }
 \description{
-Two parameter unit hydrograph routing for one or more basin zones
+Routes total channel inflow (\code{tci}, mm) using either a two-parameter gamma
+unit hydrograph (\code{unit_shape} in \code{pars}) or a supplied ordinate unit
+hydrograph (\code{uh_0}, \code{uh_1}, ... in \code{pars}, or explicit \code{ordinates}),
+supporting both per-zone hydrographs and a single shared unit hydrograph
+across multiple SAC-Snow zones.
 }
 \examples{
 # Simple: full model chain via the bundled example; routed flow per zone

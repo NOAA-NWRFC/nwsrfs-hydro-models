@@ -16,13 +16,13 @@ fa_nwrfc(
 )
 }
 \arguments{
-\item{dt_hours}{timestep in hours}
+\item{dt_hours}{timestep in hours (\code{1}, \code{2}, \code{3}, \code{4}, \code{6}, \code{8}, or \code{12})}
 
-\item{forcing}{data frame with with columns for forcing inputs}
+\item{forcing}{named list of per-zone forcing \code{data.frame}s}
 
-\item{pars}{sac parameters}
+\item{pars}{parameter \code{data.frame}}
 
-\item{climo}{climotology matrix}
+\item{climo}{optional \verb{12 x 4} climatology matrix (\code{map}, \code{mat}, \code{pet}, \code{ptps})}
 
 \item{dry_run}{Do a run without any forcing adjustments, only compute pet and etd.
 Shorthand for \code{adjust = FALSE}; when TRUE it overrides \code{adjust}.}
@@ -37,7 +37,8 @@ Unadjusted forcings still pass through the routine, which computes pet and
 etd, but with neutral adjustment parameters.}
 }
 \value{
-Matrix (1 column per zone) of unrouted channel inflow
+Adjusted forcing list, monthly adjustment \code{data.frame}, or monthly
+climatology \code{data.frame}
 }
 \description{
 Conduct NWRFC style forcing adjustments

@@ -15,7 +15,7 @@ columns: flow, pet (units of mm), year, month, day}
 \item{cfs}{if TRUE, then flow units of cfs are expected, if FALSE then cms are expected.}
 }
 \value{
-data frame with consuse variables
+data frame with consuse variables (or named list of data frames for multiple CU zones)
 }
 \description{
 Daily consuse model

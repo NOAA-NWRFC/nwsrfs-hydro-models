@@ -2,19 +2,23 @@
 % Please edit documentation in R/nwsrfs-run.R
 \name{update_pars}
 \alias{update_pars}
-\title{Update parameters and re-run model chain}
+\title{Update parameters and re-run model chain atomically}
 \usage{
 update_pars(run, new_pars)
 }
 \arguments{
-\item{run}{An "nwsrfs_run" object from \code{\link[=nwsrfs_run]{nwsrfs_run()}} or \code{\link[=load_example]{load_example()}}}
+\item{run}{An \code{"nwsrfs_run"} object from \code{\link[=nwsrfs_run]{nwsrfs_run()}} or \code{\link[=load_example]{load_example()}}}
 
-\item{new_pars}{A data.frame with columns "p_name" and "value" containing
-parameters to update. All p_name values must exist in the current pars.}
+\item{new_pars}{A \code{data.frame} with columns \code{"p_name"} and \code{"value"} containing
+parameters to update.}
 }
 \value{
-A new "nwsrfs_run" object with updated parameters
+A new \code{"nwsrfs_run"} object with updated parameters
 }
 \description{
-Update parameters and re-run model chain
+Updates parameter values in \code{run$pars} and rebuilds the model chain.
+\code{new_pars} must be a \code{data.frame} containing non-duplicated columns
+\code{"p_name"} and \code{"value"}, with non-missing, unique \code{"p_name"} entries that
+already exist in \code{run$pars$p_name}. Missing (\code{NA}) entries in \code{"value"}
+retain the existing parameter value. If validation fails, \code{run} is unchanged.
 }

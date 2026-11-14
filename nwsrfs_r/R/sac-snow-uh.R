@@ -81,15 +81,190 @@ sac_snow_states <- function(dt_hours, forcing, pars) {
   sac_snow(dt_hours, forcing, pars, return_states = TRUE)
 }
 
+.supported_dt_hours = c(1L, 2L, 3L, 4L, 6L, 8L, 12L, 24L)
+.supported_fa_dt_hours = c(1L, 2L, 3L, 4L, 6L, 8L, 12L)
+
+.integer_hours = function(value, name = "dt_hours", supported = .supported_dt_hours) {
+  if (
+    is.logical(value) ||
+      !is.numeric(value) ||
+      length(value) != 1L ||
+      !is.finite(value) ||
+      value != floor(value)
+  ) {
+    stop(
+      name,
+      " must be a positive integer number of hours that divides 24 (supported: ",
+      paste(supported, collapse = ", "),
+      ").",
+      call. = FALSE
+    )
+  }
+  val = as.integer(value)
+  if (!val %in% supported) {
+    stop(
+      "Unsupported ",
+      name,
+      ": ",
+      val,
+      ". Supported timesteps are ",
+      paste(supported, collapse = ", "),
+      " hours.",
+      call. = FALSE
+    )
+  }
+  val
+}
+
+.infer_and_validate_ts = function(
+  df,
+  dt_hours = NULL,
+  require_hour = TRUE,
+  supported = .supported_dt_hours,
+  label = "timeseries"
+) {
+  df = as.data.frame(df)
+  req_cols = if (require_hour) c("year", "month", "day", "hour") else c("year", "month", "day")
+  missing_cols = setdiff(req_cols, names(df))
+  if (length(missing_cols) > 0L) {
+    stop(
+      label,
+      " is missing required time column(s): ",
+      paste(missing_cols, collapse = ", "),
+      ".",
+      call. = FALSE
+    )
+  }
+  if (nrow(df) < 2L) {
+    stop(label, " requires at least two timestamps.", call. = FALSE)
+  }
+  for (col in req_cols) {
+    vals = df[[col]]
+    if (is.logical(vals) || !is.numeric(vals) || any(!is.finite(vals)) || any(vals != floor(vals))) {
+      stop(label, " column '", col, "' must contain finite integer values.", call. = FALSE)
+    }
+  }
+
+  yr = as.integer(df$year)
+  mo = as.integer(df$month)
+  dy = as.integer(df$day)
+  hr = if (require_hour) as.integer(df$hour) else integer(nrow(df))
+
+  if (any(mo < 1L | mo > 12L) || any(dy < 1L | dy > 31L) || any(hr < 0L | hr > 23L)) {
+    stop(label, " contains out-of-range calendar date/hour values.", call. = FALSE)
+  }
+  dates = as.Date(sprintf("%04d-%02d-%02d", yr, mo, dy))
+  if (anyNA(dates)) {
+    stop(label, " contains invalid calendar dates.", call. = FALSE)
+  }
+
+  ts_sec = as.numeric(dates) * 86400 + hr * 3600
+  diffs = diff(ts_sec)
+
+  if (is.null(dt_hours)) {
+    dt_sec_mean = mean(diffs)
+    dt_hr_cand = dt_sec_mean / 3600
+    dt_hours = .integer_hours(dt_hr_cand, name = "dt_hours", supported = supported)
+  } else {
+    dt_hours = .integer_hours(dt_hours, name = "dt_hours", supported = supported)
+  }
+
+  dt_sec = dt_hours * 3600
+  if (!all(diffs == dt_sec)) {
+    stop(
+      "Time columns (",
+      paste(req_cols, collapse = ", "),
+      ") in ",
+      label,
+      " must step by exactly ",
+      dt_hours,
+      " hour(s) with no gaps, duplicates, or reversed timestamps.",
+      call. = FALSE
+    )
+  }
+
+  list(dt_hours = dt_hours, dates = dates, ts_sec = ts_sec)
+}
+
+.validate_ts_list = function(
+  ts_list,
+  dt_hours = NULL,
+  supported = .supported_dt_hours,
+  label = "forcing"
+) {
+  if (!is.list(ts_list) || is.data.frame(ts_list) || length(ts_list) == 0L) {
+    stop(label, " must be a non-empty list of data.frames.", call. = FALSE)
+  }
+  ref = .infer_and_validate_ts(
+    ts_list[[1L]],
+    dt_hours = dt_hours,
+    require_hour = TRUE,
+    supported = supported,
+    label = label
+  )
+  if (length(ts_list) > 1L) {
+    for (i in 2L:length(ts_list)) {
+      cur = .infer_and_validate_ts(
+        ts_list[[i]],
+        dt_hours = ref$dt_hours,
+        require_hour = TRUE,
+        supported = supported,
+        label = label
+      )
+      if (length(cur$ts_sec) != length(ref$ts_sec) || !all(cur$ts_sec == ref$ts_sec)) {
+        stop("All ", label, " series must share identical timestamps.", call. = FALSE)
+      }
+    }
+  }
+  ref
+}
+
+.align_zone_values = function(pars, par_name, n_expected, zones = NULL, par_type = NULL, label = "model") {
+  rows = pars[pars$name == par_name, , drop = FALSE]
+  if (!is.null(par_type) && "type" %in% names(rows) && any(rows$type == par_type)) {
+    rows = rows[rows$type == par_type, , drop = FALSE]
+  }
+  if (!is.null(zones) && "zone" %in% names(rows) && all(zones %in% rows$zone)) {
+    counts = vapply(zones, \(z) sum(rows$zone == z), integer(1L))
+    if (any(counts != 1L)) {
+      bad = zones[counts != 1L]
+      stop(
+        label,
+        ": parameter '",
+        par_name,
+        "' must appear exactly once per zone (",
+        paste(sprintf("%s: %d", bad, counts[counts != 1L]), collapse = ", "),
+        ").",
+        call. = FALSE
+      )
+    }
+    vals = rows$value[match(zones, rows$zone)]
+  } else {
+    vals = rows$value
+  }
+  if (length(vals) != n_expected || any(!is.finite(vals))) {
+    stop(
+      label,
+      ": parameter '",
+      par_name,
+      "' must supply ",
+      n_expected,
+      " finite value(s).",
+      call. = FALSE
+    )
+  }
+  as.double(vals)
+}
+
 #' Execute SAC-SMA, SNOW17, return total channel inflow per zone, and model states
 #'
-#' @param dt_hours timestep in hours
-#' @param forcing data frame with with columns for forcing inputs
-#' @param pars sac parameters
+#' @param dt_hours timestep in hours (1, 2, 3, 4, 6, 8, 12, or 24)
+#' @param forcing data frame list with columns for forcing inputs
+#' @param pars sac and snow parameters
 #' @param return_states logical value indicating if the states should be output as well as the tci
-#' @return data.frame (1 column per zone) of unrouted channel inflow (tci), sac states
-#' uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, and snow water equivalent (swe),
-#' and adjusted forcing data.
+#' @return Matrix (1 column per zone) of unrouted channel inflow (`tci`), or a
+#'   `data.frame` of SAC-SMA / SNOW-17 states and adjusted forcings when
+#'   `return_states = TRUE`.
 #' @export
 #'
 #' @examples
@@ -106,94 +281,113 @@ sac_snow_states <- function(dt_hours, forcing, pars) {
 #' forcing_adj <- fa_nwrfc(dt_hours, nrkw1_forcing, nrkw1_pars)
 #' tci <- sac_snow(dt_hours, forcing_adj, nrkw1_pars)
 #' @useDynLib nwsrfsr sacsnow_
-sac_snow <- function(dt_hours, forcing, pars, return_states = FALSE) {
-  pars <- as.data.frame(pars)
+sac_snow = function(dt_hours, forcing, pars, return_states = FALSE) {
+  pars = as.data.frame(pars)
+  ts_info = .validate_ts_list(forcing, dt_hours = dt_hours, supported = .supported_dt_hours, label = "forcing")
+  dt_hours = ts_info$dt_hours
+  dt_seconds = dt_hours * 3600L
 
-  sec_per_day <- 86400
-  dt_seconds <- sec_per_day / (24 / dt_hours)
+  n_zones = length(forcing)
+  sim_length = nrow(forcing[[1L]])
+  zone_names = names(forcing)
 
-  n_zones <- length(forcing)
-  sim_length <- nrow(forcing[[1]])
-
-  output_matrix <- matrix(0, nrow = sim_length, ncol = n_zones)
-
-  sac_pars <- rbind(
-    pars[pars$name == "uztwm", ]$value,
-    pars[pars$name == "uzfwm", ]$value,
-    pars[pars$name == "lztwm", ]$value,
-    pars[pars$name == "lzfpm", ]$value,
-    pars[pars$name == "lzfsm", ]$value,
-    pars[pars$name == "adimp", ]$value,
-    pars[pars$name == "uzk", ]$value,
-    pars[pars$name == "lzpk", ]$value,
-    pars[pars$name == "lzsk", ]$value,
-    pars[pars$name == "zperc", ]$value,
-    pars[pars$name == "rexp", ]$value,
-    pars[pars$name == "pctim", ]$value,
-    pars[pars$name == "pfree", ]$value,
-    pars[pars$name == "riva", ]$value,
-    pars[pars$name == "side", ]$value,
-    pars[pars$name == "rserv", ]$value,
-    pars[pars$name == "efc", ]$value
+  sac_names = c(
+    "uztwm", "uzfwm", "lztwm", "lzfpm", "lzfsm", "adimp",
+    "uzk", "lzpk", "lzsk", "zperc", "rexp", "pctim",
+    "pfree", "riva", "side", "rserv", "efc"
+  )
+  snow_names = c(
+    "scf", "mfmax", "mfmin", "uadj", "si", "nmf", "tipm",
+    "mbase", "plwhc", "daygm", "adc_a", "adc_b", "adc_c"
   )
 
-  snow_pars <- rbind(
-    pars[pars$name == "scf", ]$value,
-    pars[pars$name == "mfmax", ]$value,
-    pars[pars$name == "mfmin", ]$value,
-    pars[pars$name == "uadj", ]$value,
-    pars[pars$name == "si", ]$value,
-    pars[pars$name == "nmf", ]$value,
-    pars[pars$name == "tipm", ]$value,
-    pars[pars$name == "mbase", ]$value,
-    pars[pars$name == "plwhc", ]$value,
-    pars[pars$name == "daygm", ]$value,
-    pars[pars$name == "adc_a", ]$value,
-    pars[pars$name == "adc_b", ]$value,
-    pars[pars$name == "adc_c", ]$value
+  sac_pars = do.call(
+    rbind,
+    lapply(sac_names, \(nm) .align_zone_values(pars, nm, n_zones, zone_names, "sac", "sac_snow()"))
   )
+  snow_pars = do.call(
+    rbind,
+    lapply(snow_names, \(nm) .align_zone_values(pars, nm, n_zones, zone_names, "snow", "sac_snow()"))
+  )
+  latitude = .align_zone_values(pars, "alat", n_zones, zone_names, "snow", "sac_snow()")
+  elev = .align_zone_values(pars, "elev", n_zones, zone_names, "snow", "sac_snow()")
+  peadj = .align_zone_values(pars, "peadj", n_zones, zone_names, "sac", "sac_snow()")
+  pxadj = .align_zone_values(pars, "pxadj", n_zones, zone_names, "sac", "sac_snow()")
+  init_swe = .align_zone_values(pars, "init_swe", n_zones, zone_names, "snow", "sac_snow()")
 
-  # sacsnow(n_hrus, dt, sim_length, year, month, day, hour, &
-  #           latitude, elev, &
-  #           sac_pars, &
-  #           peadj, pxadj, &
-  #           snow_pars, &
-  #           init_swe, &
-  #           map, ptps, mat, etd, &
-  #           return_states, &
-  #           tci, aet, uztwc, uzfwc, lztwc, lzfsc, lzfpc, adimc, &
-  #           roimp, sdro, ssur, sif, bfs, bfp, &
-  #           swe, aesc, neghs, liqw, raim, psfall, prain)
+  nonneg_vals = c(
+    init_swe,
+    peadj,
+    pxadj,
+    as.vector(sac_pars[-match("side", sac_names), , drop = FALSE]),
+    as.vector(snow_pars)
+  )
+  if (any(nonneg_vals < 0)) {
+    stop(
+      "SAC-SMA and SNOW-17 parameters (excluding elev, alat, and side) must be >= 0.",
+      call. = FALSE
+    )
+  }
+  if (any(elev < 0) || any(latitude < 0)) {
+    warning("elev and/or alat values are below zero, verify this is correct.", call. = FALSE)
+  }
 
-  x <- .Fortran(
+  for (z in seq_len(n_zones)) {
+    req_f = c("map_mm", "ptps", "mat_degc", "etd_mm")
+    miss_f = setdiff(req_f, names(forcing[[z]]))
+    if (length(miss_f) > 0L) {
+      stop(
+        "sac_snow(): forcing zone ",
+        z,
+        " is missing column(s): ",
+        paste(miss_f, collapse = ", "),
+        ".",
+        call. = FALSE
+      )
+    }
+  }
+
+  map_mat = do.call("cbind", lapply(forcing, \(df) as.double(df[["map_mm"]])))
+  ptps_mat = do.call("cbind", lapply(forcing, \(df) as.double(df[["ptps"]])))
+  mat_mat = do.call("cbind", lapply(forcing, \(df) as.double(df[["mat_degc"]])))
+  etd_mat = do.call("cbind", lapply(forcing, \(df) as.double(df[["etd_mm"]])))
+
+  if (any(!is.finite(map_mat)) || any(!is.finite(ptps_mat)) || any(!is.finite(mat_mat)) || any(!is.finite(etd_mat))) {
+    stop("sac_snow(): all forcing columns (map_mm, ptps, mat_degc, etd_mm) must contain finite values.", call. = FALSE)
+  }
+  if (any(map_mat < 0)) {
+    stop("sac_snow(): map_mm values must be >= 0.", call. = FALSE)
+  }
+  if (any(etd_mat < 0)) {
+    stop("sac_snow(): etd_mm values must be >= 0.", call. = FALSE)
+  }
+  if (any(ptps_mat < 0 | ptps_mat > 1)) {
+    stop("sac_snow(): ptps values must be between 0 and 1.", call. = FALSE)
+  }
+
+  output_matrix = matrix(0, nrow = sim_length, ncol = n_zones)
+
+  x = .Fortran(
     "sacsnow",
     n_hrus = as.integer(n_zones),
     dt = as.integer(dt_seconds),
-    sim_length = sim_length,
-    year = as.integer(forcing[[1]]$year)[1:sim_length],
-    month = as.integer(forcing[[1]]$month)[1:sim_length],
-    day = as.integer(forcing[[1]]$day)[1:sim_length],
-    hour = as.integer(forcing[[1]]$hour)[1:sim_length],
-    # zone info
-    latitude = pars[pars$name == "alat", ]$value,
-    elev = pars[pars$name == "elev", ]$value,
-    # sac parameters
+    sim_length = as.integer(sim_length),
+    year = as.integer(forcing[[1L]]$year)[1:sim_length],
+    month = as.integer(forcing[[1L]]$month)[1:sim_length],
+    day = as.integer(forcing[[1L]]$day)[1:sim_length],
+    hour = as.integer(forcing[[1L]]$hour)[1:sim_length],
+    latitude = latitude,
+    elev = elev,
     sac_pars = sac_pars,
-    # pet and precp adjustments
-    peadj = pars[pars$name == "peadj", ]$value,
-    pxadj = pars[pars$name == "pxadj", ]$value,
-    # snow parameters
+    peadj = peadj,
+    pxadj = pxadj,
     snow_pars = snow_pars,
-    # initial conditions
-    init_swe = pars[pars$name == "init_swe", ]$value,
-    # forcings
-    map = do.call("cbind", lapply(forcing, "[[", "map_mm")),
-    ptps = do.call("cbind", lapply(forcing, "[[", "ptps")),
-    mat = do.call("cbind", lapply(forcing, "[[", "mat_degc")),
-    etd = do.call("cbind", lapply(forcing, "[[", "etd_mm")),
-    # should the states be output
-    return_states = return_states,
-    # output
+    init_swe = init_swe,
+    map = map_mat,
+    ptps = ptps_mat,
+    mat = mat_mat,
+    etd = etd_mat,
+    return_states = as.logical(return_states),
     tci = output_matrix,
     aet = output_matrix,
     uztwc = output_matrix,
@@ -218,48 +412,28 @@ sac_snow <- function(dt_hours, forcing, pars, return_states = FALSE) {
   )
 
   if (return_states) {
-    return_vars <- c(
-      "year",
-      "month",
-      "day",
-      "hour",
-      "map",
-      "mat",
-      "ptps",
-      "etd",
-      "tci",
-      "aet",
-      "uztwc",
-      "uzfwc",
-      "lztwc",
-      "lzfsc",
-      "lzfpc",
-      "adimc",
-      "roimp",
-      "sdro",
-      "ssur",
-      "sif",
-      "bfs",
-      "bfp",
-      "swe",
-      "aesc",
-      "neghs",
-      "liqw",
-      "raim",
-      "psfall",
-      "prain"
+    return_vars = c(
+      "year", "month", "day", "hour",
+      "map", "mat", "ptps", "etd",
+      "tci", "aet",
+      "uztwc", "uzfwc", "lztwc", "lzfsc", "lzfpc", "adimc",
+      "roimp", "sdro", "ssur", "sif", "bfs", "bfp",
+      "swe", "aesc", "neghs", "liqw", "raim", "psfall", "prain"
     )
 
-    # if pet exists in the input forcings, output it as is
-    if (!is.null(forcing[[1]]$pet_mm)) {
-      x[["pet"]] <- do.call("cbind", lapply(forcing, "[[", "pet_mm"))
-      return_vars <- c(return_vars, "pet")
+    if (!is.null(forcing[[1L]]$pet_mm)) {
+      x[["pet"]] = do.call("cbind", lapply(forcing, \(df) as.double(df[["pet_mm"]])))
+      return_vars = c(return_vars, "pet")
     }
 
     return(format_states(x[return_vars]))
-  } else {
-    return(x$tci)
   }
+
+  tci_out = x$tci
+  if (!is.null(zone_names)) {
+    colnames(tci_out) = zone_names
+  }
+  tci_out
 }
 
 
@@ -471,11 +645,412 @@ uh2p_root <- function(scale, shape, dt_hours, toc) {
 }
 
 
-#' Two parameter unit hydrograph routing for one or more basin zones
+.pchip_interp = function(x, y, xout) {
+  n = length(x)
+  if (n == 2L) {
+    return(stats::approx(x, y, xout = xout, rule = 2)$y)
+  }
+  hk = diff(x)
+  mk = diff(y) / hk
+
+  edge_deriv = function(h0, h1, m0, m1) {
+    d = ((2 * h0 + h1) * m0 - h0 * m1) / (h0 + h1)
+    if (sign(d) != sign(m0)) {
+      d = 0
+    } else if (sign(m0) != sign(m1) && abs(d) > abs(3 * m0)) {
+      d = 3 * m0
+    }
+    d
+  }
+
+  dk = numeric(n)
+  dk[1L] = edge_deriv(hk[1L], hk[2L], mk[1L], mk[2L])
+  dk[n] = edge_deriv(hk[n - 1L], hk[n - 2L], mk[n - 1L], mk[n - 2L])
+
+  m1 = mk[1L:(n - 2L)]
+  m2 = mk[2L:(n - 1L)]
+  h1 = hk[1L:(n - 2L)]
+  h2 = hk[2L:(n - 1L)]
+  same_sign = (m1 > 0 & m2 > 0) | (m1 < 0 & m2 < 0)
+  w1 = 2 * h1 + h2
+  w2 = h1 + 2 * h2
+  dk_int = numeric(n - 2L)
+  dk_int[same_sign] = (w1[same_sign] + w2[same_sign]) /
+    (w1[same_sign] / m1[same_sign] + w2[same_sign] / m2[same_sign])
+  dk[2L:(n - 1L)] = dk_int
+
+  stats::splinefunH(x, y, dk)(xout)
+}
+
+.detect_uh_spec = function(pars) {
+  pars = as.data.frame(pars)
+  uh_rows = if ("type" %in% names(pars) && any(pars$type == "uh")) {
+    pars[pars$type == "uh", , drop = FALSE]
+  } else {
+    pars
+  }
+  has_shape = any(uh_rows$name == "unit_shape")
+  has_ordinates = any(grepl("^uh_[0-9]+$", uh_rows$name))
+
+  if (has_shape && has_ordinates) {
+    stop(
+      "UH parameters are ambiguous: unit_shape and uh_<number> entries cannot both be provided in rows where type == 'uh'.",
+      call. = FALSE
+    )
+  }
+  if (has_shape) {
+    uh_type = "gamma"
+    marker = "unit_shape"
+  } else if (any(uh_rows$name == "uh_0")) {
+    uh_type = "ordinate"
+    marker = "uh_0"
+  } else {
+    stop(
+      "UH parameters (type == 'uh') must include unit_shape for a gamma unit hydrograph or uh_<number> entries starting with uh_0 for an ordinate unit hydrograph.",
+      call. = FALSE
+    )
+  }
+
+  sac_zones = if (all(c("zone", "type") %in% names(pars))) {
+    sort(unique(pars$zone[grepl("-", pars$zone) & pars$type == "sac"]))
+  } else {
+    character(0)
+  }
+  uh_zone_names = if ("zone" %in% names(uh_rows)) {
+    sort(unique(uh_rows$zone[uh_rows$name == marker]))
+  } else {
+    character(0)
+  }
+  shared_uh_logic = (length(uh_zone_names) == 1L) && (length(sac_zones) > 1L)
+  if (!shared_uh_logic && length(sac_zones) > 0L && "zone" %in% names(uh_rows)) {
+    if (!setequal(uh_zone_names, sac_zones)) {
+      stop("Provide one shared UH parameter set or one set per SAC-Snow zone.", call. = FALSE)
+    }
+  }
+
+  list(
+    uh_type = uh_type,
+    marker = marker,
+    uh_zone_names = uh_zone_names,
+    sac_zones = sac_zones,
+    shared_uh_logic = shared_uh_logic,
+    uh_rows = uh_rows
+  )
+}
+
+.extract_ordinate_matrix = function(pars, uh_zone_names = NULL) {
+  pars = as.data.frame(pars)
+  uh_rows = if ("type" %in% names(pars) && any(pars$type == "uh")) {
+    pars[pars$type == "uh", , drop = FALSE]
+  } else {
+    pars
+  }
+  ord_rows = uh_rows[grepl("^uh_[0-9]+$", uh_rows$name), , drop = FALSE]
+  if (nrow(ord_rows) == 0L) {
+    stop("Ordinate UH requires uh_0, uh_1, ... parameters.", call. = FALSE)
+  }
+
+  if (is.null(uh_zone_names) || length(uh_zone_names) == 0L) {
+    if ("zone" %in% names(ord_rows)) {
+      uh_zone_names = sort(unique(ord_rows$zone[ord_rows$name == "uh_0"]))
+    }
+  }
+
+  extract_one = function(z_rows, z_label) {
+    if (anyDuplicated(z_rows$name) > 0L) {
+      stop("Duplicate ordinate UH parameter names found for zone ", z_label, ".", call. = FALSE)
+    }
+    idx = as.integer(sub("^uh_", "", z_rows$name))
+    ord = order(idx)
+    idx_sorted = idx[ord]
+    expected = seq.int(0L, length(idx_sorted) - 1L)
+    if (length(idx_sorted) == 0L || !identical(idx_sorted, expected)) {
+      stop(
+        "Ordinate UH requires consecutive uh_0, uh_1, ... parameters for zone ",
+        z_label,
+        "; found: ",
+        if (length(z_rows$name) > 0L) paste(z_rows$name[ord], collapse = ", ") else "none",
+        ".",
+        call. = FALSE
+      )
+    }
+    as.double(z_rows$value[ord])
+  }
+
+  if (length(uh_zone_names) > 0L) {
+    zone_vecs = lapply(uh_zone_names, \(z) extract_one(ord_rows[ord_rows$zone == z, , drop = FALSE], z))
+  } else {
+    zone_vecs = list(extract_one(ord_rows, "1"))
+  }
+
+  max_len = max(lengths(zone_vecs))
+  ord_mat = matrix(NA_real_, nrow = max_len, ncol = length(zone_vecs))
+  for (i in seq_along(zone_vecs)) {
+    v = zone_vecs[[i]]
+    ord_mat[seq_along(v), i] = v
+  }
+  if (length(uh_zone_names) == ncol(ord_mat)) {
+    colnames(ord_mat) = uh_zone_names
+  }
+  ord_mat
+}
+
+.validate_ordinate_matrix = function(ord_mat, areas_km2, dt_hours) {
+  dt_hours = .integer_hours(dt_hours, "dt_hours")
+  if (!is.numeric(areas_km2) || length(areas_km2) == 0L || any(!is.finite(areas_km2)) || any(areas_km2 <= 0)) {
+    stop("Ordinate UH zone areas must be finite positive values.", call. = FALSE)
+  }
+  if (!is.matrix(ord_mat) || !is.numeric(ord_mat) || nrow(ord_mat) == 0L) {
+    stop("Ordinate UH ordinates must be a non-empty numeric 2D matrix.", call. = FALSE)
+  }
+  if (ncol(ord_mat) != length(areas_km2)) {
+    stop(
+      "Ordinate UH matrix column count (",
+      ncol(ord_mat),
+      ") must match number of UH zones (",
+      length(areas_km2),
+      ").",
+      call. = FALSE
+    )
+  }
+
+  for (i in seq_len(ncol(ord_mat))) {
+    u = ord_mat[, i]
+    valid_idx = which(!is.na(u))
+    if (length(valid_idx) == 0L) {
+      stop(sprintf("ordinates[, %d] must contain at least a single value.", i), call. = FALSE)
+    }
+    trimmed = u[seq_len(valid_idx[length(valid_idx)])]
+    if (!all(is.finite(trimmed))) {
+      stop(
+        sprintf("ordinates[, %d] must contain only finite values, except for trailing NA values.", i),
+        call. = FALSE
+      )
+    }
+    if (any(trimmed < 0)) {
+      stop(sprintf("ordinates[, %d] must be nonnegative.", i), call. = FALSE)
+    }
+    if (!any(trimmed > 0)) {
+      stop(sprintf("ordinates[, %d] must contain a positive value.", i), call. = FALSE)
+    }
+
+    one_inch_vol_ft3 = areas_km2[i] * 0.386102 * 5280^2 / 12
+    depth_in = sum(trimmed) * dt_hours * 3600 / one_inch_vol_ft3
+    if (abs(depth_in - 1.0) > 0.1) {
+      stop(
+        sprintf(
+          "ordinates[, %d] must represent 1 inch of runoff within 0.1 inch (got %.3f inches).",
+          i,
+          depth_in
+        ),
+        call. = FALSE
+      )
+    }
+  }
+  invisible(TRUE)
+}
+
+.resample_ordinates_pchip = function(ord_mat, source_dt_hours, target_dt_hours) {
+  tstep_old = .integer_hours(source_dt_hours, "source_dt_hours")
+  tstep = .integer_hours(target_dt_hours, "dt_hours")
+  padding = as.integer(ceiling(tstep / tstep_old))
+
+  new_cols = lapply(seq_len(ncol(ord_mat)), \(i) {
+    u = ord_mat[, i]
+    u = u[!is.na(u)]
+    sh = cumsum(u)
+    sh_pad = c(sh, rep(sh[length(sh)], padding))
+    old_hours = (seq_along(sh_pad) - 1L) * tstep_old
+    stop_hour = old_hours[length(old_hours)]
+    nindex = seq.int(0L, stop_hour - 1L, by = tstep)
+    combined = sort(unique(c(old_hours, nindex)))
+    sh_interp = .pchip_interp(old_hours, sh_pad, combined)
+    shift_k = match(tstep, combined) - 1L
+    sh_shift = c(rep(0, shift_k), sh_interp[seq_len(length(sh_interp) - shift_k)])
+    uh_new = (sh_interp - sh_shift) * (tstep_old / tstep)
+    uh_new[match(nindex, combined)]
+  })
+
+  max_len = max(lengths(new_cols))
+  out_mat = matrix(NA_real_, nrow = max_len, ncol = length(new_cols))
+  for (i in seq_along(new_cols)) {
+    v = new_cols[[i]]
+    out_mat[seq_along(v), i] = v
+  }
+  colnames(out_mat) = colnames(ord_mat)
+  out_mat
+}
+
+.gamma_scale_for_zone = function(uh_rows, zone_idx_or_name, by_zone = TRUE) {
+  row_sub = if (by_zone) {
+    uh_rows[uh_rows$zone == zone_idx_or_name, , drop = FALSE]
+  } else {
+    uh_rows
+  }
+  get1 = function(nm, idx = 1L) {
+    vals = row_sub$value[row_sub$name == nm]
+    if (length(vals) < idx) NA_real_ else as.double(vals[idx])
+  }
+  idx = if (by_zone) 1L else zone_idx_or_name
+  shape = get1("unit_shape", idx)
+  toc_gis = get1("unit_toc", idx)
+  toc_adj = get1("unit_toc_adj", idx)
+  scale_val = get1("unit_scale", idx)
+
+  if (!is.finite(shape) || shape <= 0) {
+    stop("Gamma UH 'unit_shape' must be a finite value > 0.", call. = FALSE)
+  }
+  if (!is.na(toc_gis) && !is.na(toc_adj)) {
+    if (!is.finite(toc_gis) || !is.finite(toc_adj) || (toc_gis * toc_adj) <= 0) {
+      stop("Gamma UH 'unit_toc * unit_toc_adj' must be a finite value > 0.", call. = FALSE)
+    }
+    scale = uh2p_get_scale(shape, toc_gis * toc_adj, 1)
+  } else if (!is.na(scale_val)) {
+    if (!is.finite(scale_val) || scale_val <= 0) {
+      stop("Gamma UH 'unit_scale' must be a finite value > 0.", call. = FALSE)
+    }
+    scale = scale_val
+  } else {
+    stop("Gamma UH requires either ('unit_toc' and 'unit_toc_adj') or 'unit_scale'.", call. = FALSE)
+  }
+  list(shape = shape, scale = scale)
+}
+
+#' Compute or resample unit hydrograph ordinates in cfs/in
 #'
-#' @param dt_hours timestep in hours
-#' @param tci channel inflow matrix, one column per zone
-#' @param pars parameters
+#' Returns unit hydrograph ordinates (`cfs/in`) for each UH parameter set in an
+#' `"nwsrfs_run"` object or parameter `data.frame` (`pars`), supporting both
+#' two-parameter gamma unit hydrographs (`unit_shape`) and supplied ordinate
+#' unit hydrographs (`uh_0`, `uh_1`, ...), as well as shared unit hydrographs
+#' across multiple SAC-Snow zones. For ordinate unit hydrographs, requesting a
+#' `dt_hours` different from `source_dt_hours` converts the hydrograph using
+#' S-hydrograph accumulation and monotone cubic Hermite (PCHIP) interpolation.
+#'
+#' @param x An `"nwsrfs_run"` object or a parameter `data.frame` (`pars`).
+#' @param dt_hours Desired unit hydrograph timestep in hours (`1`, `2`, `3`,
+#'   `4`, `6`, `8`, `12`, or `24`). Defaults to `x$dt_hours` for `"nwsrfs_run"`
+#'   objects, or `source_dt_hours` (default `6L`) for parameter `data.frame`s.
+#' @param source_dt_hours Timestep in hours of supplied `uh_0, uh_1, ...`
+#'   ordinates when `x` is a parameter `data.frame`. Defaults to `6L` (ignored
+#'   when `x` is an `"nwsrfs_run"` object, where `x$dt_hours` is used).
+#' @param validate Logical; validate ordinate volumes and parameter bounds.
+#'   Default `TRUE`.
+#'
+#' @return A `data.frame` with integer column `hours` (`0, dt_hours, ...`) and
+#'   one numeric column (`cfs/in`) per UH zone (shorter hydrographs padded with
+#'   `NA`), or `NULL` if `x` is a routing-only `"nwsrfs_run"` without local flow.
+#'
+#' @importFrom stats approx splinefunH
+#' @useDynLib nwsrfsr uh2p_call_
+#' @export
+#'
+#' @examples
+#' run = load_example("NRKW1")
+#' head(uh_ordinates(run))
+#' head(uh_ordinates(run, dt_hours = 3L))
+uh_ordinates = function(x, dt_hours = NULL, source_dt_hours = NULL, validate = TRUE) {
+  if (inherits(x, "nwsrfs_run")) {
+    if (!isTRUE(x$localflow_logic)) {
+      return(NULL)
+    }
+    src_dt = x$dt_hours
+    target_dt = if (is.null(dt_hours)) src_dt else .integer_hours(dt_hours, "dt_hours")
+    if (target_dt == src_dt && !is.null(x$uh)) {
+      return(x$uh)
+    }
+    pars = x$pars
+  } else if (is.data.frame(x)) {
+    pars = as.data.frame(x)
+    src_dt = if (is.null(source_dt_hours)) 6L else .integer_hours(source_dt_hours, "source_dt_hours")
+    target_dt = if (is.null(dt_hours)) src_dt else .integer_hours(dt_hours, "dt_hours")
+  } else {
+    stop("'x' must be an 'nwsrfs_run' object or a parameter data.frame.", call. = FALSE)
+  }
+
+  spec = .detect_uh_spec(pars)
+  uh_rows = spec$uh_rows
+  uh_zones = spec$uh_zone_names
+
+  area_zones = if (length(spec$sac_zones) > 0L) spec$sac_zones else uh_zones
+  raw_areas = if (length(area_zones) > 0L) {
+    .align_zone_values(uh_rows, "zone_area", length(area_zones), area_zones, "uh", "uh_ordinates()")
+  } else {
+    as.double(uh_rows$value[uh_rows$name == "zone_area"])
+  }
+  if (length(raw_areas) == 0L || any(!is.finite(raw_areas)) || any(raw_areas <= 0)) {
+    stop("UH 'zone_area' must contain finite values > 0.", call. = FALSE)
+  }
+  uh_areas = if (spec$shared_uh_logic) sum(raw_areas) else raw_areas
+  col_labels = if (length(uh_zones) == length(uh_areas)) {
+    uh_zones
+  } else {
+    paste0("uh_", seq_along(uh_areas) - 1L)
+  }
+
+  if (spec$uh_type == "gamma") {
+    by_z = length(uh_zones) == length(uh_areas)
+    ord_list = lapply(seq_along(uh_areas), \(i) {
+      ss = .gamma_scale_for_zone(uh_rows, if (by_z) uh_zones[i] else i, by_zone = by_z)
+      uh_dl = .Fortran(
+        "uh2p_call",
+        shape = as.double(ss$shape),
+        scale = as.double(ss$scale),
+        timestep = as.double(target_dt),
+        max_len = 1000L,
+        uh = double(1000L)
+      )$uh
+      if (!all(is.finite(uh_dl))) {
+        stop(sprintf("Zone %s produced nonfinite UH ordinates.", col_labels[i]), call. = FALSE)
+      }
+      nz = which(uh_dl != 0)
+      if (length(nz) == 0L) {
+        stop(
+          sprintf("Zone %s produced an all-zero UH; check shape, scale, and timestep.", col_labels[i]),
+          call. = FALSE
+        )
+      }
+      uh_dl = uh_dl[seq_len(nz[length(nz)])]
+      total_uh_vol = uh_areas[i] * 0.386102 * 5280^2 / 12
+      uh_dl * total_uh_vol / (target_dt * 3600)
+    })
+    max_len = max(lengths(ord_list))
+    ord_mat = matrix(NA_real_, nrow = max_len, ncol = length(ord_list))
+    for (i in seq_along(ord_list)) {
+      v = ord_list[[i]]
+      ord_mat[seq_along(v), i] = v
+    }
+    colnames(ord_mat) = col_labels
+  } else {
+    ord_mat = .extract_ordinate_matrix(pars, uh_zones)
+    if (validate) {
+      .validate_ordinate_matrix(ord_mat, uh_areas, src_dt)
+    }
+    if (target_dt != src_dt) {
+      ord_mat = .resample_ordinates_pchip(ord_mat, src_dt, target_dt)
+    }
+    colnames(ord_mat) = col_labels
+  }
+
+  hours = (seq_len(nrow(ord_mat)) - 1L) * target_dt
+  out = data.frame(hours = as.integer(hours), check.names = FALSE)
+  for (i in seq_len(ncol(ord_mat))) {
+    out[[col_labels[i]]] = ord_mat[, i]
+  }
+  out
+}
+
+
+#' Unit hydrograph routing (gamma or ordinate, per-zone or shared)
+#'
+#' Routes total channel inflow (`tci`, mm) using either a two-parameter gamma
+#' unit hydrograph (`unit_shape` in `pars`) or a supplied ordinate unit
+#' hydrograph (`uh_0`, `uh_1`, ... in `pars`, or explicit `ordinates`),
+#' supporting both per-zone hydrographs and a single shared unit hydrograph
+#' across multiple SAC-Snow zones.
+#'
+#' @param dt_hours timestep in hours (`1`, `2`, `3`, `4`, `6`, `8`, `12`, or `24`)
+#' @param tci channel inflow matrix (`mm`), one column per zone
+#' @param pars parameter `data.frame`
 #' @param sum_zones should routed flows from multiple zones be added and returned as a vector, or
 #'                  kept separate and returned as a matrix
 #' @param start_of_timestep should the output flow data be shifted by one timestep to account for
@@ -485,7 +1060,11 @@ uh2p_root <- function(scale, shape, dt_hours, toc) {
 #'                    Period average is the mean of a timestep and the one after it, with
 #'                    the final value carried forward. Applied before the
 #'                    start_of_timestep shift.
-#' @return Vector of routed flow in cfs
+#' @param ordinates optional numeric vector or matrix (`ordinates x zones`) of
+#'   unit hydrograph ordinates in `cfs / in` at `dt_hours`, overriding UH rows
+#'   in `pars` when supplied.
+#' @return Vector (when `sum_zones = TRUE`) or matrix (when `sum_zones = FALSE`)
+#'   of routed flow in cfs
 #' @export
 #'
 #' @examples
@@ -501,93 +1080,229 @@ uh2p_root <- function(scale, shape, dt_hours, toc) {
 #' tci <- sac_snow(dt_hours, forcing_adj, nrkw1_pars)
 #' flow_cfs <- uh(dt_hours, tci, nrkw1_pars)
 #' @useDynLib nwsrfsr duamel_
-uh <- function(
+uh = function(
   dt_hours,
   tci,
   pars,
   sum_zones = TRUE,
   start_of_timestep = TRUE,
   backfill = TRUE,
-  return_inst = TRUE
+  return_inst = TRUE,
+  ordinates = NULL
 ) {
-  sec_per_day <- 86400
-  dt_seconds <- sec_per_day / (24 / dt_hours)
-  dt_days <- dt_seconds / sec_per_day
+  dt_hours = .integer_hours(dt_hours, "dt_hours")
+  sec_per_day = 86400
+  dt_seconds = dt_hours * 3600
+  dt_days = dt_hours / 24
 
-  n_zones <- ncol(tci)
-  sim_length <- nrow(tci)
+  if (is.null(dim(tci))) {
+    tci = matrix(as.double(tci), ncol = 1L)
+  } else {
+    tci_cols = colnames(tci)
+    tci = as.matrix(tci)
+    storage.mode(tci) = "double"
+    colnames(tci) = tci_cols
+  }
+  if (any(!is.finite(tci))) {
+    stop("uh(): 'tci' must contain only finite numeric values.", call. = FALSE)
+  }
 
-  k <- 1 # turns on 2 parameter UH
-  m <- 1000 # max unit hydro
-  n <- sim_length + m
+  pars = as.data.frame(pars)
+  n_tci_zones = ncol(tci)
+  sim_length = nrow(tci)
+  tci_names = colnames(tci)
 
-  flow_cfs <- if (sum_zones) numeric(sim_length) else tci
-  for (i in 1:n_zones) {
-    shape <- pars[pars$name == "unit_shape", ]$value[i]
-    toc_gis <- pars[pars$name == "unit_toc", ]$value[i]
-    toc_adj <- pars[pars$name == "unit_toc_adj", ]$value[i]
-    # required to define either shape, toc and toc_adj or shape and scale
-    if (is.na(toc_gis) | is.na(toc_adj)) {
-      scale <- pars[pars$name == "unit_scale", ]$value[i]
+  uh_rows = if ("type" %in% names(pars) && any(pars$type == "uh")) {
+    pars[pars$type == "uh", , drop = FALSE]
+  } else {
+    pars
+  }
+
+  get_tci_areas = function() {
+    sac_zones = if (all(c("zone", "type") %in% names(pars))) {
+      sort(unique(pars$zone[grepl("-", pars$zone) & pars$type == "sac"]))
     } else {
-      toc <- toc_gis * toc_adj
-      scale <- uh2p_get_scale(shape, toc, 1)
+      character(0)
     }
-
-    routed <- .Fortran(
-      "duamel",
-      tci = as.single(tci[, i]),
-      u1 = as.single(numeric(m)), # unused when K = 1
-      as.single(shape),
-      as.single(scale),
-      as.single(dt_days),
-      as.integer(n),
-      as.integer(m),
-      1L,
-      0L,
-      qr = as.single(numeric(n))
-    )
-
-    # convert to cfs
-    zone_flow <- routed$qr[1:sim_length] *
-      1000 *
-      3.28084**3 /
-      dt_seconds *
-      pars[pars$name == "zone_area", ]$value[i]
-    if (sum_zones) {
-      flow_cfs <- flow_cfs + zone_flow
+    if (!is.null(tci_names) && "zone" %in% names(uh_rows) && all(tci_names %in% uh_rows$zone)) {
+      if (length(sac_zones) == n_tci_zones && !setequal(tci_names, sac_zones)) {
+        stop("tci must contain exactly one column per SAC-Snow zone.", call. = FALSE)
+      }
+      .align_zone_values(uh_rows, "zone_area", n_tci_zones, tci_names, "uh", "uh()")
+    } else if (length(sac_zones) == n_tci_zones && "zone" %in% names(uh_rows)) {
+      .align_zone_values(uh_rows, "zone_area", n_tci_zones, sac_zones, "uh", "uh()")
     } else {
-      flow_cfs[, i] <- zone_flow
+      vals = as.double(uh_rows$value[uh_rows$name == "zone_area"])
+      if (length(vals) != n_tci_zones || any(!is.finite(vals))) {
+        stop("uh(): 'zone_area' must supply one finite value per tci zone.", call. = FALSE)
+      }
+      vals
     }
   }
 
-  # convert instantaneous flow to period average, the mean of each timestep and
-  # the one after it. the final value has no successor so it is carried forward.
-  if (!return_inst) {
-    if (sum_zones) {
-      flow_cfs <- (flow_cfs + c(flow_cfs[-1], flow_cfs[sim_length])) / 2
+  if (!is.null(ordinates)) {
+    uh_type = "ordinate"
+    ord_mat = if (is.null(dim(ordinates))) {
+      matrix(as.double(ordinates), ncol = 1L)
     } else {
-      flow_cfs <- (flow_cfs + rbind(flow_cfs[-1, , drop = FALSE], flow_cfs[sim_length, ])) / 2
+      m_tmp = as.matrix(ordinates)
+      storage.mode(m_tmp) = "double"
+      m_tmp
+    }
+    tci_areas = get_tci_areas()
+    if (any(tci_areas <= 0)) {
+      stop("uh(): 'zone_area' must contain values > 0.", call. = FALSE)
+    }
+    if (ncol(ord_mat) == 1L && n_tci_zones > 1L) {
+      weights = tci_areas / sum(tci_areas)
+      tci_route = matrix(as.numeric(tci %*% weights), ncol = 1L)
+      uh_areas = sum(tci_areas)
+      route_names = colnames(ord_mat)
+    } else if (ncol(ord_mat) == n_tci_zones) {
+      tci_route = tci
+      uh_areas = tci_areas
+      route_names = if (!is.null(colnames(ord_mat))) colnames(ord_mat) else tci_names
+    } else {
+      stop(
+        "uh(): 'ordinates' must have either 1 shared column or ",
+        n_tci_zones,
+        " zone columns.",
+        call. = FALSE
+      )
+    }
+    .validate_ordinate_matrix(ord_mat, uh_areas, dt_hours)
+  } else {
+    spec = .detect_uh_spec(pars)
+    uh_type = spec$uh_type
+    uh_zones = spec$uh_zone_names
+    tci_areas = get_tci_areas()
+    if (any(tci_areas <= 0)) {
+      stop("uh(): 'zone_area' must contain values > 0.", call. = FALSE)
+    }
+
+    is_shared = (length(uh_zones) == 1L) && (n_tci_zones > 1L)
+    if (is_shared) {
+      if (length(spec$sac_zones) > 0L && n_tci_zones != length(spec$sac_zones)) {
+        stop("tci must contain exactly one column per SAC-Snow zone.", call. = FALSE)
+      }
+      weights = tci_areas / sum(tci_areas)
+      tci_route = matrix(as.numeric(tci %*% weights), ncol = 1L)
+      uh_areas = sum(tci_areas)
+      route_names = uh_zones
+    } else {
+      tci_route = tci
+      uh_areas = tci_areas
+      if (!is.null(tci_names) && length(uh_zones) > 0L && all(tci_names %in% uh_zones)) {
+        route_names = tci_names
+      } else if (length(uh_zones) == n_tci_zones) {
+        route_names = uh_zones
+      } else if (length(uh_zones) == 0L) {
+        route_names = NULL
+      } else {
+        stop(
+          "tci must have ",
+          length(uh_zones),
+          " zone columns matching UH parameter sets.",
+          call. = FALSE
+        )
+      }
+    }
+
+    if (uh_type == "ordinate") {
+      ord_mat = .extract_ordinate_matrix(pars, route_names)
+      .validate_ordinate_matrix(ord_mat, uh_areas, dt_hours)
     }
   }
 
-  # if the forcing data used was beginning of time step,
-  # then the instantaneous output occurs at the end of the timestep
-  # so we need to shift the output ahead by one timestep relative
-  # to the focings
-  # !!CONSIDER REMOVING THE FORCING DATA BEGINNNING OF TIMESTEP ADJUSTMENT, SO THIS
-  # STOP CAN REMOVED AS WELL!!
-  if (start_of_timestep) {
+  n_route = ncol(tci_route)
+  flow_cfs = if (sum_zones) {
+    numeric(sim_length)
+  } else {
+    matrix(0, nrow = sim_length, ncol = n_route, dimnames = list(NULL, route_names))
+  }
+
+  if (uh_type == "gamma") {
+    m = 1000L
+    n = sim_length + m
+    u1_dummy = single(m)
+    by_z = !is.null(route_names) && length(route_names) == n_route
+    for (i in seq_len(n_route)) {
+      ss = .gamma_scale_for_zone(uh_rows, if (by_z) route_names[i] else i, by_zone = by_z)
+      routed = .Fortran(
+        "duamel",
+        tci = as.single(tci_route[, i]),
+        u1 = u1_dummy,
+        as.single(ss$shape),
+        as.single(ss$scale),
+        as.single(dt_days),
+        as.integer(n),
+        as.integer(m),
+        1L,
+        0L,
+        qr = single(n)
+      )
+      zone_flow = routed$qr[seq_len(sim_length)] *
+        1000 *
+        3.28084^3 /
+        dt_seconds *
+        uh_areas[i]
+      if (sum_zones) {
+        flow_cfs = flow_cfs + zone_flow
+      } else {
+        flow_cfs[, i] = zone_flow
+      }
+    }
+  } else {
+    for (i in seq_len(n_route)) {
+      u1 = ord_mat[, i]
+      u1 = u1[!is.na(u1)]
+      m_i = length(u1)
+      n_i = sim_length + m_i
+      routed = .Fortran(
+        "duamel",
+        tci = as.single(tci_route[, i]),
+        u1 = as.single(u1),
+        as.single(0),
+        as.single(0),
+        as.single(dt_days),
+        as.integer(n_i),
+        as.integer(m_i),
+        0L,
+        0L,
+        qr = single(n_i)
+      )
+      zone_flow = routed$qr[seq_len(sim_length)] / 25.4
+      if (sum_zones) {
+        flow_cfs = flow_cfs + zone_flow
+      } else {
+        flow_cfs[, i] = zone_flow
+      }
+    }
+  }
+
+  if (!return_inst && sim_length > 0L) {
+    if (sum_zones) {
+      flow_cfs = (flow_cfs + c(flow_cfs[-1L], flow_cfs[sim_length])) / 2
+    } else {
+      flow_cfs = (flow_cfs + rbind(flow_cfs[-1L, , drop = FALSE], flow_cfs[sim_length, , drop = FALSE])) / 2
+    }
+  }
+
+  if (start_of_timestep && sim_length > 0L) {
     if (sum_zones) {
       c(
-        if (backfill) flow_cfs[1] else NA,
-        flow_cfs[1:(sim_length - 1)]
+        if (backfill) flow_cfs[1L] else NA_real_,
+        if (sim_length > 1L) flow_cfs[1L:(sim_length - 1L)] else numeric(0)
       )
     } else {
-      rbind(
-        if (backfill) flow_cfs[1, ] else NA,
-        flow_cfs[1:(sim_length - 1), ]
-      )
+      first_row = if (backfill) flow_cfs[1L, , drop = FALSE] else matrix(NA_real_, 1L, n_route, dimnames = list(NULL, route_names))
+      out_mat = if (sim_length > 1L) {
+        rbind(first_row, flow_cfs[1L:(sim_length - 1L), , drop = FALSE])
+      } else {
+        first_row
+      }
+      rownames(out_mat) = NULL
+      out_mat
     }
   } else {
     flow_cfs
@@ -598,8 +1313,8 @@ uh <- function(
 # the authoritative count when present, but it is dropped from the pars carried
 # on an "nwsrfs_run" object (Python drops it too), so fall back to counting the
 # cl_factor_## rows.
-.n_clmods <- function(pars) {
-  n <- pars[pars$name == "n_clmods", ]$value[1]
+.n_clmods = function(pars) {
+  n = pars[pars$name == "n_clmods", ]$value[1L]
   if (!is.na(n)) {
     return(n)
   }
@@ -611,55 +1326,79 @@ uh <- function(
 #'
 #' @param flow streamflow vector
 #' @param forcing forcing data
-#' @param dt_hours timestep in hours
+#' @param dt_hours timestep in hours (1, 2, 3, 4, 6, 8, 12, or 24)
 #' @param pars parameters
 #' @return Vector of flow modified by the chanloss pattern
 #' @export
 #'
 #' @useDynLib nwsrfsr chanloss_
-chanloss <- function(flow, forcing, dt_hours, pars) {
-  sim_length <- nrow(forcing[[1]])
+chanloss = function(flow, forcing, dt_hours, pars) {
+  pars = as.data.frame(pars)
+  ts_info = .validate_ts_list(forcing, dt_hours = dt_hours, supported = .supported_dt_hours, label = "forcing")
+  dt_hours = ts_info$dt_hours
+  sim_length = nrow(forcing[[1L]])
 
-  # chanloss(n_clmods, dt, sim_length, year, month, day, hour, &
-  #            factor, period, cl_type, &
-  #            sim, sim_adj)
+  flow = as.double(flow)
+  if (length(flow) < sim_length || any(!is.finite(flow[seq_len(sim_length)]))) {
+    stop("chanloss(): 'flow' must contain ", sim_length, " finite values.", call. = FALSE)
+  }
+  if (any(flow[seq_len(sim_length)] < 0)) {
+    stop("chanloss(): 'flow' values must be >= 0.", call. = FALSE)
+  }
 
   n_clmods = .n_clmods(pars)
-  cl_type = pars[pars$name == 'cl_type', ]$value[1]
-  cl_min_q = pars[pars$name == 'cl_min_q', ]$value[1]
+  if (is.na(n_clmods) || n_clmods <= 0) {
+    return(flow[seq_len(sim_length)])
+  }
+
+  cl_type = pars[pars$name == "cl_type", ]$value[1L]
+  cl_min_q = pars[pars$name == "cl_min_q", ]$value[1L]
   if (is.na(cl_type)) {
-    cl_type = 1
+    cl_type = 1L
+  }
+  if (!is.finite(cl_type) || !(cl_type %in% c(1, 2))) {
+    stop("chanloss(): 'cl_type' must be 1 or 2.", call. = FALSE)
+  }
+  if (!is.finite(cl_min_q)) {
+    stop("chanloss(): 'cl_min_q' must be a finite numeric value.", call. = FALSE)
   }
 
-  if (is.na(n_clmods) | n_clmods <= 0) {
-    return(flow)
-  } else {
-    cl_factors <- numeric(n_clmods)
-    cl_periods <- matrix(NA, n_clmods, 2)
-    for (i in 1:n_clmods) {
-      cl_periods[i, 1] <- pars[pars$name == sprintf("cl_period_start_%02d", i), ]$value
-      cl_periods[i, 2] <- pars[pars$name == sprintf("cl_period_end_%02d", i), ]$value
-      cl_factors[i] <- pars[pars$name == sprintf("cl_factor_%02d", i), ]$value
+  cl_factors = numeric(n_clmods)
+  cl_periods = matrix(NA_integer_, n_clmods, 2L)
+  for (i in seq_len(n_clmods)) {
+    p_start = pars[pars$name == sprintf("cl_period_start_%02d", i), ]$value
+    p_end = pars[pars$name == sprintf("cl_period_end_%02d", i), ]$value
+    fac = pars[pars$name == sprintf("cl_factor_%02d", i), ]$value
+    if (length(p_start) != 1L || length(p_end) != 1L || length(fac) != 1L ||
+        !is.finite(p_start) || !is.finite(p_end) || !is.finite(fac) ||
+        p_start != floor(p_start) || p_end != floor(p_end)) {
+      stop(sprintf("chanloss(): missing, duplicate, or invalid parameters for module %02d.", i), call. = FALSE)
     }
-
-    cl_flow = .Fortran(
-      'chanloss',
-      n_clmods = as.integer(n_clmods),
-      dt = as.integer(dt_hours * 3600L),
-      sim_length = as.integer(sim_length),
-      year = as.integer(forcing[[1]]$year)[1:sim_length],
-      month = as.integer(forcing[[1]]$month)[1:sim_length],
-      day = as.integer(forcing[[1]]$day)[1:sim_length],
-      factor = as.double(cl_factors),
-      period = as.integer(cl_periods),
-      cl_type = as.integer(cl_type),
-      min_q = as.double(cl_min_q),
-      sim = as.double(flow[1:sim_length]),
-      sim_adj = double(sim_length)
-    )
-
-    return(cl_flow$sim_adj)
+    cl_periods[i, 1L] = as.integer(p_start)
+    cl_periods[i, 2L] = as.integer(p_end)
+    cl_factors[i] = as.double(fac)
   }
+  if (any(cl_periods < 1L | cl_periods > 12L)) {
+    stop("chanloss(): period start/end months must be integers from 1 to 12.", call. = FALSE)
+  }
+
+  cl_flow = .Fortran(
+    "chanloss",
+    n_clmods = as.integer(n_clmods),
+    dt = as.integer(dt_hours * 3600L),
+    sim_length = as.integer(sim_length),
+    year = as.integer(forcing[[1L]]$year)[seq_len(sim_length)],
+    month = as.integer(forcing[[1L]]$month)[seq_len(sim_length)],
+    day = as.integer(forcing[[1L]]$day)[seq_len(sim_length)],
+    factor = as.double(cl_factors),
+    period = as.integer(cl_periods),
+    cl_type = as.integer(cl_type),
+    min_q = as.double(cl_min_q),
+    sim = as.double(flow[seq_len(sim_length)]),
+    sim_adj = double(sim_length)
+  )
+
+  cl_flow$sim_adj
 }
 
 #' Daily consuse model
@@ -669,45 +1408,94 @@ chanloss <- function(flow, forcing, dt_hours, pars) {
 #' @param pars model parameters in the same format as the sac and snow models, with type=='consuse'
 #' @param cfs if TRUE, then flow units of cfs are expected, if FALSE then cms are expected.
 #'
-#' @return data frame with consuse variables
+#' @return data frame with consuse variables (or named list of data frames for multiple CU zones)
 #' @export
 #'
 #' @useDynLib nwsrfsr consuse_
-consuse <- function(input, pars, cfs = TRUE) {
-  input <- as.data.frame(input)
-  zones <- unique(pars$zone)
-  cu_zones <- grep("-CU", zones, value = T)
-  cu_pars <- pars[pars$type == "consuse", ]
-  sim_length <- as.integer(nrow(input))
+consuse = function(input, pars, cfs = TRUE) {
+  input = as.data.frame(input)
+  pars = as.data.frame(pars)
+  .infer_and_validate_ts(input, dt_hours = 24L, require_hour = FALSE, supported = 24L, label = "consuse input")
 
-  cu_out <- list()
+  if (!all(c("flow", "pet") %in% names(input))) {
+    stop("consuse(): 'input' must contain 'flow' and 'pet' columns.", call. = FALSE)
+  }
+  pet_in = as.double(input$pet)
+  qnat_in = as.double(input$flow * ifelse(cfs, 1, 0.028316847))
+  if (any(!is.finite(pet_in)) || any(!is.finite(qnat_in))) {
+    stop("consuse(): 'flow' and 'pet' must contain finite values.", call. = FALSE)
+  }
+  if (any(pet_in < 0) || any(qnat_in < 0)) {
+    stop("consuse(): 'flow' and 'pet' values must be >= 0.", call. = FALSE)
+  }
+
+  cu_pars = pars[pars$type == "consuse", , drop = FALSE]
+  cu_zones = sort(unique(cu_pars$zone[grepl("-CU", cu_pars$zone)]))
+  if (length(cu_zones) == 0L) {
+    cu_zones = sort(unique(pars$zone[grepl("-CU", pars$zone)]))
+  }
+  sim_length = as.integer(nrow(input))
+
+  cu_out = list()
   for (cu_zone in cu_zones) {
-    peadj_m <- cu_pars[cu_pars$zone == cu_zone & substr(cu_pars$name, 1, 5) == "peadj", ]$value
+    z_cu = cu_pars[cu_pars$zone == cu_zone, , drop = FALSE]
+    cu_month_names = sprintf("peadj_cu_%02d", 1L:12L)
+    if (all(cu_month_names %in% z_cu$name)) {
+      peadj_m = as.double(z_cu$value[match(cu_month_names, z_cu$name)])
+    } else {
+      peadj_m = as.double(z_cu$value[substr(z_cu$name, 1L, 5L) == "peadj"])
+    }
+    if (length(peadj_m) != 12L || any(!is.finite(peadj_m)) || any(peadj_m < 0)) {
+      stop("consuse(): 'peadj_m' must contain 12 finite values >= 0 for zone ", cu_zone, ".", call. = FALSE)
+    }
 
-    # consuse(sim_length, year, month, day, &
-    #           AREA_in,EFF_in,MFLOW_in, &
-    #           IRFSTOR_in,ACCUM_in,DECAY_in, peadj_m, peadj, &
-    #           PET_in,QNAT_in, &
-    #           QADJ_out,QDIV_out,QRFIN_out,QRFOUT_out, &
-    #           QOL_out,QCD_out,CE_out,RFSTOR_out)
-    x <- .Fortran(
+    get_cu_scalar = function(nms, src = z_cu) {
+      vals = src$value[src$name %in% nms]
+      if (length(vals) != 1L || !is.finite(vals)) {
+        stop(
+          "consuse(): expected 1 finite value for ",
+          paste(nms, collapse = "/"),
+          " in zone ",
+          cu_zone,
+          ".",
+          call. = FALSE
+        )
+      }
+      as.double(vals)
+    }
+
+    area_in = get_cu_scalar("area_km2")
+    eff_in = get_cu_scalar("irr_eff")
+    mflow_in = get_cu_scalar(c("min_flow_cmsd", "min_flow"))
+    accum_in = get_cu_scalar("rf_accum_rate")
+    decay_in = get_cu_scalar("rf_decay_rate")
+    peadj_in = get_cu_scalar("peadj", pars[pars$zone == cu_zone & pars$name == "peadj", , drop = FALSE])
+
+    if (any(c(area_in, eff_in, accum_in, decay_in, peadj_in) <= 0)) {
+      stop("consuse(): area_km2, irr_eff, rf_accum_rate, rf_decay_rate, and peadj must be > 0.", call. = FALSE)
+    }
+    if (mflow_in < 0) {
+      stop("consuse(): min_flow must be >= 0.", call. = FALSE)
+    }
+    if (max(eff_in, accum_in, decay_in) > 1) {
+      stop("consuse(): irr_eff, rf_accum_rate, and rf_decay_rate must be <= 1.", call. = FALSE)
+    }
+
+    x = .Fortran(
       "consuse",
-      # inputs
       sim_length = sim_length,
       year = as.integer(input$year),
       month = as.integer(input$month),
       day = as.integer(input$day),
-      AREA_in = cu_pars[cu_pars$zone == cu_zone & cu_pars$name == "area_km2", ]$value,
-      EFF_in = cu_pars[cu_pars$zone == cu_zone & cu_pars$name == "irr_eff", ]$value,
-      MFLOW_in = cu_pars[cu_pars$zone == cu_zone & cu_pars$name == "min_flow_cmsd", ]$value,
-      ACCUM_in = cu_pars[cu_pars$zone == cu_zone & cu_pars$name == "rf_accum_rate", ]$value,
-      DECAY_in = cu_pars[cu_pars$zone == cu_zone & cu_pars$name == "rf_decay_rate", ]$value,
-      peadj_m = as.numeric(peadj_m),
-      peadj = pars[pars$name == "peadj" & pars$zone == cu_zone, ]$value,
-      PET_in = as.numeric(input$pet),
-      # consuse code expects cfs so convert if necessary
-      QNAT_in = as.numeric(input$flow * ifelse(cfs, 1, 0.028316847)),
-      # outputs
+      AREA_in = area_in,
+      EFF_in = eff_in,
+      MFLOW_in = mflow_in,
+      ACCUM_in = accum_in,
+      DECAY_in = decay_in,
+      peadj_m = peadj_m,
+      peadj = peadj_in,
+      PET_in = pet_in,
+      QNAT_in = qnat_in,
       QADJ_out = numeric(sim_length),
       QDIV_out = numeric(sim_length),
       QRFIN_out = numeric(sim_length),
@@ -717,7 +1505,7 @@ consuse <- function(input, pars, cfs = TRUE) {
       CE_out = numeric(sim_length),
       RFSTOR_out = numeric(sim_length)
     )
-    cu_out[[cu_zone]] <- data.frame(
+    cu_out[[cu_zone]] = data.frame(
       year = x$year,
       month = x$month,
       day = x$day,
@@ -732,73 +1520,109 @@ consuse <- function(input, pars, cfs = TRUE) {
       rfstor = x$RFSTOR_out
     )
   }
-  if (length(cu_zones) == 1) {
-    return(cu_out[[1]])
+  if (length(cu_zones) == 1L) {
+    cu_out[[1L]]
   } else {
-    return(cu_out)
+    cu_out
   }
 }
 
 
 #' Lag-K Routing for any number of upstream points
 #'
-#' @param dt_hours timestep in hours
-#' @param uptribs a matrix where each column contains flow data (in cfs) for an upstream point
+#' @param dt_hours timestep in hours (1, 2, 3, 4, 6, 8, 12, or 24)
+#' @param uptribs a list of data.frames where each element contains `year`, `month`, `day`, `hour`, and `flow_cfs` for an upstream point
 #' @param pars parameters
 #' @param sum_routes add all routed values together or leave separate
 #' @param return_states return the lagk states
 #'
-#' @return vector of routed flows
+#' @return vector, matrix, or data.frame of routed flows
 #' @export
 #'
 #' @examples NULL
 #' @useDynLib nwsrfsr lagk_
-lagk <- function(dt_hours, uptribs, pars, sum_routes = TRUE, return_states = FALSE) {
-  sec_per_day <- 86400
-  dt_seconds <- sec_per_day / (24 / dt_hours)
-  dt_days <- dt_seconds / sec_per_day
+lagk = function(dt_hours, uptribs, pars, sum_routes = TRUE, return_states = FALSE) {
+  pars = as.data.frame(pars)
+  ts_info = .validate_ts_list(uptribs, dt_hours = dt_hours, supported = .supported_dt_hours, label = "uptribs")
+  dt_hours = ts_info$dt_hours
 
-  n_uptribs <- length(uptribs)
-  sim_length <- nrow(uptribs[[1]])
+  n_uptribs = length(uptribs)
+  sim_length = nrow(uptribs[[1L]])
+  reach_names = names(uptribs)
 
-  # lagk(n_hrus, ita, itb, &
-  #      lagtbl_a_in, lagtbl_b_in, lagtbl_c_in, lagtbl_d_in,&
-  #      ktbl_a_in, ktbl_b_in, ktbl_c_in, ktbl_d_in, &
-  #      lagk_lagmax_in, lagk_kmax_in, lagk_qmax_in, &
-  #      lagk_lagmin_in, lagk_kmin_in, lagk_qmin_in, &
-  #      ico_in, iinfl_in, ioutfl_in, istor_in, &
-  #      qa_in, sim_length, &
-  #      return_states, &
-  #      lagk_out, co_st_out, &
-  #      inflow_st_out,storage_st_out)
+  get_lk = function(nm) {
+    .align_zone_values(pars, nm, n_uptribs, reach_names, "lagk", "lagk()")
+  }
 
-  lagk_out <- matrix(0, sim_length, n_uptribs)
+  lagtbl_a = get_lk("lagtbl_a")
+  lagtbl_b = get_lk("lagtbl_b")
+  lagtbl_c = get_lk("lagtbl_c")
+  lagtbl_d = get_lk("lagtbl_d")
+  ktbl_a = get_lk("ktbl_a")
+  ktbl_b = get_lk("ktbl_b")
+  ktbl_c = get_lk("ktbl_c")
+  ktbl_d = get_lk("ktbl_d")
+  lagmax = get_lk("lagk_lagmax")
+  lagmin = get_lk("lagk_lagmin")
+  kmax = get_lk("lagk_kmax")
+  kmin = get_lk("lagk_kmin")
+  qmax = get_lk("lagk_qmax")
+  qmin = get_lk("lagk_qmin")
+  ico = get_lk("init_co")
+  iinfl = get_lk("init_if")
+  ioutfl = get_lk("init_of")
+  istor = get_lk("init_stor")
 
-  routed <- .Fortran(
+  if (any(c(lagmax, lagmin, kmax, kmin, qmax, qmin) < 0)) {
+    stop("lagk(): table min/max limits for lag, k, and q must be >= 0.", call. = FALSE)
+  }
+  if (any(lagmax < lagmin)) {
+    stop("lagk(): lagk_lagmax must be >= lagk_lagmin.", call. = FALSE)
+  }
+  if (any(kmax < kmin)) {
+    stop("lagk(): lagk_kmax must be >= lagk_kmin.", call. = FALSE)
+  }
+  if (any(qmax <= qmin)) {
+    stop("lagk(): lagk_qmax must be strictly greater than lagk_qmin.", call. = FALSE)
+  }
+  if (any(c(ico, iinfl, ioutfl, istor) < 0)) {
+    stop("lagk(): initial states (init_co, init_if, init_of, init_stor) must be >= 0.", call. = FALSE)
+  }
+
+  qa_in = do.call("cbind", lapply(uptribs, \(x) as.double(x[["flow_cfs"]])))
+  if (any(!is.finite(qa_in))) {
+    stop("lagk(): upstream 'flow_cfs' must contain only finite values.", call. = FALSE)
+  }
+  if (any(qa_in < 0)) {
+    stop("lagk(): upstream 'flow_cfs' values must be >= 0.", call. = FALSE)
+  }
+
+  lagk_out = matrix(0, sim_length, n_uptribs)
+
+  routed = .Fortran(
     "lagk",
     n_hrus = as.integer(n_uptribs),
     ita = as.integer(dt_hours),
     itb = as.integer(dt_hours),
-    # meteng = as.character('METR'),
-    lagtbl_a_in = pars[pars$name == "lagtbl_a", ]$value,
-    lagtbl_b_in = pars[pars$name == "lagtbl_b", ]$value,
-    lagtbl_c_in = pars[pars$name == "lagtbl_c", ]$value,
-    lagtbl_d_in = pars[pars$name == "lagtbl_d", ]$value,
-    ktbl_a_in = pars[pars$name == "ktbl_a", ]$value,
-    ktbl_b_in = pars[pars$name == "ktbl_b", ]$value,
-    ktbl_c_in = pars[pars$name == "ktbl_c", ]$value,
-    ktbl_d_in = pars[pars$name == "ktbl_d", ]$value,
-    lagk_lagmax_in = pars[pars$name == "lagk_lagmax", ]$value,
-    lagk_kmax_in = pars[pars$name == "lagk_kmax", ]$value,
-    lagk_qmax_in = pars[pars$name == "lagk_qmax", ]$value,
-    lagk_lagmin_in = pars[pars$name == "lagk_lagmin", ]$value,
-    lagk_kmin_in = pars[pars$name == "lagk_kmin", ]$value,
-    lagk_qmin_in = pars[pars$name == "lagk_qmin", ]$value,
-    ico_in = pars[pars$name == "init_co", ]$value,
-    iinfl_in = pars[pars$name == "init_if", ]$value,
-    ioutfl_in = pars[pars$name == "init_of", ]$value,
-    istor_in = pars[pars$name == "init_stor", ]$value,
-    qa_in = do.call("cbind", lapply(uptribs, function(x) as.numeric(x[["flow_cfs"]]))),
+    lagtbl_a_in = lagtbl_a,
+    lagtbl_b_in = lagtbl_b,
+    lagtbl_c_in = lagtbl_c,
+    lagtbl_d_in = lagtbl_d,
+    ktbl_a_in = ktbl_a,
+    ktbl_b_in = ktbl_b,
+    ktbl_c_in = ktbl_c,
+    ktbl_d_in = ktbl_d,
+    lagk_lagmax_in = lagmax,
+    lagk_kmax_in = kmax,
+    lagk_qmax_in = qmax,
+    lagk_lagmin_in = lagmin,
+    lagk_kmin_in = kmin,
+    lagk_qmin_in = qmin,
+    ico_in = ico,
+    iinfl_in = iinfl,
+    ioutfl_in = ioutfl,
+    istor_in = istor,
+    qa_in = qa_in,
     sim_length = as.integer(sim_length),
     return_states = as.logical(return_states),
     lagk_out = lagk_out,
@@ -808,32 +1632,31 @@ lagk <- function(dt_hours, uptribs, pars, sum_routes = TRUE, return_states = FAL
   )
 
   if (isTRUE(return_states)) {
-    return_vars <- c(
+    return_vars = c(
       "lagk_out" = "routed",
       "co_st_out" = "lag_time",
       "inflow_st_out" = "k_inflow",
       "storage_st_out" = "k_storage"
     )
-
-    df <- uptribs[[1]][, c("year", "month", "day", "hour")]
-
-    for (i in 1:n_uptribs) {
+    df = uptribs[[1L]][, c("year", "month", "day", "hour")]
+    for (i in seq_len(n_uptribs)) {
       for (name in names(return_vars)) {
-        df[[paste0(return_vars[name], "_", i)]] <- routed[[name]][, i]
+        df[[paste0(return_vars[name], "_", i)]] = routed[[name]][, i]
       }
     }
     return(df)
-    # df = as.data.frame(do.call('cbind',routed[return_vars]))
-    # names(df) = paste0(gsub('_out','',return_vars),'_',1:n_uptribs)
-
-    # return(cbind(upflow[[1]][,c('year','month','day','hour')],df))
   }
-  if (sum_routes & n_uptribs > 1) {
-    return(apply(routed$lagk_out, 1, sum))
-  } else if (n_uptribs > 1) {
-    return(routed$lagk_out)
+
+  if (sum_routes && n_uptribs > 1L) {
+    rowSums(routed$lagk_out)
+  } else if (n_uptribs > 1L) {
+    out_mat = routed$lagk_out
+    if (!is.null(reach_names)) {
+      colnames(out_mat) = reach_names
+    }
+    out_mat
   } else {
-    return(as.vector(routed$lagk_out))
+    as.vector(routed$lagk_out)
   }
 }
 
@@ -1211,10 +2034,10 @@ forcing_adjust_mat <- function(
 
 #' Conduct NWRFC style forcing adjustments
 #'
-#' @param dt_hours timestep in hours
-#' @param forcing data frame with with columns for forcing inputs
-#' @param pars sac parameters
-#' @param climo climotology matrix
+#' @param dt_hours timestep in hours (`1`, `2`, `3`, `4`, `6`, `8`, or `12`)
+#' @param forcing named list of per-zone forcing `data.frame`s
+#' @param pars parameter `data.frame`
+#' @param climo optional `12 x 4` climatology matrix (`map`, `mat`, `pet`, `ptps`)
 #' @param dry_run Do a run without any forcing adjustments, only compute pet and etd.
 #'   Shorthand for `adjust = FALSE`; when TRUE it overrides `adjust`.
 #' @param return_adj return monthly adjustment factors only
@@ -1223,7 +2046,8 @@ forcing_adjust_mat <- function(
 #'   or a character vector naming a subset of "map", "mat", "ptps" and "pet".
 #'   Unadjusted forcings still pass through the routine, which computes pet and
 #'   etd, but with neutral adjustment parameters.
-#' @return Matrix (1 column per zone) of unrouted channel inflow
+#' @return Adjusted forcing list, monthly adjustment `data.frame`, or monthly
+#'   climatology `data.frame`
 #' @export
 #'
 #' @examples
@@ -1232,8 +2056,7 @@ forcing_adjust_mat <- function(
 #' dt_hours <- 6
 #' forcing_adj <- fa_nwrfc(dt_hours, nrkw1_forcing, nrkw1_pars)
 #' @useDynLib nwsrfsr fa_ts_
-#' @importFrom stats reshape
-fa_nwrfc <- function(
+fa_nwrfc = function(
   dt_hours,
   forcing,
   pars,
@@ -1243,164 +2066,228 @@ fa_nwrfc <- function(
   return_climo = FALSE,
   adjust = TRUE
 ) {
-  if (return_adj & return_climo) {
-    stop("Can only return adjustments or climo")
+  if (return_adj && return_climo) {
+    stop("Can only return adjustments or climo", call. = FALSE)
   }
 
-  adjust_types <- if (isTRUE(dry_run)) character(0) else .fa_adjust_types(adjust)
+  adjust_types = if (isTRUE(dry_run)) character(0) else .fa_adjust_types(adjust)
+  pars = as.data.frame(pars)
 
-  pars <- as.data.frame(pars)
+  ts_info = .validate_ts_list(
+    forcing,
+    dt_hours = dt_hours,
+    supported = .supported_fa_dt_hours,
+    label = "forcing"
+  )
+  dt_hours = ts_info$dt_hours
+  dt_seconds = dt_hours * 3600L
 
-  sec_per_day <- 86400
-  dt_seconds <- sec_per_day / (24 / dt_hours)
+  n_zones = length(forcing)
+  sim_length = nrow(forcing[[1L]])
+  zone_names = names(forcing)
 
-  n_zones <- length(forcing)
-  sim_length <- nrow(forcing[[1]])
+  req_cols = c("map_mm", "ptps", "mat_degc")
+  for (z in seq_len(n_zones)) {
+    miss_c = setdiff(req_cols, names(forcing[[z]]))
+    if (length(miss_c) > 0L) {
+      stop(
+        sprintf(
+          "fa_nwrfc(): forcing zone %s is missing column(s): %s.",
+          if (!is.null(zone_names)) zone_names[z] else z,
+          paste(miss_c, collapse = ", ")
+        ),
+        call. = FALSE
+      )
+    }
+  }
 
-  # using base R here to avoid package dependency
-  map_lower <- reshape(
-    pars[grepl("map_lower", pars$name), c("name", "zone", "value")],
-    timevar = "zone",
-    idvar = "name",
-    direction = "wide"
-  )[, -1]
-  map_upper <- reshape(
-    pars[grepl("map_upper", pars$name), c("name", "zone", "value")],
-    timevar = "zone",
-    idvar = "name",
-    direction = "wide"
-  )[, -1]
-  mat_lower <- reshape(
-    pars[grepl("mat_lower", pars$name), c("name", "zone", "value")],
-    timevar = "zone",
-    idvar = "name",
-    direction = "wide"
-  )[, -1]
-  mat_upper <- reshape(
-    pars[grepl("mat_upper", pars$name), c("name", "zone", "value")],
-    timevar = "zone",
-    idvar = "name",
-    direction = "wide"
-  )[, -1]
-  pet_lower <- reshape(
-    pars[grepl("pet_lower", pars$name), c("name", "zone", "value")],
-    timevar = "zone",
-    idvar = "name",
-    direction = "wide"
-  )[, -1]
-  pet_upper <- reshape(
-    pars[grepl("pet_upper", pars$name), c("name", "zone", "value")],
-    timevar = "zone",
-    idvar = "name",
-    direction = "wide"
-  )[, -1]
-  ptps_lower <- reshape(
-    pars[grepl("ptps_lower", pars$name), c("name", "zone", "value")],
-    timevar = "zone",
-    idvar = "name",
-    direction = "wide"
-  )[, -1]
-  ptps_upper <- reshape(
-    pars[grepl("ptps_upper", pars$name), c("name", "zone", "value")],
-    timevar = "zone",
-    idvar = "name",
-    direction = "wide"
-  )[, -1]
+  map_mat = do.call("cbind", lapply(forcing, \(df) as.double(df$map_mm)))
+  ptps_mat = do.call("cbind", lapply(forcing, \(df) as.double(df$ptps)))
+  mat_mat = do.call("cbind", lapply(forcing, \(df) as.double(df$mat_degc)))
 
-  # limits are applied basin wide
-  if (n_zones == 1) {
-    map_limits <- cbind(map_lower, map_upper)
-    mat_limits <- cbind(mat_lower, mat_upper)
-    pet_limits <- cbind(pet_lower, pet_upper)
-    ptps_limits <- cbind(ptps_lower, ptps_upper)
+  if (any(!is.finite(map_mat)) || any(!is.finite(ptps_mat)) || any(!is.finite(mat_mat))) {
+    stop("fa_nwrfc(): forcing columns 'map_mm', 'ptps', and 'mat_degc' must contain finite values.", call. = FALSE)
+  }
+  if (any(map_mat < 0)) {
+    stop("fa_nwrfc(): forcing 'map_mm' values must be >= 0.", call. = FALSE)
+  }
+  if (any(ptps_mat < 0 | ptps_mat > 1)) {
+    stop("fa_nwrfc(): forcing 'ptps' values must be within [0, 1].", call. = FALSE)
+  }
+
+  if (is.null(climo)) {
+    if (length(unique(forcing[[1L]]$month)) < 12L) {
+      stop(
+        "fa_nwrfc(): when 'climo' is NULL, forcing timestamps must include all 12 calendar months.",
+        call. = FALSE
+      )
+    }
+    climo_mat = matrix(-9999, nrow = 12L, ncol = 4L)
   } else {
-    map_limits <- cbind(map_lower[, 1], map_upper[, 1])
-    mat_limits <- cbind(mat_lower[, 1], mat_upper[, 1])
-    pet_limits <- cbind(pet_lower[, 1], pet_upper[, 1])
-    ptps_limits <- cbind(ptps_lower[, 1], ptps_upper[, 1])
+    climo_mat = as.matrix(climo)
+    storage.mode(climo_mat) = "double"
+    if (!identical(dim(climo_mat), c(12L, 4L)) || any(!is.finite(climo_mat))) {
+      stop("fa_nwrfc(): 'climo' must be a finite 12 x 4 numeric matrix.", call. = FALSE)
+    }
+    if (any(climo_mat[, c(1L, 3L, 4L)] < 0) || any(climo_mat[, 4L] > 1)) {
+      stop(
+        "fa_nwrfc(): 'climo' columns map, pet, and ptps must be >= 0 and ptps must be <= 1.",
+        call. = FALSE
+      )
+    }
   }
 
-  # Forcings left out of adjust_types get neutral parameters: scale 1, no
-  # redistribution, no shift. limits are applied basin wide.
-  get_fa_pars <- function(f) {
+  latitude = .align_zone_values(pars, "alat", n_zones, zone_names, "snow", "fa_nwrfc()")
+  if (any(abs(latitude) > 90)) {
+    stop("fa_nwrfc(): parameter 'alat' (latitude) must be within [-90, 90].", call. = FALSE)
+  }
+  area = .align_zone_values(pars, "zone_area", n_zones, zone_names, "uh", "fa_nwrfc()")
+  if (any(area <= 0)) {
+    stop("fa_nwrfc(): parameter 'zone_area' must be > 0.", call. = FALSE)
+  }
+
+  peadj_m = matrix(NA_real_, nrow = 12L, ncol = n_zones)
+  for (m in 1:12) {
+    peadj_m[m, ] = .align_zone_values(
+      pars,
+      sprintf("peadj_%02d", m),
+      n_zones,
+      zone_names,
+      "sac",
+      "fa_nwrfc()"
+    )
+  }
+  if (any(peadj_m < 0)) {
+    stop("fa_nwrfc(): 'peadj_01'..'peadj_12' values must be >= 0.", call. = FALSE)
+  }
+
+  get_fa_pars = function(f) {
     if (!(f %in% adjust_types)) {
       return(c(1, 0, 10, 0))
     }
-    c(
-      pars[pars$name == paste0(f, "_scale"), ]$value[1],
-      pars[pars$name == paste0(f, "_p_redist"), ]$value[1],
-      pars[pars$name == paste0(f, "_std"), ]$value[1],
-      pars[pars$name == paste0(f, "_shift"), ]$value[1]
+    p_names = paste0(f, c("_scale", "_p_redist", "_std", "_shift"))
+    vals = vapply(
+      p_names,
+      \(nm) {
+        rows = pars[pars$name == nm, , drop = FALSE]
+        if ("type" %in% names(rows) && any(rows$type == "fa")) {
+          rows = rows[rows$type == "fa", , drop = FALSE]
+        }
+        if (nrow(rows) != 1L || !is.finite(rows$value[1L])) {
+          stop(
+            sprintf("fa_nwrfc(): parameter '%s' must supply exactly one finite value.", nm),
+            call. = FALSE
+          )
+        }
+        as.double(rows$value[1L])
+      },
+      numeric(1L)
     )
+    if (vals[1L] <= 0) {
+      stop(sprintf("fa_nwrfc(): '%s_scale' must be > 0.", f), call. = FALSE)
+    }
+    if (vals[2L] < 0 || vals[2L] > 1) {
+      stop(sprintf("fa_nwrfc(): '%s_p_redist' must be in [0, 1].", f), call. = FALSE)
+    }
+    if (vals[3L] <= 0) {
+      stop(sprintf("fa_nwrfc(): '%s_std' must be > 0.", f), call. = FALSE)
+    }
+    if (abs(vals[4L]) > 30) {
+      stop(sprintf("fa_nwrfc(): '%s_shift' must be within [-30, 30].", f), call. = FALSE)
+    }
+    unname(vals)
   }
 
-  map_fa_pars <- get_fa_pars("map")
-  mat_fa_pars <- get_fa_pars("mat")
-  pet_fa_pars <- get_fa_pars("pet")
-  ptps_fa_pars <- get_fa_pars("ptps")
-
-  peadj_m <- reshape(
-    pars[
-      grepl("peadj_", pars$name) & pars$type == "sac",
-      c("name", "zone", "value")
-    ],
-    timevar = "zone",
-    idvar = "name",
-    direction = "wide"
-  )[, -1]
-
-  if (is.null(climo)) {
-    climo <- matrix(-9999, 12, 4)
+  get_fa_limits = function(f) {
+    if (!(f %in% adjust_types)) {
+      return(matrix(-999.0, nrow = 12L, ncol = 2L))
+    }
+    extract_bound = function(bound) {
+      vapply(
+        1:12,
+        \(m) {
+          nm = sprintf("%s_%s_%02d", f, bound, m)
+          rows = pars[pars$name == nm, , drop = FALSE]
+          if ("type" %in% names(rows) && any(rows$type == "fa_limit")) {
+            rows = rows[rows$type == "fa_limit", , drop = FALSE]
+          }
+          if (!is.null(zone_names) && "zone" %in% names(rows) && zone_names[1L] %in% rows$zone) {
+            rows = rows[rows$zone == zone_names[1L], , drop = FALSE]
+            if (nrow(rows) != 1L || !is.finite(rows$value[1L])) {
+              stop(
+                sprintf(
+                  "fa_nwrfc(): parameter '%s' must supply exactly one finite value for zone %s.",
+                  nm,
+                  zone_names[1L]
+                ),
+                call. = FALSE
+              )
+            }
+            as.double(rows$value[1L])
+          } else {
+            if (nrow(rows) == 0L || !is.finite(rows$value[1L])) {
+              stop(
+                sprintf("fa_nwrfc(): parameter '%s' is missing or non-finite.", nm),
+                call. = FALSE
+              )
+            }
+            as.double(rows$value[1L])
+          }
+        },
+        numeric(1L)
+      )
+    }
+    lo = extract_bound("lower")
+    hi = extract_bound("upper")
+    if (any(lo > hi)) {
+      stop(
+        sprintf("fa_nwrfc(): '%s_lower_*' must be <= '%s_upper_*' for all 12 months.", f, f),
+        call. = FALSE
+      )
+    }
+    cbind(lo, hi, deparse.level = 0)
   }
 
-  output_matrix <- matrix(0, nrow = sim_length, ncol = n_zones)
+  map_fa_pars = get_fa_pars("map")
+  mat_fa_pars = get_fa_pars("mat")
+  pet_fa_pars = get_fa_pars("pet")
+  ptps_fa_pars = get_fa_pars("ptps")
 
-  # fa_ts(n_hrus, dt, sim_length, year, month, day, hour, &
-  #         latitude, area, &
-  #         peadj_m, &
-  #         map_fa_pars, mat_fa_pars, pet_fa_pars, ptps_fa_pars, &
-  #         map_fa_limits_in, mat_fa_limits_in, pet_fa_limits_in, ptps_fa_limits_in, &
-  #         climo, &
-  #         map, ptps, mat, &
-  #         map_fa, mat_fa, ptps_fa, pet_fa, etd)
+  map_limits = get_fa_limits("map")
+  mat_limits = get_fa_limits("mat")
+  pet_limits = get_fa_limits("pet")
+  ptps_limits = get_fa_limits("ptps")
 
-  # browser()
+  output_matrix = matrix(0, nrow = sim_length, ncol = n_zones)
 
-  x <- .Fortran(
+  x = .Fortran(
     "fa_ts",
     n_hrus = as.integer(n_zones),
     dt = as.integer(dt_seconds),
     sim_length = as.integer(sim_length),
-    year = as.integer(forcing[[1]]$year),
-    month = as.integer(forcing[[1]]$month),
-    day = as.integer(forcing[[1]]$day),
-    hour = as.integer(forcing[[1]]$hour),
-    # zone info
-    latitude = pars[pars$name == "alat", ]$value,
-    area = pars[pars$name == "zone_area", ]$value,
-    # monthly crop coefficients
-    peadj_m = as.matrix(peadj_m),
-    # forcing adjust parameters
+    year = as.integer(forcing[[1L]]$year),
+    month = as.integer(forcing[[1L]]$month),
+    day = as.integer(forcing[[1L]]$day),
+    hour = as.integer(forcing[[1L]]$hour),
+    latitude = latitude,
+    area = area,
+    peadj_m = peadj_m,
     map_fa_pars = map_fa_pars,
     mat_fa_pars = mat_fa_pars,
     pet_fa_pars = pet_fa_pars,
     ptps_fa_pars = ptps_fa_pars,
-    # forcing adjust limits
     map_fa_limits_in = map_limits,
     mat_fa_limits_in = mat_limits,
     pet_fa_limits_in = pet_limits,
     ptps_fa_limits_in = ptps_limits,
-    # externally specified climatology
-    climo = climo,
-    # forcings
-    map = do.call("cbind", lapply(forcing, "[[", "map_mm")),
-    ptps = do.call("cbind", lapply(forcing, "[[", "ptps")),
-    mat = do.call("cbind", lapply(forcing, "[[", "mat_degc")),
-    # output
-    map_adj = numeric(12),
-    mat_adj = numeric(12),
-    pet_adj = numeric(12),
-    ptps_adj = numeric(12),
+    climo = climo_mat,
+    map = map_mat,
+    ptps = ptps_mat,
+    mat = mat_mat,
+    map_adj = numeric(12L),
+    mat_adj = numeric(12L),
+    pet_adj = numeric(12L),
+    ptps_adj = numeric(12L),
     map_fa = output_matrix,
     mat_fa = output_matrix,
     ptps_fa = output_matrix,
@@ -1411,32 +2298,32 @@ fa_nwrfc <- function(
   if (return_adj) {
     return(as.data.frame(do.call("cbind", x[c("map_adj", "mat_adj", "pet_adj", "ptps_adj")])))
   } else if (return_climo) {
-    colnames(x$climo) <- c("map", "mat", "pet", "ptps")
+    colnames(x$climo) = c("map", "mat", "pet", "ptps")
     return(as.data.frame(x$climo))
   } else {
-    for (z in 1:n_zones) {
-      forcing[[z]]$map_mm <- x$map_fa[, z]
-      forcing[[z]]$mat_degc <- x$mat_fa[, z]
-      forcing[[z]]$ptps <- x$ptps_fa[, z]
-      forcing[[z]]$pet_mm <- x$pet_fa[, z]
-      forcing[[z]]$etd_mm <- x$etd[, z]
+    for (z in seq_len(n_zones)) {
+      forcing[[z]]$map_mm = x$map_fa[, z]
+      forcing[[z]]$mat_degc = x$mat_fa[, z]
+      forcing[[z]]$ptps = x$ptps_fa[, z]
+      forcing[[z]]$pet_mm = x$pet_fa[, z]
+      forcing[[z]]$etd_mm = x$etd[, z]
     }
     return(forcing)
   }
 }
 
-#' Conduct NWRFC style forcing adjustments
+#' Conduct NWRFC style forcing adjustments (return monthly adjustments or climo)
 #'
-#' @param dt_hours timestep in hours
-#' @param forcing data frame with with columns for forcing inputs
-#' @param pars sac parameters
-#' @param climo climotology matrix
+#' @param dt_hours timestep in hours (`1`, `2`, `3`, `4`, `6`, `8`, or `12`)
+#' @param forcing named list of per-zone forcing `data.frame`s
+#' @param pars parameter `data.frame`
+#' @param climo optional `12 x 4` climatology matrix
 #' @param dry_run Do a run without any forcing adjustments, only compute pet and etd.
 #'   Shorthand for `adjust = FALSE`; when TRUE it overrides `adjust`.
 #' @param return_climo Return the computed climo, instead of adjustments
 #' @param adjust Which forcings to adjust: TRUE for all of them, FALSE for none,
 #'   or a character vector naming a subset of "map", "mat", "ptps" and "pet".
-#' @return Matrix (1 column per zone) of unrouted channel inflow
+#' @return Monthly adjustment or climatology `data.frame`
 #' @export
 #'
 #' @examples
@@ -1444,8 +2331,7 @@ fa_nwrfc <- function(
 #' data(nrkw1_pars)
 #' dt_hours <- 6
 #' adj <- fa_adj_nwrfc(dt_hours, nrkw1_forcing, nrkw1_pars)
-#' @importFrom stats reshape
-fa_adj_nwrfc <- function(
+fa_adj_nwrfc = function(
   dt_hours,
   forcing,
   pars,
@@ -1501,53 +2387,51 @@ fa_adj_nwrfc <- function(
 #' )
 #' forcing_adj <- rsnwelev(forcing_zones, rs_pars, area_elev_curve)
 #' @useDynLib nwsrfsr rsnwelev_
-rsnwelev <- function(forcing, pars, ae_tbl) {
-  # rsnwelev(n_hrus,sim_length, &
-  # taelev_in, talr_in, pxtemp_in, &
-  # aetbl_len, aetbl, &
-  # mat_in, &
-  # ptps_out)
-
-  pars <- as.data.frame(pars)
-  n_zones <- length(forcing)
-  sim_length <- nrow(forcing[[1]])
-
-  # Pull one value per forcing zone, in forcing order, for a given parameter.
-  # The Fortran routine indexes these vectors as dimension(n_hrus), so passing
-  # the wrong length is an out-of-bounds read that segfaults rather than errors.
-  # Match on the zone column when present so a subset of zones (e.g. dropping a
-  # consumptive-use zone) still lines up with `forcing`.
-  zone_names <- names(forcing)
-  zone_param <- function(param) {
-    rows <- pars[pars$name == param, ]
-    if (!is.null(zone_names) && "zone" %in% names(rows)) {
-      vals <- rows$value[match(zone_names, rows$zone)]
-    } else {
-      vals <- rows$value
+rsnwelev = function(forcing, pars, ae_tbl) {
+  if (!is.list(forcing) || is.data.frame(forcing) || length(forcing) == 0L) {
+    stop("rsnwelev(): 'forcing' must be a non-empty list of per-zone data.frames.", call. = FALSE)
+  }
+  if (all(c("year", "month", "day", "hour") %in% names(forcing[[1L]]))) {
+    .validate_ts_list(forcing, dt_hours = NULL, supported = .supported_dt_hours, label = "forcing")
+  } else {
+    sim_len_chk = nrow(forcing[[1L]])
+    if (is.null(sim_len_chk) || sim_len_chk < 1L) {
+      stop("rsnwelev(): 'forcing' data.frames must contain at least 1 row.", call. = FALSE)
     }
-    if (length(vals) != n_zones || anyNA(vals)) {
-      stop(
-        sprintf(
-          "rsnwelev(): parameter '%s' must supply one value per forcing zone (need %d: %s).",
-          param,
-          n_zones,
-          paste(zone_names, collapse = ", ")
-        ),
-        call. = FALSE
-      )
+    for (i in seq_along(forcing)) {
+      if (!is.data.frame(forcing[[i]]) || nrow(forcing[[i]]) != sim_len_chk) {
+        stop("rsnwelev(): all 'forcing' data.frames must have the same number of rows.", call. = FALSE)
+      }
     }
-    as.double(vals)
   }
 
-  taelev_in <- zone_param("elev")
-  talr_in <- zone_param("talr")
-  pxtemp_in <- zone_param("pxtemp")
+  pars = as.data.frame(pars)
+  n_zones = length(forcing)
+  sim_length = nrow(forcing[[1L]])
+  zone_names = names(forcing)
+
+  for (i in seq_len(n_zones)) {
+    if (!"mat_degc" %in% names(forcing[[i]])) {
+      stop("rsnwelev(): each forcing data.frame must contain 'mat_degc'.", call. = FALSE)
+    }
+  }
+  mat_mat = do.call("cbind", lapply(forcing, \(df) as.double(df$mat_degc)))
+  if (any(!is.finite(mat_mat))) {
+    stop("rsnwelev(): 'mat_degc' must contain only finite numeric values.", call. = FALSE)
+  }
+
+  taelev_in = .align_zone_values(pars, "elev", n_zones, zone_names, "snow", "rsnwelev()")
+  talr_in = .align_zone_values(pars, "talr", n_zones, zone_names, "rsnwelev", "rsnwelev()")
+  pxtemp_in = .align_zone_values(pars, "pxtemp", n_zones, zone_names, "rsnwelev", "rsnwelev()")
 
   if (any(talr_in <= 0)) {
     stop("rsnwelev(): parameter 'talr' (lapse rate) must be strictly positive (> 0).", call. = FALSE)
   }
+  if (any(taelev_in < 0)) {
+    warning("rsnwelev(): negative reference elevation ('elev' < 0) encountered.", call. = FALSE)
+  }
 
-  ae_tbl <- as.data.frame(ae_tbl)
+  ae_tbl = as.data.frame(ae_tbl)
   if (nrow(ae_tbl) < 2L || ncol(ae_tbl) < n_zones + 1L) {
     stop(
       sprintf(
@@ -1561,53 +2445,77 @@ rsnwelev <- function(forcing, pars, ae_tbl) {
     )
   }
 
-  quantiles <- as.numeric(ae_tbl[[1]])
-  if (anyNA(quantiles) || any(quantiles < 0 | quantiles > 1) || any(diff(quantiles) <= 0)) {
+  quantiles = as.double(ae_tbl[[1L]])
+  if (any(!is.finite(quantiles)) || any(quantiles < 0 | quantiles > 1) || any(diff(quantiles) <= 0)) {
     stop(
       "rsnwelev(): first column of 'ae_tbl' must contain strictly ascending area fractions in [0, 1].",
       call. = FALSE
     )
   }
 
-  fortran_tbl <- matrix(NA_real_, nrow(ae_tbl) * 2, n_zones)
-  for (i in 1:n_zones) {
-    vec_a <- quantiles
-    vec_b <- as.numeric(ae_tbl[[i + 1]])
-    if (anyNA(vec_b) || any(diff(vec_b) <= 0)) {
+  elev_cols_names = names(ae_tbl)[-1L]
+  if (!is.null(zone_names) && any(zone_names %in% elev_cols_names)) {
+    miss_z = setdiff(zone_names, elev_cols_names)
+    if (length(miss_z) > 0L) {
       stop(
         sprintf(
-          "rsnwelev(): elevation column %d of 'ae_tbl' must contain strictly ascending values.",
+          "rsnwelev(): 'ae_tbl' is missing elevation column(s) for zone(s): %s.",
+          paste(miss_z, collapse = ", ")
+        ),
+        call. = FALSE
+      )
+    }
+    elev_df = ae_tbl[, zone_names, drop = FALSE]
+  } else if (!is.null(zone_names) && any(make.names(zone_names) %in% elev_cols_names)) {
+    miss_z = zone_names[!make.names(zone_names) %in% elev_cols_names]
+    if (length(miss_z) > 0L) {
+      stop(
+        sprintf(
+          "rsnwelev(): 'ae_tbl' is missing elevation column(s) for zone(s): %s.",
+          paste(miss_z, collapse = ", ")
+        ),
+        call. = FALSE
+      )
+    }
+    elev_df = ae_tbl[, make.names(zone_names), drop = FALSE]
+  } else {
+    elev_df = ae_tbl[, seq_len(n_zones) + 1L, drop = FALSE]
+  }
+
+  fortran_tbl = matrix(NA_real_, nrow = nrow(ae_tbl) * 2L, ncol = n_zones)
+  for (i in seq_len(n_zones)) {
+    vec_b = as.double(elev_df[[i]])
+    if (any(!is.finite(vec_b)) || any(diff(vec_b) <= 0)) {
+      stop(
+        sprintf(
+          "rsnwelev(): elevation column %d of 'ae_tbl' must contain strictly ascending finite values.",
           i + 1L
         ),
         call. = FALSE
       )
     }
-    fortran_tbl[, i] <- c(rbind(vec_a, vec_b))
+    fortran_tbl[, i] = c(rbind(quantiles, vec_b))
   }
 
-  output_matrix <- matrix(0, nrow = sim_length, ncol = n_zones)
+  output_matrix = matrix(0, nrow = sim_length, ncol = n_zones)
 
-  ptps <- .Fortran(
+  ptps = .Fortran(
     "rsnwelev",
     n_hrus = as.integer(n_zones),
     sim_length = as.integer(sim_length),
-    # model parameters
     taelev_in = taelev_in,
     talr_in = talr_in,
     pxtemp_in = pxtemp_in,
     aetbl_len = as.integer(nrow(ae_tbl)),
     aetbl = as.double(fortran_tbl),
-    # forcings
-    mat_in = do.call("cbind", lapply(forcing, "[[", "mat_degc")),
-    # output
+    mat_in = mat_mat,
     ptps_out = output_matrix
   )
 
-  forcing_rsnwelev <- forcing
-
-  for (j in 1:n_zones) {
-    forcing_rsnwelev[[j]]$ptps <- ptps$ptps_out[, j]
+  forcing_rsnwelev = forcing
+  for (j in seq_len(n_zones)) {
+    forcing_rsnwelev[[j]]$ptps = ptps$ptps_out[, j]
   }
 
-  return(forcing_rsnwelev)
+  forcing_rsnwelev
 }

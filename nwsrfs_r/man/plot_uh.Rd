@@ -2,14 +2,16 @@
 % Please edit documentation in R/plots.R
 \name{plot_uh}
 \alias{plot_uh}
-\title{Plot two-parameter gamma unit hydrographs by runoff zone}
+\title{Plot unit hydrographs (gamma or ordinate, per-zone or shared)}
 \usage{
-plot_uh(x, dt_hours = 6L, include_cu = FALSE)
+plot_uh(x, dt_hours = NULL, include_cu = FALSE)
 }
 \arguments{
 \item{x}{An \code{"nwsrfs_run"} object or parameter \code{data.frame} (\code{pars}).}
 
-\item{dt_hours}{Unit hydrograph timestep in hours. Default \code{6L}.}
+\item{dt_hours}{Unit hydrograph timestep in hours (\code{1}, \code{2}, \code{3}, \code{4}, \code{6},
+\code{8}, \code{12}, or \code{24}). Defaults to \code{x$dt_hours} for \code{"nwsrfs_run"} objects,
+or \code{6L} for parameter \code{data.frame}s.}
 
 \item{include_cu}{Logical; include \code{-CU} consumptive-use zones when present.
 Default \code{FALSE}.}
@@ -18,8 +20,8 @@ Default \code{FALSE}.}
 A \code{ggplot} object.
 }
 \description{
-Computes and plots the 6-hour (or custom timestep) gamma unit hydrograph
-ordinates in \verb{cfs / in} for each elevation runoff zone.
+Computes (or resamples) and plots unit hydrograph ordinates in \verb{cfs / in}
+via \code{\link[=uh_ordinates]{uh_ordinates()}} for each UH zone (or shared basin UH).
 }
 \examples{
 if (requireNamespace("ggplot2", quietly = TRUE)) {
