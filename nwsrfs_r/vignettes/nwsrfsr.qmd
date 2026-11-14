@@ -3,6 +3,8 @@ title: "Getting Started with nwsrfsr"
 format:
   html:
     toc: true
+    theme:
+      light: flatly
 vignette: >
   %\VignetteIndexEntry{Getting Started with nwsrfsr}
   %\VignetteEngine{quarto::html}
@@ -11,252 +13,466 @@ knitr:
   opts_chunk:
     collapse: true
     comment: "#>"
-    fig.width: 7
-    fig.height: 4
+    fig.width: 7.2
+    fig.height: 4.2
+    dpi: 88
 ---
 
-`nwsrfsr` wraps the legacy Fortran hydrology models from the National Weather
-Service River Forecast System (NWSRFS) used operationally at the Northwest River
-Forecast Center (NWRFC). You can run a complete basin configuration with one
-call (`nwsrfs_run()` or `load_example()`), or compose the low-level wrappers
-directly (`fa_nwrfc()`, `rsnwelev()`, `sac_snow()`, `uh()`, `lagk()`,
-`chanloss()`, and `consuse()`).
-
-## Model Chain Overview
-
-In an NWRFC basin setup, 6-hour zone forcings pass through up to six stages:
-
-1. **Forcing adjustments (`fa_nwrfc()`)**: Applies calibrated monthly
-   climatological adjustments to mean areal precipitation (`map`), temperature
-   (`mat`), rain/snow fraction (`ptps`), and potential evapotranspiration
-   (`pet`), and computes evapotranspiration demand (`etd_mm`). Optionally,
-   `rsnwelev()` derives `ptps` from a lapse rate and area-elevation curve.
-2. **Snow and soil moisture (`sac_snow()`)**: Runs SNOW-17 and SAC-SMA on each
-   elevation zone to produce total channel inflow (`tci`, mm per timestep).
-3. **Unit hydrograph (`uh()`)**: Convolves per-zone `tci` with a two-parameter
-   gamma unit hydrograph to produce local runoff in cubic feet per second (cfs).
-4. **Upstream routing (`lagk()`)**: Routes upstream tributary inflows through
-   variable Lag and K river reaches and adds them to local runoff.
-5. **Channel loss/gain (`chanloss()`)**: Applies seasonal channel loss or gain
-   factors above a minimum flow threshold.
-6. **Consumptive use (`consuse()`)**: Computes daily irrigation diversions and
-   return flows from a consumptive-use (`-CU`) zone and adjusts 6-hour flow.
-
-## Running a Full Basin Simulation
-
-`load_example()` runs the complete chain on either of the two bundled basins:
-
-- **NRKW1** (Nooksack River at North Cedarville, WA; USGS 12210700): two
-  SAC-SMA/SNOW-17 zones plus three upstream Lag-K tributaries (`MFNW1`,
-  `NFNW1`, `NSSW1`).
-- **SFLN2** (Salmon Falls Creek near San Jacinto, NV; USGS 13105000): two
-  runoff zones plus a consumptive-use zone (`SFLN2-CU`) and seasonal channel
-  losses.
+`nwsrfsr` wraps the operational Fortran hydrology models from the National Weather
+Service River Forecast System (NWSRFS) used at the Northwest River Forecast Center
+(NWRFC). While these tools were developed at the NWRFC, the models are general
+and may be applied (after proper calibration) to model the streamflow of most river basins.
+This guide walks through configuring a basin, inspecting physical parameter curves,
+running the models, and diagnosing model performance with the plotting and
+validation utilities built into `nwsrfsr`.
 
 ```{r}
-#| label: full-run
+#| label: setup
+#| message: false
 library(nwsrfsr)
+```
+
+## Lumped Zonal Basin Modeling
+
+There are two typical modeling paradigms common in hydrologic modeling, distributed and
+lumped. `nwsrfsr` employs a lumped modeling approach but allows for multiple zones within
+a lumped basin. Zones account for basins that have significantly different hydrologic properties
+within the same basin, such as large basins spanning climate regions or basins with steep elevation
+gradients. In a multi-zone basin, each zone has its own set of parameters and produces its own output
+hydrograph which is added to the other zones to create the final outlet hydrograph.
+
+Every `nwsrfsr` model must use the core SAC-SMA and SNOW-17 models (snow parameters can be
+disabled in warmer regions) and the unit-hydrograph routing:
+
+- **Snow and soil moisture accounting (`sac_snow()`, `sac_snow_states()`)**:
+   Couples SNOW-17 snow accumulation/ablation with Sacramento Soil Moisture
+   Accounting (SAC-SMA) in each runoff zone to produce total channel inflow
+   (`tci`, mm per 6 hours) alongside internal snow and soil states.
+- **Unit hydrograph routing (`uh()`)**: Convolves per-zone `tci` with a
+   two-parameter gamma unit hydrograph to convert runoff depth (mm) into local
+   streamflow (cfs), shifted one step forward to align end-of-interval discharge
+   with beginning-of-interval timestamps.
+
+Several optional modules may be used when they are applicable:
+
+- **Forcing adjustments and evapotranspiration demand (`fa_nwrfc()`)**: Computes
+   6-hour Hargreaves potential evapotranspiration (`pet_mm`), scales it by monthly
+   vegetation coefficients (`peadj_01`..`peadj_12`) to obtain evapotranspiration
+   demand (`etd_mm`), and optionally adjusts monthly precipitation (`map`),
+   temperature (`mat`), snow fraction (`ptps`), and `pet` climatologies.
+- **Upstream reach routing (`lagk()`)**: Routes upstream tributary hydrographs
+   through discharge-dependent variable Lag and K attenuation tables and adds them
+   to local runoff.
+- **Channel losses and gains (`chanloss()`)**: Applies seasonal seepage loss or
+   gain factors above a minimum flow threshold.
+- **Consumptive use (`consuse()`)**: Computes daily agricultural diversions and
+   subsurface return flows from `-CU` demand zones in irrigated basins and maps
+   the net adjustment back onto 6-hour discharge.
+
+The package bundles two NWRFC calibration basins that demonstrate how to use all of the
+modules:
+
+- **NRKW1** (Nooksack River at North Cedarville, WA; USGS `12210700`): A maritime
+  Cascade basin driven by winter atmospheric rivers, rain-on-snow events, and
+  deep high-elevation snowpack, configured with two elevation zones (`NRKW1-1`,
+  `NRKW1-2`) and three upstream Lag-K forks (`MFNW1`, `NFNW1`, `NSSW1`).
+- **SFLN2** (Salmon Falls Creek near San Jacinto, NV; USGS `13105000`): A
+  semi-arid Great Basin snowmelt watershed with two runoff zones (`SFLN2-1`,
+  `SFLN2-2`), substantial seasonal alluvial channel losses, and an irrigated
+  valley consumptive-use zone (`SFLN2-CU`).
+
+## Setting Up Inputs and Inspecting Parameters
+
+A basin setup consists of up to four R data objects: zone forcings,
+a long-format parameter table, optional upstream inflows, and observed
+outlet flow for evaluation. Several example data objects are automatically added to the
+global environment when the package is loaded.
+
+```r
+library(nwsrfsr)
+```
+
+### Meteorological Forcings, Spin-Up, and Preprocessing
+
+`nrkw1_forcing` is a named list of `data.frame`s, one per zone, where each row represents
+a single timestep. The NRKW1 example uses a 6-hour timestep and has the columns
+`year`, `month`, `day`, `hour`, mean areal precipitation `map_mm`
+(mm / 6 hours), mean areal air temperature `mat_degc` (°C), and snow fraction `ptps`
+which is a fraction from `[0, 1]`:
+
+```{r}
+#| label: inspect-forcings
+names(nrkw1_forcing)
+head(nrkw1_forcing[["NRKW1-1"]], 4)
+```
+
+Note:
+
+- **The forcings include one spin-up water year.** SAC-SMA upper-zone water stores
+  (`uztwc`, `uzfwc`) and lower-zone free water stores initialize at zero unless
+  cold states are supplied. The bundled 43-year record starts on `1979-10-01`
+  (Water Year 1980), and `sim_to_daily()`, `flow_metrics()`, and the package
+  plotting functions discard `spinup_years = 1L` by default so soil moisture and
+  snowpack equilibrate before evaluation.
+
+### Upstream Tributary Inflows
+
+`nrkw1_upflow` contains 6-hour tributary inflows (`flow_cfs`) on the exact timestamp
+grid of `nrkw1_forcing`. When preparing upstream gauge records from raw
+observations, `adjustq()` snaps irregular instantaneous readings onto the 6-hour
+grid, fills gaps with a simulated backup series, and scales 6-hour values to
+preserve observed daily volumes.
+
+For model evaluation, `nrkw1_daily_flow` provides mean daily discharge (`flow_cfs`)
+and a `Source` column documenting data provenance:
+
+```{r}
+#| label: inspect-obs
+names(nrkw1_upflow)
+table(nrkw1_daily_flow$Source)
+```
+
+In this example, data from `USGS_12210700` begin in late 2004; earlier water years
+use `Data_Ranger` statistically reconstructed flows compiled to lengthen the
+calibration period.
+
+### Parameter Table Schema and Physical Response Curves
+
+All model parameters live in a single long-format `data.frame` with columns
+`p_name` (`<name>_<zone>`), `name`, `type`, `zone`, and `value`. Tabulating `type`
+by `zone` gives an immediate blueprint of which modules are active in a basin:
+
+```{r}
+#| label: inspect-pars
+table(nrkw1_pars$type, nrkw1_pars$zone)
+```
+
+The `NRKW1` example includes basin-wide forcing adjustment parameters
+(`type == "fa"`) which are applied to both zones. The runoff/snow/unit-hydrograph
+parameters are associated with a single zone `NRKW1-1` or `NRKW1-2`. In addition,
+18 routing parameters are associated with three upstream tributaries:
+`MFNW1`, `NFNW1`, and `NSSW1`. Parameters can vary significantly between zones:
+
+```{r}
+#| label: zone-summary
+get_par = function(pars, zone, par_name) {
+  pars$value[pars$zone == zone & pars$name == par_name]
+}
+
+zones = c("NRKW1-1", "NRKW1-2")
+zone_summary = data.frame(
+  zone = zones,
+  elev_m = sapply(zones, \(z) round(get_par(nrkw1_pars, z, "elev"), 0)),
+  area_km2 = sapply(zones, \(z) round(get_par(nrkw1_pars, z, "zone_area"), 1)),
+  sac_storage_mm = sapply(zones, \(z) {
+    caps = c("uztwm", "uzfwm", "lztwm", "lzfsm", "lzfpm")
+    round(sum(sapply(caps, \(p) get_par(nrkw1_pars, z, p))), 0)
+  }),
+  snow_si_mm = sapply(zones, \(z) round(get_par(nrkw1_pars, z, "si"), 0)),
+  eff_toc_hr = sapply(zones, \(z) {
+    round(get_par(nrkw1_pars, z, "unit_toc") * get_par(nrkw1_pars, z, "unit_toc_adj"), 1)
+  }),
+  row.names = NULL
+)
+zone_summary
+```
+
+Before running any simulation, `plot_uh()` and `plot_adc()` visualize the zone
+unit hydrographs and SNOW-17 areal snow-cover depletion curves directly from the
+parameter table:
+
+```{r}
+#| label: fig-uh-adc
+#| layout-ncol: 2
+#| fig-width: 4.3
+#| fig-height: 3.4
+#| fig-cap: "Physical parameterization of NRKW1 elevation zones."
+#| fig-subcap:
+#|   - "6-hour gamma unit hydrographs"
+#|   - "SNOW-17 areal snow-cover depletion curves"
+#| fig-alt: "Two side-by-side ggplot panels. Left panel shows 6-hour unit hydrograph ordinates in cfs per inch against hours since runoff for NRKW1-1 and NRKW1-2. Right panel shows SNOW-17 areal depletion curves plotting normalized snowpack (SWE / AI) against areal snow-cover fraction for both zones."
+plot_uh(nrkw1_pars)
+plot_adc(nrkw1_pars)
+```
+
+Both curves reflect basin physiography. Although `NRKW1-1` covers a larger
+drainage area (`r zone_summary$area_km2[1]` $\text{km}^2$ vs
+`r zone_summary$area_km2[2]` $\text{km}^2$), its lower elevation gradient
+gives a longer effective time of concentration (`r zone_summary$eff_toc_hr[1]`
+hours vs `r zone_summary$eff_toc_hr[2]` hours in the steeper `NRKW1-2`). The combined effect is
+a storm hydrograph with a longer tail. In the upper zone, `si` is `r zone_summary$snow_si_mm[2]`
+mm with a nearly linear depletion curve (`adc_c` = `r round(get_par(nrkw1_pars, "NRKW1-2", "adc_c"), 2)`), meaning `NRKW1-2`
+maintains complete snow cover whenever winter SWE exceeds `r zone_summary$snow_si_mm[2]`
+mm and exposes bare ground gradually during spring melt.
+
+## Forcing Adjustments and Evapotranspiration Demand
+
+Calling `sac_snow()` directly on raw forcings will fail because SAC-SMA requires
+an evapotranspiration demand column (`etd_mm`). `fa_nwrfc()` serves two purposes:
+
+1. Even when `adjust = FALSE` (or `dry_run = TRUE`), it computes 6-hour Hargreaves
+   potential evapotranspiration (`pet_mm`) from zone latitude (`alat`) and
+   temperature, then multiplies by monthly vegetation adjustments
+   (`peadj * peadj_01`..`peadj_12`) to populate `etd_mm`.
+2. When `adjust = TRUE` (the default), it also adjusts the monthly climatologies
+   of `map`, `mat`, `ptps`, and `pet` using four calibrated parameters per
+   variable (`*_scale`, `*_p_redist`, `*_std`, `*_shift`), subject to zone bounds
+   in `fa_limit`.
+
+`plot_forcing_adjust()` compares the raw and FA-adjusted water-year
+climatologies alongside ET demand:
+
+```{r}
+#| label: fig-fa-climo
+#| fig-height: 5.2
+#| fig-cap: "Water-year monthly climatology in upper zone NRKW1-2 (1,091 m) before and after NWRFC forcing adjustments (`fa_nwrfc()`), alongside resulting canopy evapotranspiration demand (`etd_mm`)."
+#| fig-alt: "Three-panel stacked ggplot of monthly water-year climatology from October through September for NRKW1-2. Top panel shows mean daily precipitation decreasing in winter after adjustment. Middle panel shows mean air temperature cooling in spring, shifting March below freezing. Bottom panel compares raw PET, adjusted PET, and canopy-scaled evapotranspiration demand ETD."
+plot_forcing_adjust(nrkw1_forcing, nrkw1_pars, zone = "NRKW1-2")
+```
+
+## Running SNOW-17 and SAC-SMA and Interpreting Internal States
+
+With `pet_mm` and `etd_mm` populated, `sac_snow()` returns a matrix of 6-hour
+total channel inflow (`tci`, mm) per zone, while `sac_snow_states()` returns a
+`data.frame` containing all 26 zone state and flux variables (`_1` for
+`NRKW1-1`, `_2` for `NRKW1-2`):
+
+- **Snow variables**: snow water equivalent (`swe`), areal snow cover (`aesc`),
+  internal snowpack heat deficit (`neghs`), liquid water in snow (`liqw`),
+  catch-corrected snowfall (`psfall`), rain (`prain`), and rain-plus-melt (`raim`).
+- **SAC-SMA soil water states (mm)**: upper-zone tension (`uztwc`) and free
+  (`uzfwc`) water, lower-zone tension (`lztwc`), supplemental free (`lzfsc`), and
+  primary free (`lzfpc`) water, plus additional impervious storage (`adimc`).
+- **Runoff pathways and ET (mm / 6 hr)**: actual evapotranspiration (`aet`),
+  impervious runoff (`roimp`), direct runoff (`sdro`), surface runoff (`ssur`),
+  interflow (`sif`), supplemental baseflow (`bfs`), and primary baseflow (`bfp`),
+  whose sum equals `tci`.
+
+```{r}
+#| label: run-states
+f_adj = fa_nwrfc(6L, nrkw1_forcing, nrkw1_pars, adjust = TRUE)
+states = sac_snow_states(6L, f_adj, nrkw1_pars)
+states$wy = ifelse(states$month >= 10L, states$year + 1L, states$year)
+
+# Area-weighted annual water balance after spin-up (Water Years 1981-2022)
+# Effective P = psfall + prain includes SNOW-17 snowfall catch correction (scf)
+areas = sapply(zones, \(z) get_par(nrkw1_pars, z, "zone_area"))
+w_zone = areas / sum(areas)
+post_idx = states$wy >= 1981L
+n_wy = length(unique(states$wy[post_idx]))
+
+ann_peff = sum(
+  (states$psfall_1[post_idx] + states$prain_1[post_idx]) * w_zone[1] +
+    (states$psfall_2[post_idx] + states$prain_2[post_idx]) * w_zone[2]
+) / n_wy
+ann_tci = sum(states$tci_1[post_idx] * w_zone[1] + states$tci_2[post_idx] * w_zone[2]) / n_wy
+ann_aet = sum(states$aet_1[post_idx] * w_zone[1] + states$aet_2[post_idx] * w_zone[2]) / n_wy
+
+c(
+  effective_precip_mm = round(ann_peff, 1),
+  channel_inflow_mm = round(ann_tci, 1),
+  actual_et_mm = round(ann_aet, 1),
+  runoff_ratio = round(ann_tci / ann_peff, 3)
+)
+```
+
+Notice that SNOW-17 multiplies snowfall (`map * ptps`) by the snowfall
+correction factor (`scf`, `r round(get_par(nrkw1_pars, "NRKW1-2", "scf"), 2)` in
+`NRKW1-2`) to account for wind undercatch at mountain gauges, so effective water
+input is `psfall + prain` (`r round(ann_peff, 0)` mm/yr across the local zones).
+Of that input, `r round(100 * ann_tci / ann_peff, 1)`% (`r round(ann_tci, 0)`
+mm/yr) becomes channel inflow and `r round(ann_aet, 0)` mm/yr returns to the
+atmosphere as actual evapotranspiration (see `plot_water_balance()` for zone
+Budyko and annual mass-balance diagrams).
+
+Passing `states` and `nrkw1_pars` (or an `nwsrfs_run` object directly) to
+`plot_states()` reveals how SNOW-17 and SAC-SMA interact across **Water Year
+2011** (`2010-10-01` through `2011-09-30`), which featured both a major December
+rain-on-snow flood and a deep spring mountain snowpack:
+
+```{r}
+#| label: fig-states-wy2011
+#| fig-height: 6.2
+#| fig-cap: "Internal SNOW-17 and SAC-SMA diagnostics for NRKW1 during Water Year 2011: (A) daily snow water equivalent by elevation zone, (B) basin-average upper- and lower-zone tension water saturation, and (C) stacked SAC-SMA runoff pathways."
+#| fig-alt: "Three-panel vertical diagnostic plot across Water Year 2011. Panel A shows upper zone NRKW1-2 accumulating deep SWE through May while lower zone NRKW1-1 accumulates brief winter snow bursts. Panel B shows upper-zone tension water saturating in October and drying down in July-August, followed by slower lower-zone drawdown. Panel C shows stacked daily runoff components across fast surface/direct runoff, interflow, supplemental baseflow, and primary baseflow."
+st11 = states[states$wy == 2011L, ]
+plot_states(states, nrkw1_pars, water_year = 2011L)
+```
+
+Reading the three panels together explains the watershed's seasonal mechanics
+(use `plot_runoff_regime(..., normalize = TRUE)` to inspect the multi-decade
+average pathway shares across the water year):
+
+- **Elevation-partitioned snowpack (Panel A)**: `NRKW1-1` (`344 m`) accumulates
+  thin, transient snowpacks (`r round(max(st11$swe_1), 0)` mm peak) that melt
+  repeatedly during winter warm fronts, whereas `NRKW1-2` (`1,091 m`) builds
+  `r round(max(st11$swe_2), 0)` mm of SWE that persists into July.
+- **Tension-water gating (Panel B)**: Early October storms rapidly refill
+  upper-zone tension water (`UZTWC`) to capacity, unlocking percolation and storm
+  runoff throughout winter. When summer precipitation ceases in July, `UZTWC`
+  depletes first under canopy ET demand, followed by gradual drawdown of
+  lower-zone tension water (`LZTWC`).
+- **Runoff pathway transitions (Panel C)**: The December 2010 atmospheric river
+  exceeds infiltration and free-water capacities, generating sharp surface/direct
+  runoff (`sdro + ssur`) and interflow (`sif`) spikes. By contrast, May-July
+  snowmelt enters the channel primarily as sustained interflow and supplemental
+  baseflow (`bfs`), and late-August through September low flows rely almost
+  entirely on slow primary baseflow (`bfp`).
+
+## Routing, Daily Alignment, and Validation Diagnostics
+
+### `uh()`, `lagk()`, and `load_example()`
+
+To move from channel inflow (`tci`) depths (mm) to outlet discharge (cfs), the unit
+hydrograph method can be applied with `uh()`. This function convolves
+the `tci` matrix with each zone's gamma unit hydrograph. At NRKW1, three upstream
+Nooksack forks (`MFNW1`, `NFNW1`, `NSSW1`) can be routed with one call to `lagk()`
+(visualized with `plot_lagk()`). Adding the output of `uh()` and `lagk()` gives the
+final basin outlet hydrograph. Calling `load_example("NRKW1")` (or `nwsrfs_run()` on a basin
+directory) executes this exact sequence and bundles all intermediate series into
+an `nwsrfs_run` object:
+
+```{r}
+#| label: routing-equivalence
+tci_mat = cbind(states$tci_1, states$tci_2)
+local_cfs = uh(6L, tci_mat, nrkw1_pars, sum_zones = TRUE)
+routed_forks = lagk(6L, nrkw1_upflow, nrkw1_pars, sum_routes = FALSE)
 
 run_nrkw1 = load_example("NRKW1")
 print(run_nrkw1)
 
+# Step-by-step pipeline matches high-level load_example() output
+max(abs((local_cfs + rowSums(routed_forks)) - run_nrkw1$sim))
+```
+
+```{r}
+#| label: fig-lagk
+#| fig-height: 3.2
+#| fig-cap: "Calibrated variable Lag time and K attenuation routing lookup curves across inflow discharge for the three upstream Nooksack forks (`MFNW1`, `NFNW1`, and `NSSW1`)."
+#| fig-alt: "Two-panel ggplot showing variable Lag time in hours on the left and K attenuation in hours on the right versus tributary inflow in cfs for MFNW1, NFNW1, and NSSW1."
+plot_lagk(run_nrkw1)
+```
+
+### Aligning 6-Hour Output with Daily Gauges and Computing Skill Metrics
+
+A common pitfall when evaluating 6-hour NWSRFS simulations against daily USGS
+streamflow records is averaging the four `00`, `06`, `12`, and `18` instantaneous
+values directly. Because `run_nrkw1$sim` provides instantaneous flow,
+the mean discharge over step $t$ is the trapezoidal average
+`(sim[t] + sim[t + 1]) / 2`. `sim_to_daily()` applies this alignment, merges
+it with observed daily gauge data, and discards initial spin-up water years. After that,
+`flow_metrics()` computes goodness-of-fit statistics overall, by month, by
+water year, or across observed flow quantile bins:
+
+```{r}
+#| label: daily-alignment-metrics
+daily_nrkw1 = sim_to_daily(run_nrkw1, spinup_years = 1L)
+head(daily_nrkw1, 3)
+
+m_por = flow_metrics(run_nrkw1)
+m_usgs = flow_metrics(run_nrkw1, source = "USGS_12210700")
+rbind(
+  "Post-spinup POR (WY 1981-2022)" = round(m_por[, c("NSE", "logNSE", "KGE", "PBIAS", "RMSE")], 3),
+  "Direct USGS gauge (2004-2022)" = round(m_usgs[, c("NSE", "logNSE", "KGE", "PBIAS", "RMSE")], 3)
+)
+
+# Regime-specific performance across observed flow quantile bins
+flow_metrics(run_nrkw1, by = "quantile", source = "USGS_12210700")[, c("quantile_bin", "n", "NSE", "KGE", "PBIAS")]
+```
+
+Across the direct `USGS_12210700` gauged period, the calibrated model achieves
+Nash-Sutcliffe efficiency (NSE) of `r sprintf("%.2f", m_usgs$NSE)`,
+log-transformed NSE of `r sprintf("%.2f", m_usgs$logNSE)` (useful for evaluating low
+flow performance), Kling-Gupta efficiency (KGE) of
+`r sprintf("%.2f", m_usgs$KGE)`, and percent volume bias of
+`r sprintf("%+.1f%%", m_usgs$PBIAS)`.
+
+### Streamflow and Validation Report Graphics
+
+`plot_hydrograph()` (also accessible via `plot(run_nrkw1)`) and `plot_water_year()`
+examine event-scale routing and multi-decade seasonal regimes:
+
+```{r}
+#| label: fig-hydrograph-eval
+#| layout-nrow: 2
+#| fig-height: 3.4
+#| fig-cap: "Streamflow evaluation at NRKW1 across event and climatological timescales."
+#| fig-subcap:
+#|   - "Water Year 2011 daily hydrograph decomposing outlet flow into local zones and Lag-K routed forks"
+#|   - "42-year water-year regime climatology (mean and 10th-90th percentile band on a log10 scale)"
+#| fig-alt: "Two stacked ggplot panels. Top panel compares observed daily USGS flow in black against total simulated flow in blue, Lag-K routed upstream flow in green, and local zone runoff in vermilion across Water Year 2011. Bottom panel plots log-scale daily mean discharge and interannual percentile ribbons from October through September for observed and simulated records."
+wy11_peak = max(daily_nrkw1$obs_cfs[daily_nrkw1$wy == 2011L], na.rm = TRUE)
+
+plot_hydrograph(run_nrkw1, water_year = 2011L, decompose = TRUE)
+plot_water_year(run_nrkw1, log = TRUE)
+```
+
+During the December 2010 rain-on-snow flood (`r format(round(wy11_peak, 0), big.mark = ",")`
+cfs observed), lower-elevation local zones (`SAC-SMA + UH`) and upstream forks
+contribute comparable peak volumes. From May through August the high-elevation
+headwater forks (`Lag-K`) supply the bulk of snowmelt runoff while
+lower-elevation local runoff recedes toward baseflow.
+
+For deeper model validation, `nwsrfsr` provides standard NWRFC validation-report
+diagnostics including flow duration curves (`plot_fdc()`), seasonal water-supply
+volume evaluations (`plot_water_supply()`), monthly bias panels
+(`plot_monthly_bias()`), cumulative volume/error curves (`plot_cumulative()`),
+peak-flow scatter plots (`plot_scatter(..., quantile_min = 0.95)`), and Budyko
+aridity diagrams (`plot_water_balance()`):
+
+```{r}
+#| label: fig-validation-suite
+#| layout-ncol: 2
+#| fig-width: 4.3
+#| fig-height: 3.4
+#| fig-cap: "Hydrological validation diagnostics at NRKW1 over the direct USGS 12210700 gauge record."
+#| fig-subcap:
+#|   - "Daily flow duration curve (exceedance probability)"
+#|   - "April-September seasonal water-supply runoff volume (KAF)"
+#| fig-alt: "Two side-by-side validation plots for NRKW1. Left panel shows log-scale daily flow duration curves for observed and simulated discharge across 0 to 100 percent exceedance probability. Right panel shows observed versus simulated April-September runoff volume in thousand acre-feet tightly clustered along the 1:1 line."
+plot_fdc(run_nrkw1, source = "USGS_12210700")
+plot_water_supply(run_nrkw1, months = 4L:9L, source = "USGS_12210700")
+```
+
+## Channel Losses and Consumptive Use
+
+### `chanloss()` and `consuse()` at SFLN2
+
+In some basins natural channel losses may be accounted for with `chanloss()` and
+anthropogenic water use can be modeled with `consuse()`. The `SFLN2` example uses both of
+these optional modules. `plot_water_year()` is a convenience function that can
+be used to visualize the average hydrograph after each module is applied and compare it
+to observations:
+
+```{r}
+#| label: fig-sfln2-losses
+#| fig-height: 3.8
+#| fig-cap: "Water-year daily mean discharge climatology at SFLN2 (WY 1981-2022), comparing unattenuated local snowmelt runoff (`SAC-SMA + UH`), flow after alluvial channel seepage (`chanloss()`), final outlet flow after irrigation diversions (`consuse()`), and USGS 13105000 observations."
+#| fig-alt: "Line plot of water-year mean daily discharge from October through September for SFLN2. Unattenuated local UH snowmelt runoff peaks near 760 cfs in late April and May, drops near 485 cfs after seasonal channel losses, and drops further during July-September after agricultural consumptive-use diversions, closely matching USGS 13105000 observations."
 run_sfln2 = load_example("SFLN2")
-print(run_sfln2)
+daily_sfln2 = sim_to_daily(run_sfln2)
+
+plot_water_year(run_sfln2, stages = TRUE)
 ```
 
-For external basins, point `nwsrfs_run()` at an NWRFC autocalibration directory
-containing `forcing_por_*.csv`, `flow_daily_*.csv`, optional `upflow_*.csv`, and
-a `results_*/pars_optimal.csv` parameter file (sample directories for five
-basins are archived at <https://doi.org/10.5281/zenodo.18829935>):
+Without `chanloss()` and `consuse()`, headwater snowmelt from `SFLN2` averages
+`r round(mean(daily_sfln2$local_cfs, na.rm = TRUE), 0)` cfs, more than double the
+observed gauge mean of `r round(mean(daily_sfln2$obs_cfs, na.rm = TRUE), 0)` cfs.
+Seasonal channel seepage (`cl_factor_01`..`cl_factor_12`) removes roughly half of
+total volume, and May-October irrigation demand on the
+`r round(get_par(sfln2_pars, "SFLN2-CU", "area_km2"), 0)` $\text{km}^2$ `SFLN2-CU`
+valley zone draws down summer flows to `r round(mean(daily_sfln2$sim_cfs, na.rm = TRUE), 0)`
+cfs in close agreement with `USGS_13105000`.
 
-```r
-run = nwsrfs_run("path/to/nwsrfs-ac-sample-runs/1zone/FSSO3")
-```
+## Conclusions
 
-### Plotting a Water Year Hydrograph
-
-The returned `nwsrfs_run` list carries total simulated flow (`$sim`, cfs),
-local runoff (`$sacsnow_sf`), routed upstream flow (`$lagk_route`), adjusted
-forcings (`$forcings`), and the parameter table (`$pars`).
-
-```{r}
-#| label: plot-wy
-#| fig-alt: "Simulated 6-hour streamflow at NRKW1 for water year 1996, decomposing total flow into local runoff and routed upstream tributaries."
-f1 = run_nrkw1$forcings[[1]]
-dt = as.POSIXct(
-  sprintf("%04d-%02d-%02d %02d:00:00", f1$year, f1$month, f1$day, f1$hour),
-  tz = "UTC"
-)
-wy96 = dt >= as.POSIXct("1995-10-01", tz = "UTC") &
-  dt < as.POSIXct("1996-10-01", tz = "UTC")
-
-plot(
-  dt[wy96],
-  run_nrkw1$sim[wy96],
-  type = "l",
-  col = "#2b5c8f",
-  lwd = 1.4,
-  xlab = "Date (UTC)",
-  ylab = "Discharge (cfs)",
-  main = "NRKW1 Simulated Discharge (Water Year 1996)"
-)
-lines(dt[wy96], run_nrkw1$lagk_route[wy96], col = "#b35806", lwd = 1.1)
-legend(
-  "topright",
-  legend = c("Total flow (local + Lag-K)", "Routed upstream (Lag-K)"),
-  col = c("#2b5c8f", "#b35806"),
-  lwd = c(1.4, 1.1),
-  bty = "n"
-)
-```
-
-### Controlling Forcing Adjustments and Flow Averaging
-
-Both `nwsrfs_run()` and `load_example()` control climatological forcing
-adjustments through `forcing_adj` (`TRUE`, `FALSE`, or a subset of `"map"`,
-`"mat"`, `"ptps"`, and `"pet"`) and select between instantaneous and
-period-average local runoff through `return_inst`:
-
-```{r}
-#| label: options
-run_unadj = load_example("NRKW1", forcing_adj = FALSE)
-run_map_only = load_example("NRKW1", forcing_adj = "map", return_inst = FALSE)
-
-c(
-  adjusted_mean_cfs = mean(run_nrkw1$sim),
-  unadjusted_mean_cfs = mean(run_unadj$sim),
-  map_only_peravg_cfs = mean(run_map_only$sim)
-)
-```
-
-## Updating Parameters
-
-`update_pars()` replaces one or more parameter values by `p_name` and re-runs
-the basin model while preserving the run options (`forcing_adj`, `shift_sf`, and
-`return_inst`).
-
-```{r}
-#| label: update-pars
-# Inspect current upper-zone tension water capacity (uztwm, mm)
-run_nrkw1$pars[run_nrkw1$pars$name == "uztwm", ]
-
-# Increase zone 1 uztwm and re-run
-new_pars = data.frame(p_name = "uztwm_NRKW1-1", value = 100.0)
-run_updated = update_pars(run_nrkw1, new_pars)
-
-c(baseline = mean(run_nrkw1$sim), updated = mean(run_updated$sim))
-```
-
-## Running Individual Components and Inspecting States
-
-When building custom workflows or inspecting internal snow and soil moisture
-states, call the component wrappers directly. Below we subset two water years of
-NRKW1 inputs (`1980-10-01` through `1982-09-30`), compute adjusted forcings,
-extract SNOW-17 and SAC-SMA states via `sac_snow_states()`, and route runoff:
-
-```{r}
-#| label: low-level
-#| fig-alt: "Simulated snow water equivalent (SWE) for the lower and upper elevation zones of NRKW1 across two water years."
-dt_hours = 6L
-keep = seq_len(2L * 365L * 4L)
-forcing_sub = lapply(nrkw1_forcing, \(df) df[keep, ])
-upflow_sub = lapply(nrkw1_upflow, \(df) df[keep, ])
-
-# 1. Forcing adjustments + PET / ETD
-forcing_adj = fa_nwrfc(dt_hours, forcing_sub, nrkw1_pars)
-
-# 2. SNOW-17 and SAC-SMA with full state output
-states = sac_snow_states(dt_hours, forcing_adj, nrkw1_pars)
-tci = cbind(states$tci_1, states$tci_2)
-
-# 3. Unit hydrograph + Lag-K routing
-local_cfs = uh(dt_hours, tci, nrkw1_pars, sum_zones = TRUE)
-routed_cfs = lagk(dt_hours, upflow_sub, nrkw1_pars, sum_routes = TRUE)
-total_cfs = local_cfs + routed_cfs
-head(total_cfs)
-
-# Plot snow water equivalent (mm) across elevation zones
-dt_sub = as.POSIXct(
-  sprintf(
-    "%04d-%02d-%02d %02d:00:00",
-    states$year, states$month, states$day, states$hour
-  ),
-  tz = "UTC"
-)
-plot(
-  dt_sub,
-  states$swe_2,
-  type = "l",
-  col = "#2b5c8f",
-  lwd = 1.4,
-  xlab = "Date (UTC)",
-  ylab = "SWE (mm)",
-  main = "Simulated Snow Water Equivalent by Zone"
-)
-lines(dt_sub, states$swe_1, col = "#35978f", lwd = 1.2)
-legend(
-  "topright",
-  legend = c("Zone 2 (upper)", "Zone 1 (lower)"),
-  col = c("#2b5c8f", "#35978f"),
-  lwd = c(1.4, 1.2),
-  bty = "n"
-)
-```
-
-### Rain-Snow Elevation (`rsnwelev()`)
-
-When rain/snow partitioning is driven by an area-elevation curve rather than a
-precomputed `ptps` column, `rsnwelev()` computes fractional snow area per
-timestep from zone reference elevation (`elev`), temperature lapse rate (`talr`,
-degC per 100 m), and rain/snow threshold temperature (`pxtemp`, degC):
-
-```{r}
-#| label: rsnwelev
-zones = c("SFLN2-1", "SFLN2-2")
-sfln2_sub = lapply(sfln2_forcing[zones], \(df) df[1:40, ])
-
-rs_pars = rbind(
-  sfln2_pars[sfln2_pars$name == "elev" & sfln2_pars$zone %in% zones, ],
-  data.frame(
-    p_name = paste0(rep(c("talr_", "pxtemp_"), each = 2), zones),
-    name = rep(c("talr", "pxtemp"), each = 2),
-    type = "rsnwelev",
-    zone = rep(zones, 2),
-    value = c(0.55, 0.55, 1.0, 1.0)
-  )
-)
-
-sfln2_ptps = rsnwelev(sfln2_sub, rs_pars, area_elev_curve)
-summary(sfln2_ptps[["SFLN2-2"]]$ptps)
-```
-
-## Preprocessing Upstream Flow with `adjustq()`
-
-`adjustq()` replicates the CHPS FEWS AdjustQ preprocessor: it snaps 6-hour
-instantaneous observations to a regular grid, fills short and long observation
-gaps using simulated discharge (when supplied), and iteratively scales 6-hour
-flows to match observed mean daily volumes.
-
-```{r}
-#| label: adjustq
-# Subset calendar year 2010 of NRKW1 daily, instantaneous, and simulated flow
-yr10_daily = nrkw1_daily_flow[nrkw1_daily_flow$year == 2010, ]
-yr10_inst = nrkw1_inst_flow[nrkw1_inst_flow$year == 2010, ]
-yr10_sim_idx = f1$year == 2010
-yr10_sim = data.frame(
-  f1[yr10_sim_idx, c("year", "month", "day", "hour")],
-  flow_cfs = run_nrkw1$sim[yr10_sim_idx]
-)
-
-aq = adjustq(
-  daily_flow = yr10_daily,
-  inst_flow = yr10_inst,
-  sim = yr10_sim
-)
-head(aq)
-```
+We hope you enjoyed this quick overview of the features in `nwsrfsr` and we hope you find them
+useful!
 
 ## References
+
+NOAA National Weather Service, Office of Hydrologic Development. *NWSRFS User
+Manual*. <https://www.weather.gov/owp/oh_hrl_nwsrfs_users_manual_htm_xrfsdocpdf>.
 
 Walters, G., C. Bracken, B. Gillies, L. Pope, H. Pai, S. Chokshi, V.
 Stegemiller, S. King, J. Bracken, T. Dixon, and J. Intermill. 2026. "A

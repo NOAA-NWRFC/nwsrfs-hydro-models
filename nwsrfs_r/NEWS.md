@@ -1,8 +1,16 @@
 # nwsrfsr 1.1.0
 
-* Add introductory vignette (`vignette("nwsrfsr")`) covering the full basin
-  model chain, parameter updates, component-level wrappers and states,
-  `rsnwelev()`, and `adjustq()`.
+* Add hydrological alignment, skill-metric, and `ggplot2` diagnostic utilities
+  (`sim_to_daily()`, `flow_metrics()`, `plot.nwsrfs_run()`, `theme_nwsrfs()`,
+  `plot_hydrograph()`, `plot_water_year()`, `plot_fdc()`, `plot_monthly_bias()`,
+  `plot_cumulative()`, `plot_scatter()`, `plot_water_supply()`, `plot_states()`,
+  `plot_runoff_regime()`, `plot_water_balance()`, `plot_forcing_adjust()`,
+  `plot_uh()`, `plot_adc()`, and `plot_lagk()`).
+* Add Quarto walkthrough vignette (`vignette("nwsrfsr")`) covering basin input
+  and parameter setup, physical unit hydrograph and SNOW-17 depletion curves,
+  climatological forcing adjustments, internal SNOW-17 and SAC-SMA state
+  interpretation, daily gauge alignment and validation diagnostics, channel
+  losses, and consumptive use.
 * Validate area-elevation curve dimensions, monotonic area/elevation values,
   and positive temperature lapse rates (`talr > 0`) in `rsnwelev()`, matching
   the Python `RSnwElevPars` checks.

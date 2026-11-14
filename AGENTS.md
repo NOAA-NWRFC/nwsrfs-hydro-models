@@ -8,7 +8,7 @@ Guidance for coding agents working in `nwsrfs-hydro-models`.
 
 - **Models**: `SAC-SMA`, `SNOW-17`, `UNIT-HG`, `LAG-K`, `CHANLOSS`, `CONS_USE`, plus `AdjustQ` observed-flow preprocessing and `FA_NWRFC` forcing adjustments.
 - **Timestep**: Validated at a 6-hour simulation timestep.
-- **Reference**: Bracken et al. (2026), *JAWRA*, <https://doi.org/10.1111/1752-1688.70091>.
+- **Reference**: Walters et al. (2026), *JAWRA*, <https://doi.org/10.1111/1752-1688.70112>.
 
 ## Repository Layout and Ownership
 
@@ -21,7 +21,7 @@ Guidance for coding agents working in `nwsrfs-hydro-models`.
 ## Environment Setup
 
 - **Pixi (`pixi.toml`)**: Orchestrates tasks across the monorepo and manages the Python, Fortran (conda-forge), Sphinx, and Quarto toolchains.
-- **R (`rig` + `rv`)**: R itself is not managed by `pixi`. Use system R (installed via `rig`) together with [`rv`](https://github.com/A2-ai/rv). `nwsrfs_r/rproject.toml` and `nwsrfs_r/rv.lock` manage R development dependencies (`devtools`, `knitr`, `pkgdown`, `quarto`, `roxygen2`, `testthat`) from Posit Package Manager (`https://packagemanager.posit.co/cran/latest`).
+- **R (`rig` + `rv`)**: R itself is not managed by `pixi`. Use system R (installed via `rig`) together with [`rv`](https://github.com/A2-ai/rv). `nwsrfs_r/rproject.toml` and `nwsrfs_r/rv.lock` manage R development dependencies (`devtools`, `ggplot2`, `knitr`, `pkgdown`, `quarto`, `roxygen2`, `testthat`) from Posit Package Manager (`https://packagemanager.posit.co/cran/latest`).
   ```bash
   cd nwsrfs_r && rv sync
   ```
@@ -63,6 +63,7 @@ cd nwsrfs_r && Rscript -e 'roxygen2::roxygenize()'
 - `R/nwsrfs-run.R`: High-level `nwsrfs_run()`, `load_example()`, and `update_pars()` workflow.
 - `R/adjustq.R`: `adjustq()` and `adjustq_load_example()` for observed daily/instantaneous flow adjustment.
 - `R/data.R` and `data/*.rda`: Bundled `NRKW1` and `SFLN2` example datasets (prepared from `data-raw/prepare_example_data.R`).
+- `R/plots.R`: Daily gauge alignment (`sim_to_daily()`), validation metrics (`flow_metrics()`), `plot.nwsrfs_run()`, and `ggplot2` hydrological diagnostics (`plot_hydrograph()`, `plot_water_year()`, `plot_fdc()`, `plot_monthly_bias()`, `plot_cumulative()`, `plot_scatter()`, `plot_water_supply()`, `plot_states()`, `plot_runoff_regime()`, `plot_water_balance()`, `plot_forcing_adjust()`, `plot_uh()`, `plot_adc()`, `plot_lagk()`, `theme_nwsrfs()`).
 - `vignettes/nwsrfsr.qmd`: Introductory package vignette (Quarto).
 
 ### Python Package (`nwsrfs_py/`)

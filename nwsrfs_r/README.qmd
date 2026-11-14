@@ -14,6 +14,7 @@ Fortran hydrologic models: SAC-SMA, SNOW-17, Unit Hydrograph, Lag-K, Chanloss, a
 Provides both [low-level Fortran wrappers](#running-individual-model-components) and a
 [high-level orchestration layer](#quick-start) that reads NWRFC autocalibration
 directories, auto-detects model components, and runs the full model chain. Also includes
+[plotting and validation utilities](#plotting-and-validation-utilities) (`ggplot2`) and
 an [AdjustQ module](#adjustq-preprocessing) for preprocessing upstream flow.
 
 [Full documentation](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/) | `vignette("nwsrfsr")`
@@ -241,6 +242,41 @@ run2 = update_pars(run, new_pars)
 
 mean(run$sim)   # 3590.3
 mean(run2$sim)  # 3572.0
+```
+
+
+Plotting and Validation Utilities
+---------------------------------
+
+When `ggplot2` is installed, `nwsrfsr` provides daily timestamp alignment,
+goodness-of-fit tables (`NSE`, `logNSE`, `KGE`, `PBIAS`, `RMSE`, `MAE`), and
+ready-made hydrological and validation diagnostics:
+
+```r
+run = load_example("NRKW1")
+
+# Period-averaged daily discharge aligned with USGS gauges + skill metrics
+daily = sim_to_daily(run, spinup_years = 1L)
+flow_metrics(run, source = "USGS_12210700")
+flow_metrics(run, by = "quantile", source = "USGS_12210700")
+
+# Streamflow, regime, and validation plots (or use plot(run, type = ...))
+plot_hydrograph(run, water_year = 2011, decompose = TRUE)
+plot_water_year(run, log = TRUE)
+plot_fdc(run, source = "USGS_12210700")
+plot_monthly_bias(run, source = "USGS_12210700")
+plot_water_supply(run, months = 4:9, source = "USGS_12210700")
+plot_cumulative(run, type = "error")
+plot_scatter(run, quantile_min = 0.95, source = "USGS_12210700")
+
+# Parameter curves, forcing adjustments, internal states, and water balance
+plot_uh(run)
+plot_adc(run)
+plot_lagk(run)
+plot_forcing_adjust(run, zone = "NRKW1-2")
+plot_states(run, water_year = 2011)
+plot_runoff_regime(run, normalize = TRUE)
+plot_water_balance(run, type = "budyko")
 ```
 
 
