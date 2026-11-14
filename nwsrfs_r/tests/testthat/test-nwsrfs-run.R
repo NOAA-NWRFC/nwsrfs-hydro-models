@@ -381,3 +381,58 @@ test_that("update_pars validates inputs and preserves run on error or NA values"
   expect_error(update_pars(run, data.frame(p_name = "uztwm_NRKW1-1", value = -10)), "must be >= 0")
   expect_equal(run$sim, orig_sim)
 })
+
+
+test_that("high-level and low-level model pipelines compose with R native pipe |>", {
+  # High-level nwsrfs_run pipeline: load -> update_pars -> sim_to_daily -> flow_metrics
+  metrics_piped =
+    load_example("NRKW1") |>
+    update_pars(data.frame(p_name = "uztwm_NRKW1-1", value = 80)) |>
+    sim_to_daily(spinup_years = 1L) |>
+    flow_metrics(source = "USGS_12210700")
+
+  run_direct = update_pars(
+    load_example("NRKW1"),
+    data.frame(p_name = "uztwm_NRKW1-1", value = 80)
+  )
+  metrics_direct = flow_metrics(run_direct, source = "USGS_12210700", spinup_years = 1L)
+  expect_equal(metrics_piped, metrics_direct)
+
+  # Piping run into uh_ordinates and adjustq(sim = run)
+  uh_piped =
+    run_direct |>
+    uh_ordinates(dt_hours = 3L)
+  expect_equal(uh_piped, uh_ordinates(run_direct, dt_hours = 3L))
+
+  aq_from_run = adjustq(nrkw1_daily_flow, nrkw1_inst_flow, sim = run_direct)
+  sim_df_direct = data.frame(
+    run_direct$forcings[[1L]][, c("year", "month", "day", "hour")],
+    flow_cfs = run_direct$sim
+  )
+  aq_from_df = adjustq(nrkw1_daily_flow, nrkw1_inst_flow, sim = sim_df_direct)
+  expect_equal(aq_from_run, aq_from_df)
+
+  # Low-level wrapper pipeline on a 1-year subset using named dt_hours and pars
+  sub_idx = seq_len(1464L)
+  f_sub = lapply(nrkw1_forcing, \(df) df[sub_idx, ])
+  uf_sub = lapply(nrkw1_upflow, \(df) df[sub_idx, ])
+
+  local_piped =
+    f_sub |>
+    fa_nwrfc(dt_hours = 6L, pars = nrkw1_pars) |>
+    sac_snow(dt_hours = 6L, pars = nrkw1_pars) |>
+    uh(dt_hours = 6L, pars = nrkw1_pars) |>
+    chanloss(forcing = f_sub, dt_hours = 6L, pars = nrkw1_pars)
+
+  routed_piped =
+    uf_sub |>
+    lagk(dt_hours = 6L, pars = nrkw1_pars)
+
+  direct_total = sac_snow_uh_lagk(
+    6L,
+    fa_nwrfc(6L, f_sub, nrkw1_pars),
+    uf_sub,
+    nrkw1_pars
+  )
+  expect_equal(local_piped + routed_piped, direct_total)
+})

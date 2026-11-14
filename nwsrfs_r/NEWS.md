@@ -2,9 +2,10 @@
 
 * Add multi-timestep support (`1`, `2`, `3`, `4`, `6`, `8`, `12`, and `24` hours;
   `1`--`12` hours for `fa_nwrfc()`) across `nwsrfs_run()`, `sac_snow()`, `uh()`,
-  `lagk()`, `chanloss()`, and `consuse()`, including updated `Lag-K` Fortran
-  routing routines (`pin7`, `pina7`, `flag7`, `fka7`, `lagk_run`) and general
-  subdaily-to-daily `consuse()` alignment.
+  `lagk()`, `chanloss()`, `consuse()`, and `adjustq()`, including updated `Lag-K`
+  Fortran routing routines (`pin7`, `pina7`, `flag7`, `fka7`, `lagk_run`),
+  general subdaily-to-daily `consuse()` alignment, and direct `"nwsrfs_run"`
+  simulation input to `adjustq()`.
 * Add ordinate unit hydrograph (`uh_0`, `uh_1`, ...) and shared basin unit
   hydrograph routing in `uh()` and `nwsrfs_run()`, plus exported
   `uh_ordinates()` with S-hydrograph and monotone cubic Hermite (PCHIP)
@@ -28,7 +29,8 @@
 * Add Quarto walkthrough vignette (`vignette("nwsrfsr")`) covering basin input
   and parameter setup, physical unit hydrograph and SNOW-17 depletion curves,
   climatological forcing adjustments, internal SNOW-17 and SAC-SMA state
-  interpretation, daily gauge alignment and validation diagnostics, channel
+  interpretation, daily gauge alignment and validation diagnostics, R native
+  pipe (`|>`) workflows across high-level and low-level interfaces, channel
   losses, and consumptive use.
 * Validate area-elevation curve dimensions, monotonic area/elevation values,
   and positive temperature lapse rates (`talr > 0`) in `rsnwelev()`, matching

@@ -345,6 +345,32 @@ print(run_nrkw1)
 max(abs((local_cfs + rowSums(routed_forks)) - run_nrkw1$sim))
 ```
 
+Both the high-level `nwsrfs_run` workflow and the low-level wrappers compose
+with R's native pipe (`|>`). High-level helpers (`update_pars()`,
+`sim_to_daily()`, `flow_metrics()`, `uh_ordinates()`, and `plot_*()`) accept the
+run object as their first argument, while low-level wrappers accept the piped
+time series when `dt_hours` and `pars` are named:
+
+```{r}
+#| label: pipe-workflows
+# High-level parameter update -> daily alignment -> gauge skill evaluation
+metrics_upd =
+  load_example("NRKW1") |>
+  update_pars(data.frame(p_name = "uztwm_NRKW1-1", value = 80)) |>
+  sim_to_daily(spinup_years = 1L) |>
+  flow_metrics(source = "USGS_12210700")
+round(metrics_upd[, c("n", "NSE", "logNSE", "KGE", "PBIAS")], 3)
+
+# Low-level component chain on a one-year subset
+sub_1yr = lapply(nrkw1_forcing, \(df) df[1:1464, ])
+local_1yr =
+  sub_1yr |>
+  fa_nwrfc(dt_hours = 6L, pars = nrkw1_pars) |>
+  sac_snow(dt_hours = 6L, pars = nrkw1_pars) |>
+  uh(dt_hours = 6L, pars = nrkw1_pars)
+head(local_1yr, 4)
+```
+
 ```{r}
 #| label: fig-lagk
 #| fig-height: 3.2

@@ -209,6 +209,13 @@ head(lagk_flow)
 sim = local_flow + lagk_flow
 head(sim)
 #> [1] 1373.077 1464.429 1302.737 1335.518 1296.924 1287.347
+
+# Equivalent pipeline using R's native pipe |> (naming dt_hours and pars)
+local_piped =
+  nrkw1_forcing |>
+  fa_nwrfc(dt_hours = 6, pars = nrkw1_pars) |>
+  sac_snow(dt_hours = 6, pars = nrkw1_pars) |>
+  uh(dt_hours = 6, pars = nrkw1_pars)
 ```
 
 See the API reference for each function:
@@ -242,6 +249,12 @@ run2 = update_pars(run, new_pars)
 
 mean(run$sim)   # 3590.3
 mean(run2$sim)  # 3572.0
+
+# High-level functions take the run object first for native |> pipelines
+load_example("NRKW1") |>
+  update_pars(data.frame(p_name = "uztwm_NRKW1-1", value = 120.0)) |>
+  sim_to_daily(spinup_years = 1L) |>
+  flow_metrics(source = "USGS_12210700")
 ```
 
 
@@ -284,8 +297,9 @@ AdjustQ Preprocessing
 ---------------------
 
 [AdjustQ](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/adjustq.html)
-replicates the CHPS FEWS AdjustQ tool, creating 6-hour upstream flow time series from
-daily and instantaneous observations, optionally blended with simulation output.
+replicates the CHPS FEWS AdjustQ tool, creating upstream flow time series (at
+`1`, `2`, `3`, `4`, `6`, `8`, `12`, or `24`-hour model timesteps) from daily and
+instantaneous observations, optionally blended with simulation output.
 
 The quickest way to run it is with
 [`adjustq_load_example()`](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/adjustq_load_example.html),
@@ -308,21 +322,17 @@ aq2 = adjustq_load_example(sim = FALSE)
 ```
 
 To call [`adjustq()`](https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/adjustq.html)
-manually with your own data:
+manually with your own data (passing either an `nwsrfs_run` object or a
+`year`/`month`/`day`/`hour`/`flow_cfs` data.frame as `sim`, or specifying
+`dt_hours` when `sim = NULL`):
 
 ```r
 run = load_example("NRKW1")
 
-# Build a sim data.frame with year/month/day/hour/flow_cfs columns
-sim_df = data.frame(
-  run$forcings[[1]][, c("year", "month", "day", "hour")],
-  flow_cfs = run$sim
-)
-
 result = adjustq(
   daily_flow = nrkw1_daily_flow,
   inst_flow = nrkw1_inst_flow,
-  sim = sim_df
+  sim = run
 )
 ```
 

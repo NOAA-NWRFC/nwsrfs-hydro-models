@@ -2365,7 +2365,14 @@ vertical-align: -.125em;
 <span id="cb11-39"><a href="#cb11-39" aria-hidden="true" tabindex="-1"></a><span class="co"># 5. Combine local + routed upstream flow</span></span>
 <span id="cb11-40"><a href="#cb11-40" aria-hidden="true" tabindex="-1"></a>sim <span class="ot">=</span> local_flow <span class="sc">+</span> lagk_flow</span>
 <span id="cb11-41"><a href="#cb11-41" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(sim)</span>
-<span id="cb11-42"><a href="#cb11-42" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] 1373.077 1464.429 1302.737 1335.518 1296.924 1287.347</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb11-42"><a href="#cb11-42" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] 1373.077 1464.429 1302.737 1335.518 1296.924 1287.347</span></span>
+<span id="cb11-43"><a href="#cb11-43" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-44"><a href="#cb11-44" aria-hidden="true" tabindex="-1"></a><span class="co"># Equivalent pipeline using R&#39;s native pipe |&gt; (naming dt_hours and pars)</span></span>
+<span id="cb11-45"><a href="#cb11-45" aria-hidden="true" tabindex="-1"></a>local_piped <span class="ot">=</span></span>
+<span id="cb11-46"><a href="#cb11-46" aria-hidden="true" tabindex="-1"></a>  nrkw1_forcing <span class="sc">|&gt;</span></span>
+<span id="cb11-47"><a href="#cb11-47" aria-hidden="true" tabindex="-1"></a>  <span class="fu">fa_nwrfc</span>(<span class="at">dt_hours =</span> <span class="dv">6</span>, <span class="at">pars =</span> nrkw1_pars) <span class="sc">|&gt;</span></span>
+<span id="cb11-48"><a href="#cb11-48" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sac_snow</span>(<span class="at">dt_hours =</span> <span class="dv">6</span>, <span class="at">pars =</span> nrkw1_pars) <span class="sc">|&gt;</span></span>
+<span id="cb11-49"><a href="#cb11-49" aria-hidden="true" tabindex="-1"></a>  <span class="fu">uh</span>(<span class="at">dt_hours =</span> <span class="dv">6</span>, <span class="at">pars =</span> nrkw1_pars)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See the API reference for each function: <a href="https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/fa_nwrfc.html"><code>fa_nwrfc()</code></a>, <a href="https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/sac_snow.html"><code>sac_snow()</code></a>, <a href="https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/uh.html"><code>uh()</code></a>, <a href="https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/lagk.html"><code>lagk()</code></a>, <a href="https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/chanloss.html"><code>chanloss()</code></a>, <a href="https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/consuse.html"><code>consuse()</code></a></p>
 </section>
 <section id="updating-parameters" class="level2">
@@ -2384,7 +2391,13 @@ vertical-align: -.125em;
 <span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>run2 <span class="ot">=</span> <span class="fu">update_pars</span>(run, new_pars)</span>
 <span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a><span class="fu">mean</span>(run<span class="sc">$</span>sim)   <span class="co"># 3590.3</span></span>
-<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a><span class="fu">mean</span>(run2<span class="sc">$</span>sim)  <span class="co"># 3572.0</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a><span class="fu">mean</span>(run2<span class="sc">$</span>sim)  <span class="co"># 3572.0</span></span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a><span class="co"># High-level functions take the run object first for native |&gt; pipelines</span></span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a><span class="fu">load_example</span>(<span class="st">&quot;NRKW1&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">update_pars</span>(<span class="fu">data.frame</span>(<span class="at">p_name =</span> <span class="st">&quot;uztwm_NRKW1-1&quot;</span>, <span class="at">value =</span> <span class="fl">120.0</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sim_to_daily</span>(<span class="at">spinup_years =</span> <span class="dv">1</span>L) <span class="sc">|&gt;</span></span>
+<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">flow_metrics</span>(<span class="at">source =</span> <span class="st">&quot;USGS_12210700&quot;</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 <section id="plotting-and-validation-utilities" class="level2">
 <h2 class="anchored" data-anchor-id="plotting-and-validation-utilities">Plotting and Validation Utilities</h2>
@@ -2416,7 +2429,7 @@ vertical-align: -.125em;
 </section>
 <section id="adjustq-preprocessing" class="level2">
 <h2 class="anchored" data-anchor-id="adjustq-preprocessing">AdjustQ Preprocessing</h2>
-<p><a href="https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/adjustq.html">AdjustQ</a> replicates the CHPS FEWS AdjustQ tool, creating 6-hour upstream flow time series from daily and instantaneous observations, optionally blended with simulation output.</p>
+<p><a href="https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/adjustq.html">AdjustQ</a> replicates the CHPS FEWS AdjustQ tool, creating upstream flow time series (at <code>1</code>, <code>2</code>, <code>3</code>, <code>4</code>, <code>6</code>, <code>8</code>, <code>12</code>, or <code>24</code>-hour model timesteps) from daily and instantaneous observations, optionally blended with simulation output.</p>
 <p>The quickest way to run it is with <a href="https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/adjustq_load_example.html"><code>adjustq_load_example()</code></a>, which uses bundled NRKW1 data:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co"># With simulation (runs load_example(&quot;NRKW1&quot;) internally)</span></span>
 <span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>aq <span class="ot">=</span> <span class="fu">adjustq_load_example</span>(<span class="at">sim =</span> <span class="cn">TRUE</span>)</span>
@@ -2431,20 +2444,14 @@ vertical-align: -.125em;
 <span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Without simulation (observation-only merge)</span></span>
 <span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>aq2 <span class="ot">=</span> <span class="fu">adjustq_load_example</span>(<span class="at">sim =</span> <span class="cn">FALSE</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>To call <a href="https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/adjustq.html"><code>adjustq()</code></a> manually with your own data:</p>
+<p>To call <a href="https://noaa-nwrfc.github.io/nwsrfs-hydro-models/r/reference/adjustq.html"><code>adjustq()</code></a> manually with your own data (passing either an <code>nwsrfs_run</code> object or a <code>year</code>/<code>month</code>/<code>day</code>/<code>hour</code>/<code>flow_cfs</code> data.frame as <code>sim</code>, or specifying <code>dt_hours</code> when <code>sim = NULL</code>):</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>run <span class="ot">=</span> <span class="fu">load_example</span>(<span class="st">&quot;NRKW1&quot;</span>)</span>
 <span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Build a sim data.frame with year/month/day/hour/flow_cfs columns</span></span>
-<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>sim_df <span class="ot">=</span> <span class="fu">data.frame</span>(</span>
-<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>  run<span class="sc">$</span>forcings[[<span class="dv">1</span>]][, <span class="fu">c</span>(<span class="st">&quot;year&quot;</span>, <span class="st">&quot;month&quot;</span>, <span class="st">&quot;day&quot;</span>, <span class="st">&quot;hour&quot;</span>)],</span>
-<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">flow_cfs =</span> run<span class="sc">$</span>sim</span>
-<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>result <span class="ot">=</span> <span class="fu">adjustq</span>(</span>
-<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">daily_flow =</span> nrkw1_daily_flow,</span>
-<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">inst_flow =</span> nrkw1_inst_flow,</span>
-<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">sim =</span> sim_df</span>
-<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>result <span class="ot">=</span> <span class="fu">adjustq</span>(</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">daily_flow =</span> nrkw1_daily_flow,</span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">inst_flow =</span> nrkw1_inst_flow,</span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">sim =</span> run</span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 <section id="bundled-datasets" class="level2">
 <h2 class="anchored" data-anchor-id="bundled-datasets">Bundled Datasets</h2>
